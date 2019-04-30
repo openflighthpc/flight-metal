@@ -27,56 +27,12 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'commander'
-require 'flight_metal/config'
-require 'flight_metal/version'
-
-require 'active_support/core_ext/string'
-
-require 'flight_metal/commands/cluster'
-
 module FlightMetal
-  class CLI
-    extend Commander::UI
-    extend Commander::UI::AskForClass
-    extend Commander::Delegates
-
-    program :name, Config.app_name
-    program :version, FlightMetal::VERSION
-    program :description, 'Deploy bare metal machines'
-    program :help_paging, false
-
-    def self.run!
-      ARGV.push '--help' if ARGV.empty?
-      super
-    end
-
-    def self.action(command, klass, method: :run)
-      command.action do |args, opts|
-        hash = opts.__hash__
-        hash.delete(:trace)
-        begin
-          if hash.empty?
-            klass.new.public_send(method, *args)
-          else
-            klass.new.public_send(method, *args, **hash)
-          end
-        rescue Interrupt
-          $stderr.puts 'Received Interrupt!'
-        end
+  module Commands
+    class Cluster
+      def list
       end
-    end
-
-    def self.syntax(command, args_str = '')
-      command.syntax = <<~SYNTAX.squish
-        #{program(:name)} #{command.name} #{args_str} [options]
-      SYNTAX
-    end
-
-    command 'list-clusters' do |c|
-      syntax(c)
-      c.summary = 'Display the list of clusters'
-      action(c, FlightMetal::Commands::Cluster, method: :list)
     end
   end
 end
+
