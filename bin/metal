@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 #==============================================================================
@@ -27,41 +28,13 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-require 'active_support/core_ext/module/delegation'
+require 'rubygems'
+require 'bundler/setup'
 
-module FlightMetal
-  class Config
-    include FlightConfig::Updater
+Bundler.setup(:default)
+$LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
 
-    allow_missing_read
+require 'flight_metal/cli'
 
-    class << self
-      def cache
-        @cache ||= self.read
-      end
+FlightMetal::CLI.run! if $PROGRAM_NAME == __FILE__
 
-      delegate_missing_to :cache
-    end
-
-    def root_dir
-      File.expand_path('../..', __dir__)
-    end
-
-    def path
-      File.join(root_dir, 'etc/config.yaml')
-    end
-
-    def app_name
-      'metal'
-    end
-
-    def cluster
-      __data__.fetch(:cluster) { 'default' }
-    end
-
-    def cluster=(name)
-      __data__.set(:cluster, value: name)
-    end
-  end
-end

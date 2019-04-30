@@ -27,41 +27,24 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-require 'active_support/core_ext/module/delegation'
+require 'commander'
+require 'flight_metal/config'
+require 'flight_metal/version'
 
 module FlightMetal
-  class Config
-    include FlightConfig::Updater
+  class CLI
+    extend Commander::UI
+    extend Commander::UI::AskForClass
+    extend Commander::Delegates
 
-    allow_missing_read
+    program :name, Config.app_name
+    program :version, FlightMetal::VERSION
+    program :description, 'Deploy bare metal machines'
+    program :help_paging, false
 
-    class << self
-      def cache
-        @cache ||= self.read
-      end
-
-      delegate_missing_to :cache
-    end
-
-    def root_dir
-      File.expand_path('../..', __dir__)
-    end
-
-    def path
-      File.join(root_dir, 'etc/config.yaml')
-    end
-
-    def app_name
-      'metal'
-    end
-
-    def cluster
-      __data__.fetch(:cluster) { 'default' }
-    end
-
-    def cluster=(name)
-      __data__.set(:cluster, value: name)
+    def self.run!
+      ARGV.push '--help' if ARGV.empty?
+      super
     end
   end
 end

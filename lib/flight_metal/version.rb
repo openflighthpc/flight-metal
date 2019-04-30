@@ -27,41 +27,6 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-require 'active_support/core_ext/module/delegation'
-
 module FlightMetal
-  class Config
-    include FlightConfig::Updater
-
-    allow_missing_read
-
-    class << self
-      def cache
-        @cache ||= self.read
-      end
-
-      delegate_missing_to :cache
-    end
-
-    def root_dir
-      File.expand_path('../..', __dir__)
-    end
-
-    def path
-      File.join(root_dir, 'etc/config.yaml')
-    end
-
-    def app_name
-      'metal'
-    end
-
-    def cluster
-      __data__.fetch(:cluster) { 'default' }
-    end
-
-    def cluster=(name)
-      __data__.set(:cluster, value: name)
-    end
-  end
+  VERSION = '0.0.0'
 end
