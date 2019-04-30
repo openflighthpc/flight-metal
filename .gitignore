@@ -1,0 +1,8 @@
+*.swp
+tmp/
+var/
+log/
+etc/config.*
+!etc/config.yaml.example
+vendor/
+.bundle/
