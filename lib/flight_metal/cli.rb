@@ -78,5 +78,17 @@ module FlightMetal
       c.summary = 'Display the list of clusters'
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
+
+    command 'init-cluster' do |c|
+      syntax(c, 'IDENTIFIER')
+      c.summary = 'Create a new cluster profile'
+      action(c, FlightMetal::Commands::Cluster, method: :init)
+    end
+
+    command 'switch-cluster' do |c|
+      syntax(c, 'IDENTIFIER')
+      c.summary = 'Change the current cluster profile'
+      action(c, FlightMetal::Commands::Cluster, method: :switch)
+    end
   end
 end

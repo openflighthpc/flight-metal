@@ -32,6 +32,12 @@ require 'flight_metal/models/cluster'
 module FlightMetal
   module Commands
     class Cluster
+      def init(identifier)
+        cluster = Models::Cluster.create(identifier)
+        Config.create_or_update { |c| c.cluster = cluster.identifier }
+        puts "Created cluster: #{cluster.identifier}"
+      end
+
       def list
         Config.cluster # Ensures that at least the default cluster exists
         id_strs = Models::Cluster.glob_read('*')
@@ -40,6 +46,12 @@ module FlightMetal
           "#{id == Config.cluster ? '*' : ' '} #{id}"
         end
         puts id_strs.join("\n")
+      end
+
+      def switch(identifier)
+        cluster = Models::Cluster.read(identifier)
+        Config.create_or_update { |c| c.cluster = cluster.identifier }
+        puts "Switched cluster: #{cluster.identifier}"
       end
     end
   end
