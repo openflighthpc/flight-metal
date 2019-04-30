@@ -33,6 +33,7 @@ module FlightMetal
   module Commands
     class Cluster
       def list
+        Config.cluster # Ensures that at least the default cluster exists
         id_strs = Models::Cluster.glob_read('*')
                             .map(&:identifier)
                             .map do |id|
