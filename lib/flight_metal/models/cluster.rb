@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # frozen_string_literal: true
 
 #==============================================================================
@@ -28,14 +27,25 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'pp'
-require 'rubygems'
-require 'bundler/setup'
+require 'flight_config'
 
-Bundler.setup(:default)
-$LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
+require 'flight_metal/config'
 
-require 'flight_metal/cli'
+module FlightMetal
+  module Models
+    class Cluster
+      include FlightConfig::Updater
+      include FlightConfig::Globber
 
-FlightMetal::CLI.run! if $PROGRAM_NAME == __FILE__
+      attr_reader :identifier
 
+      def initialize(identifier)
+        @identifier = identifier
+      end
+
+      def path
+        File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
+      end
+    end
+  end
+end

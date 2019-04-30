@@ -29,6 +29,7 @@
 
 require 'flight_config'
 require 'active_support/core_ext/module/delegation'
+require 'flight_metal/models/cluster'
 
 module FlightMetal
   class Config
@@ -56,8 +57,16 @@ module FlightMetal
       'metal'
     end
 
+    def content_dir
+      __data__.fetch(:content_dir) do
+        File.expand_path('var', root_dir)
+      end
+    end
+
     def cluster
-      __data__.fetch(:cluster) { 'default' }
+      __data__.fetch(:cluster) do
+        Models::Cluster.create_or_update('default').identifier
+      end
     end
 
     def cluster=(name)

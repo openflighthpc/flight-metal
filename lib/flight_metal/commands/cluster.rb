@@ -27,10 +27,18 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/models/cluster'
+
 module FlightMetal
   module Commands
     class Cluster
       def list
+        id_strs = Models::Cluster.glob_read('*')
+                            .map(&:identifier)
+                            .map do |id|
+          "#{id == Config.cluster ? '*' : ' '} #{id}"
+        end
+        puts id_strs.join("\n")
       end
     end
   end
