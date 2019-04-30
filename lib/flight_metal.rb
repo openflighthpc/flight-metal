@@ -27,17 +27,5 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-source "https://rubygems.org"
-
-git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
-
-gem 'activesupport'
-gem 'commander-openflighthpc'
-gem 'flight_config'
-
-group :development do
-  gem 'pp'
-  gem 'pry'
-  gem 'pry-byebug'
-end
+require 'flight_metal/config'
 

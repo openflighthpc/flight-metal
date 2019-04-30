@@ -27,17 +27,23 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-source "https://rubygems.org"
+require 'pp'
 
-git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
+task :setup do
+  ENV['BUNDLE_GEMFILE'] = File.join(__dir__, 'Gemfile')
 
-gem 'activesupport'
-gem 'commander-openflighthpc'
-gem 'flight_config'
+  require 'rubygems'
+  require 'bundler/setup'
 
-group :development do
-  gem 'pp'
-  gem 'pry'
-  gem 'pry-byebug'
+  Bundler.setup(:default, :development)
+  require 'pry'
+  require 'pry-byebug'
+
+  $LOAD_PATH.unshift(File.join(__dir__, 'lib'))
+  require 'flight_metal'
+end
+
+task console: :setup do
+  binding.pry
 end
 
