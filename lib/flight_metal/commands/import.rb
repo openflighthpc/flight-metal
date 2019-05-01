@@ -33,14 +33,34 @@ require 'ostruct'
 
 require 'active_support/core_ext/module/delegation'
 
+require 'flight_metal/models/node'
+
 module FlightMetal
   module Commands
     class Import
       def run(path)
         zip_path = Pathname.new(path).expand_path.sub_ext('.zip').to_s
         Importer.extract(zip_path) do |importer|
-          nodes_names = importer.node_entries.keys
-          puts nodes_names
+          nodes_hash = importer.node_entries
+          nodes_hash.each do |name, data|
+            begin
+              model = Models::Node.create(Config.cluster, name.to_s) do |node|
+                data.entries.each do |entry|
+                  dst = File.join(
+                    node.template_dir,
+                    entry.name.sub(data.base, '')
+                  )
+                  FileUtils.mkdir_p(File.dirname(dst))
+                  entry.extract(dst)
+                end
+              end
+              puts "Imported node '#{model.name}'"
+            rescue FlightConfig::CreateError
+              $stderr.puts <<~ERROR
+                Skipping import of node '#{name}' as it already exists
+              ERROR
+            end
+          end
         end
       end
 
