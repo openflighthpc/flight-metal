@@ -34,6 +34,7 @@ require 'flight_metal/version'
 require 'active_support/core_ext/string'
 
 require 'flight_metal/commands/cluster'
+require 'flight_metal/commands/import'
 
 module FlightMetal
   class CLI
@@ -77,6 +78,15 @@ module FlightMetal
       syntax(c)
       c.summary = 'Display the list of clusters'
       action(c, FlightMetal::Commands::Cluster, method: :list)
+    end
+
+    command 'import' do |c|
+      syntax(c)
+      c.summary = 'Add node configuration profiles'
+      c.description = <<~DESC
+        Add node configuration profiles from a flight-architect output zip.
+      DESC
+      action(c, FlightMetal::Commands::Import)
     end
 
     command 'init-cluster' do |c|

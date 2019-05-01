@@ -27,18 +27,45 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-source "https://rubygems.org"
+require 'zip'
+require 'pathname'
+require 'ostruct'
 
-git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
+require 'active_support/core_ext/module/delegation'
 
-gem 'activesupport'
-gem 'commander-openflighthpc'
-gem 'flight_config'
-gem 'rubyzip'
+module FlightMetal
+  module Commands
+    class Import
+      def run(path)
+        zip_path = Pathname.new(path).expand_path.sub_ext('.zip').to_s
+        Importer.extract(zip_path) do |importer|
+          nodes_names = importer.node_entries.keys
+          puts nodes_names
+        end
+      end
 
-group :development do
-  gem 'pp'
-  gem 'pry'
-  gem 'pry-byebug'
+      Importer = Struct.new(:zip) do
+        PLATFORM_GLOB = 'kickstart/node/*/platform/**/*'
+        PLATFORM_REGEX = /\A(?<base>kickstart\/node\/(?<node>[^\/]+)\/platform)\/.*/
+
+        def self.extract(path)
+          Zip::File.open(path) do |f|
+            yield new(f) if block_given?
+          end
+        end
+
+        delegate_missing_to :zip
+
+        def node_entries
+          glob(PLATFORM_GLOB).each_with_object({}) do |entry, memo|
+            match = PLATFORM_REGEX.match(entry.name)
+            node = match[:node].to_sym
+            memo[node] ||= OpenStruct.new(base: match[:base], entries: [])
+            memo[node].entries << entry
+          end
+        end
+      end
+    end
+  end
 end
 

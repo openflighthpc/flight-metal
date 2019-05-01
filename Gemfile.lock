@@ -27,6 +27,7 @@ GEM
     pry-byebug (3.7.0)
       byebug (~> 11.0)
       pry (~> 0.10)
+    rubyzip (1.2.2)
     thread_safe (0.3.6)
     tty-config (0.3.1)
     tzinfo (1.2.5)
@@ -42,6 +43,7 @@ DEPENDENCIES
   pp
   pry
   pry-byebug
+  rubyzip
 
 BUNDLED WITH
-   1.16.6
+   1.17.3
