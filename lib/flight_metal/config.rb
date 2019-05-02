@@ -72,5 +72,9 @@ module FlightMetal
     def cluster=(name)
       __data__.set(:cluster, value: name)
     end
+
+    def interface
+      __data__.fetch(:interface) { 'eth0' }
+    end
   end
 end

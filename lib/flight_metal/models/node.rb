@@ -41,6 +41,14 @@ module FlightMetal
         @name ||= name
       end
 
+      def mac
+        __data__.fetch(:mac)
+      end
+
+      def mac=(address)
+        __data__.set(:mac, value: address)
+      end
+
       def path
         File.join(base_dir, 'etc/config.yaml')
       end
