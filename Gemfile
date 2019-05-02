@@ -37,6 +37,7 @@ gem 'flight_config'
 gem 'rubyzip'
 gem 'pcap', github: 'alces-software/ruby-pcap'
 gem 'net-dhcp'
+gem 'highline'
 
 group :development do
   gem 'pp'

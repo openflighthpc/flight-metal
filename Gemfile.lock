@@ -47,6 +47,7 @@ DEPENDENCIES
   activesupport
   commander-openflighthpc
   flight_config
+  highline
   net-dhcp
   pcap!
   pp

@@ -76,5 +76,13 @@ module FlightMetal
     def interface
       __data__.fetch(:interface) { 'eth0' }
     end
+
+    def node_prefix
+      __data__.fetch(:node_prefix) { 'node' }
+    end
+
+    def node_index_length
+      __data__.fetch(:node_index_length) { 2 }
+    end
   end
 end

@@ -29,6 +29,7 @@
 
 require 'net/dhcp'
 require 'pcap'
+require 'highline'
 
 module FlightMetal
   module Commands
@@ -56,6 +57,8 @@ module FlightMetal
 
       def setup_network_connection
         pcaplet_options = "-s 600 -n -i #{Config.interface}"
+        @detected_macs ||= []
+        @detection_count ||= 0
         @network ||= Pcaplet.new(pcaplet_options).tap do |network|
           filter_string = 'udp port 67 and udp port 68'
           filter = Pcap::Filter.new(filter_string, network.capture)
@@ -96,11 +99,6 @@ module FlightMetal
 
         detected_macs << hwaddr
 
-        if options.ignore_duplicate_macs && previously_hunted?(hwaddr)
-          notify_user_of_ignored_mac(hwaddr)
-          return
-        end
-
         handle_new_detected_mac(hwaddr)
       end
 
@@ -130,15 +128,15 @@ module FlightMetal
         name_node_question = \
           "Detected a machine on the network (#{hwaddr}). Please enter " \
           'the hostname:'
-        name = ask(name_node_question) do |answer|
+        name = HighLine.new.ask(name_node_question) do |answer|
           answer.default = default_name
         end
         record_hunted_pair(name, hwaddr)
-        $stderr.info "#{name}-#{hwaddr}"
-        $stderr.stderr 'Logged node'
+        $stderr.puts "#{name}-#{hwaddr}"
+        $stderr.puts'Logged node'
       rescue StandardError => e
-        $stderr.stderr "FAIL: #{e.message}"
-        retry if agree('Retry? [yes/no]:')
+        $stderr.puts"FAIL: #{e.message}"
+        retry if HighLine.new.agree('Retry? [yes/no]:')
       end
 
       def record_hunted_pair(node_name, mac_address)
@@ -148,7 +146,7 @@ module FlightMetal
       end
 
       def sequenced_name
-        "#{options.prefix}#{detection_count.to_s.rjust(options.length, '0')}"
+        "#{Config.node_prefix}#{detection_count.to_s.rjust(Config.node_index_length, '0')}"
       end
     end
   end
