@@ -34,8 +34,43 @@ require 'highline'
 module FlightMetal
   module Commands
     class Hunter
+      PacketReader = Struct.new(:packet) do
+        def message
+          @message ||= DHCP::Message.from_udp_payload(packet.udp_data, debug: false)
+        end
+
+        def udp?
+          packet.udp?
+        end
+
+        def dhcp_discover?
+          return false unless udp?
+          message.is_a?(DHCP::Discover)
+        end
+
+        def pxe_request?
+          return false unless dhcp_discover?
+          $stderr.puts 'Processing DHCP::Discover message options'
+          pxe = message.options.find do |opt|
+            next unless opt.is_a?(DHCP::VendorClassIDOption)
+            vendor = opt.payload.pack('C*')
+            $stderr.puts "Detected vendor: #{vendor}"
+            /^PXEClient/.match?(vendor)
+          end
+          pxe ? true : false
+        end
+
+        def mac
+          $stderr.puts 'Determining hardware address'
+          message.chaddr.slice(0..(message.hlen - 1)).map do |b|
+            b.to_s(16).upcase.rjust(2, '0')
+          end.join(':').tap do |hwaddr|
+            $stderr.puts "Detected hardware address: #{hwaddr}"
+          end
+        end
+      end
+
       def run
-        setup_network_connection
         $stderr.puts <<~MSG.squish
           Waiting for new nodes to appear on the network, please network boot
           them now...,
@@ -43,95 +78,48 @@ module FlightMetal
         $stderr.puts '(Ctrl-C to terminate)'
 
         network.each_packet do |packet|
-          process_packet(packet.udp_data) if packet.udp?
+          reader = PacketReader.new(packet)
+          detected(reader.mac) if reader.pxe_request?
         end
       end
 
       private
 
-      attr_reader \
-        :detected_macs,
-        :detection_count,
-        :hunter_log,
-        :network
-
-      def setup_network_connection
-        pcaplet_options = "-s 600 -n -i #{Config.interface}"
-        @detected_macs ||= []
-        @detection_count ||= 0
-        @network ||= Pcaplet.new(pcaplet_options).tap do |network|
-          filter_string = 'udp port 67 and udp port 68'
-          filter = Pcap::Filter.new(filter_string, network.capture)
-          network.add_filter(filter)
+      def network
+        @network ||= begin
+          Pcaplet.new("-s 600 -n -i #{Config.interface}").tap do |net|
+            net.add_filter(
+              Pcap::Filter.new('udp port 67 and udp port 68', net.capture)
+            )
+          end
         end
       end
 
-      def process_packet(data)
-        $stderr.puts 'Processing received UDP packet'
-        message = DHCP::Message.from_udp_payload(data, debug: false)
-        process_message(message) if message.is_a?(DHCP::Discover)
+      def detected_macs
+        @detected_macs || []
       end
 
-      def process_message(message)
-        $stderr.puts 'Processing DHCP::Discover message options'
-        message.options.each do |o|
-          detected(hwaddr_from(message)) if pxe_client?(o)
-        end
-      end
-
-      def hwaddr_from(message)
-        $stderr.puts 'Determining hardware address'
-        message.chaddr.slice(0..(message.hlen - 1)).map do |b|
-          b.to_s(16).upcase.rjust(2, '0')
-        end.join(':').tap do |hwaddr|
-          $stderr.puts "Detected hardware address: #{hwaddr}"
-        end
-      end
-
-      def pxe_client?(o)
-        o.is_a?(DHCP::VendorClassIDOption) && o.payload.pack('C*').tap do |vend|
-          $stderr.puts "Detected vendor: #{vend}"
-        end =~ /^PXEClient/
-      end
-
-      def detected(hwaddr)
-        return if detected_macs.include?(hwaddr)
-
-        detected_macs << hwaddr
-
-        handle_new_detected_mac(hwaddr)
-      end
-
-      def previously_hunted?(hwaddr)
-        cached_macs_to_nodes.include?(hwaddr)
-      end
-
-      def notify_user_of_ignored_mac(hwaddr)
-        assigned_node_name = cached_macs_to_nodes[hwaddr]
-        message = \
-          'Detected already hunted MAC address on network ' \
-          "(#{hwaddr} / #{assigned_node_name}); ignoring."
-        $stderr.puts message
-      end
-
-      def cached_macs_to_nodes
+      def read_macs_to_nodes
         Models::Node.glob_read(Config.cluster, '*')
                     .reject { |n| n.mac.empty? }
                     .map { |n| [n.mac, n.name] }
                     .to_h
       end
 
-      def handle_new_detected_mac(hwaddr)
-        default_name = sequenced_name
-        @detection_count += 1
+      def detected(hwaddr)
+        return if detected_macs.include?(hwaddr)
+        detected_macs << hwaddr
 
-        name_node_question = \
-          "Detected a machine on the network (#{hwaddr}). Please enter " \
-          'the hostname:'
-        name = HighLine.new.ask(name_node_question) do |answer|
-          answer.default = default_name
+        question = <<~QUESTION.squish
+          Detected a machine on the network (#{hwaddr}).
+          Please enter the hostname:
+        QUESTION
+        name = HighLine.new.ask(question) { |q| q.default = sequenced_name }
+
+        Models::Node.create_or_update(Config.cluster, name) do |n|
+          n.mac = mac_address
         end
-        record_hunted_pair(name, hwaddr)
+
         $stderr.puts "#{name}-#{hwaddr}"
         $stderr.puts'Logged node'
       rescue StandardError => e
@@ -139,14 +127,9 @@ module FlightMetal
         retry if HighLine.new.agree('Retry? [yes/no]:')
       end
 
-      def record_hunted_pair(node_name, mac_address)
-        Models::Node.create_or_update(Config.cluster, node_name) do |n|
-          n.mac = mac_address
-        end
-      end
-
       def sequenced_name
-        "#{Config.node_prefix}#{detection_count.to_s.rjust(Config.node_index_length, '0')}"
+        Config.node_prefix + \
+          detected_macs.length.to_s.rjust(Config.node_index_length, '0')
       end
     end
   end
