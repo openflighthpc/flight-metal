@@ -60,6 +60,17 @@ module FlightMetal
       def template_dir
         File.join(base_dir, 'var/templates')
       end
+
+      def pxelinux_cfg_path
+        File.join(Config.tftpboot_dir,
+                  'pxelinux.cfg',
+                  '01-' + mac.downcase.gsub(':', '-')
+                 )
+      end
+
+      def pxelinux_template_path
+        File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
+      end
     end
   end
 end

@@ -84,5 +84,9 @@ module FlightMetal
     def node_index_length
       __data__.fetch(:node_index_length) { 2 }
     end
+
+    def tftpboot_dir
+      __data__.fetch(:tftpboot_dir) { '/var/lib/tftpboot' }
+    end
   end
 end
