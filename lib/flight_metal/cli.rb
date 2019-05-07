@@ -33,6 +33,7 @@ require 'flight_metal/version'
 
 require 'active_support/core_ext/string'
 
+require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/hunter'
@@ -75,10 +76,16 @@ module FlightMetal
       SYNTAX
     end
 
-    command 'list-clusters' do |c|
+    command 'build' do |c|
       syntax(c)
-      c.summary = 'Display the list of clusters'
-      action(c, FlightMetal::Commands::Cluster, method: :list)
+      c.summary = 'Setup the pxelinux file for the build'
+      action(c, FlightMetal::Commands::Build)
+    end
+
+    command 'hunter' do |c|
+      syntax(c)
+      c.summary = 'Collect node mac addesses from DHCP Discover'
+      action(c, FlightMetal::Commands::Hunter)
     end
 
     command 'import' do |c|
@@ -96,10 +103,10 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :init)
     end
 
-    command 'hunter' do |c|
+    command 'list-clusters' do |c|
       syntax(c)
-      c.summary = 'Collect node mac addesses from DHCP Discover'
-      action(c, FlightMetal::Commands::Hunter)
+      c.summary = 'Display the list of clusters'
+      action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
     command 'switch-cluster' do |c|
