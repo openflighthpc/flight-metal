@@ -117,7 +117,7 @@ module FlightMetal
         name = HighLine.new.ask(question) { |q| q.default = sequenced_name }
 
         Models::Node.create_or_update(Config.cluster, name) do |n|
-          n.mac = mac_address
+          n.mac = hwaddr
         end
 
         $stderr.puts "#{name}-#{hwaddr}"
