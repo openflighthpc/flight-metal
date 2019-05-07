@@ -41,23 +41,15 @@ module FlightMetal
       def run(path)
         zip_path = Pathname.new(path).expand_path.sub_ext('.zip').to_s
         Importer.extract(zip_path) do |importer|
-          nodes_hash = importer.node_entries
-          nodes_hash.each do |name, data|
+          importer.nodes.each do |data|
             begin
-              model = Models::Node.create(Config.cluster, name.to_s) do |node|
-                data.entries.each do |entry|
-                  dst = File.join(
-                    node.template_dir,
-                    entry.name.sub(data.base, '')
-                  )
-                  FileUtils.mkdir_p(File.dirname(dst))
-                  entry.extract(dst)
-                end
+              model = Models::Node.create(Config.cluster, data.name) do |node|
+                data.extract(node.template_dir)
               end
               puts "Imported node '#{model.name}'"
             rescue FlightConfig::CreateError
               $stderr.puts <<~ERROR
-                Skipping import of node '#{name}' as it already exists
+                Skipping import of node '#{data.name}' as it already exists
               ERROR
             end
           end
@@ -65,6 +57,20 @@ module FlightMetal
       end
 
       Importer = Struct.new(:zip) do
+        NodeStruct = Struct.new(:name, :base) do
+          def entries
+            @entries ||= []
+          end
+
+          def extract(dst_base)
+            entries.each do |entry|
+              dst = File.join(dst_base, entry.name.sub(base, ''))
+              FileUtils.mkdir_p(File.dirname(dst))
+              entry.extract(dst)
+            end
+          end
+        end
+
         PLATFORM_GLOB = 'kickstart/node/*/platform/**/*'
         PLATFORM_REGEX = /\A(?<base>kickstart\/node\/(?<node>[^\/]+)\/platform)\/.*/
 
@@ -76,13 +82,13 @@ module FlightMetal
 
         delegate_missing_to :zip
 
-        def node_entries
+        def nodes
           glob(PLATFORM_GLOB).each_with_object({}) do |entry, memo|
             match = PLATFORM_REGEX.match(entry.name)
-            node = match[:node].to_sym
-            memo[node] ||= OpenStruct.new(base: match[:base], entries: [])
+            node = match[:node].to_s
+            memo[node] ||= NodeStruct.new(node, match[:base])
             memo[node].entries << entry
-          end
+          end.values
         end
       end
     end
