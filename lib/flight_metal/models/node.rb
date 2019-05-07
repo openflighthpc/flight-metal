@@ -55,11 +55,15 @@ module FlightMetal
       end
 
       def imported?
-        __data__.fetch(:imported) { false }
+        __data__.fetch(:import_time) ? true : false
       end
 
-      def imported=(bool)
-        __data__.set(:imported, value: (bool ? true : false))
+      def update_import_time(time: Time.now.to_i)
+        __data__.set(:import_time, value: time)
+      end
+
+      def import_time
+        __data__.fetch(:import_time)
       end
 
       def path
