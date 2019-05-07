@@ -61,7 +61,6 @@ module FlightMetal
         end
 
         def mac
-          $stderr.puts 'Determining hardware address'
           message.chaddr.slice(0..(message.hlen - 1)).map do |b|
             b.to_s(16).upcase.rjust(2, '0')
           end.join(':').tap do |hwaddr|
@@ -96,7 +95,7 @@ module FlightMetal
       end
 
       def detected_macs
-        @detected_macs || []
+        @detected_macs ||= []
       end
 
       def read_macs_to_nodes
@@ -107,14 +106,16 @@ module FlightMetal
       end
 
       def detected(hwaddr)
-        return if detected_macs.include?(hwaddr)
-        detected_macs << hwaddr
-
+        if detected_macs.include?(hwaddr)
+          $stderr.puts "Skipping repeated address: #{hwaddr}"
+          return
+        end
         question = <<~QUESTION.squish
           Detected a machine on the network (#{hwaddr}).
           Please enter the hostname:
         QUESTION
         name = HighLine.new.ask(question) { |q| q.default = sequenced_name }
+        detected_macs << hwaddr
 
         Models::Node.create_or_update(Config.cluster, name) do |n|
           n.mac = hwaddr
