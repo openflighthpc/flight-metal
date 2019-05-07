@@ -35,6 +35,8 @@ require 'active_support/core_ext/module/delegation'
 
 require 'flight_metal/models/node'
 
+require 'flight_metal/errors'
+
 module FlightMetal
   module Commands
     class Import
@@ -43,14 +45,14 @@ module FlightMetal
         Importer.extract(zip_path) do |importer|
           importer.nodes.each do |data|
             begin
-              model = Models::Node.create(Config.cluster, data.name) do |node|
+              model = Models::Node.create_or_update(Config.cluster, data.name) do |node|
+                ImportError.raise(node.name) if node.imported?
                 data.extract(node.template_dir)
+                node.imported = true
               end
               puts "Imported node '#{model.name}'"
-            rescue FlightConfig::CreateError
-              $stderr.puts <<~ERROR
-                Skipping import of node '#{data.name}' as it already exists
-              ERROR
+            rescue ImportError => e
+              $stderr.puts "Skipping: #{e.message}"
             end
           end
         end

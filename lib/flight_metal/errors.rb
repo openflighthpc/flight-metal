@@ -27,63 +27,16 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-
 module FlightMetal
-  module Models
-    class Node
-      include FlightConfig::Updater
-      include FlightConfig::Globber
+  class FlightMetalError < StandardError; end
 
-      attr_reader :cluster, :name
-
-      def initialize(cluster, name)
-        @cluster ||= cluster
-        @name ||= name
-      end
-
-      def mac
-        __data__.fetch(:mac)
-      end
-
-      def mac=(address)
-        if address.nil?
-          __data__.delete(:mac)
-        else
-          __data__.set(:mac, value: address)
-        end
-      end
-
-      def imported?
-        __data__.fetch(:imported) { false }
-      end
-
-      def imported=(bool)
-        __data__.set(:imported, value: (bool ? true : false))
-      end
-
-      def path
-        File.join(base_dir, 'etc/config.yaml')
-      end
-
-      def base_dir
-        File.join(Config.content_dir, 'clusters', cluster, 'var/nodes', name)
-      end
-
-      def template_dir
-        File.join(base_dir, 'var/templates')
-      end
-
-      def pxelinux_cfg_path
-        File.join(Config.tftpboot_dir,
-                  'pxelinux.cfg',
-                  '01-' + mac.downcase.gsub(':', '-')
-                 )
-      end
-
-      def pxelinux_template_path
-        File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
-      end
+  class ImportError < FlightMetalError
+    def self.raise(name)
+      Kernel.raise self, <<~ERROR
+        Node '#{name}' has already been imported
+      ERROR
     end
   end
 end
+
+
