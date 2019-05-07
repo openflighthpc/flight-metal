@@ -33,6 +33,7 @@ module FlightMetal
   module Models
     class Node
       include FlightConfig::Updater
+      include FlightConfig::Globber
 
       attr_reader :cluster, :name
 
@@ -46,7 +47,11 @@ module FlightMetal
       end
 
       def mac=(address)
-        __data__.set(:mac, value: address)
+        if address.nil?
+          __data__.delete(:mac)
+        else
+          __data__.set(:mac, value: address)
+        end
       end
 
       def path
