@@ -34,7 +34,6 @@ module FlightMetal
   class Server
     class Message
       class Properties < Hashie::Trash
-
         def self.safe_load(data)
           data = YAML.safe_load(data)
           raise BadMessageError, <<~ERROR.squish unless data.is_a?(Hash)

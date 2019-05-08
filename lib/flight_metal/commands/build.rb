@@ -28,6 +28,7 @@
 #===============================================================================
 
 require 'flight_metal/server'
+require 'flight_metal/models/node'
 
 module FlightMetal
   module Commands
@@ -37,25 +38,55 @@ module FlightMetal
       end
 
       def run
-        Models::Node.glob_read(Config.cluster, '*')
-                    .each do |node|
-          if node.mac.nil?
-            $stderr.puts "Skipping #{node.name}: Missing hardware address"
-          elsif File.exists?(node.pxelinux_cfg_path)
-            $stderr.puts <<~ERROR.squish
-              Skipping #{node.name}: Pxelinux file already exists:
-              #{node.pxelinux_cfg_path}
-            ERROR
-          elsif node.pxelinux_template_path
-            FileUtils.cp node.pxelinux_template_path, node.pxelinux_cfg_path
-            $stderr.puts <<~MSG.squish
-              Copied #{node.name} pxelinux file: #{node.pxelinux_cfg_path}
-            MSG
-          end
+        node_names = load_nodes.map(&:name)
+        if node_names.empty?
+          $stderr.puts 'Nothing to build'
+          return
         end
 
         Server.new('127.0.0.1', 2000, 256).loop do |message|
-          puts message
+          next true unless message.built?
+          unless node_names.include?(message.node)
+            $stderr.puts "Ignoring message from node: #{message.node}"
+            next true
+          end
+          node = Models::Node.update(Config.cluster, message.node) do |node|
+            node.built = true
+          end
+          puts "Built: #{node.name}"
+          node_names.delete_if { |name| name == node.name }
+          !node_names.empty?
+        end
+      end
+
+      private
+
+      def load_nodes
+        Models::Node.glob_read(Config.cluster, '*')
+                            .select do |node|
+          if node.built?
+            false
+          elsif node.mac.nil?
+            $stderr.puts <<~ERROR.squish
+              Skipping #{node.name}: Missing hardware address
+            ERROR
+            false
+          elsif File.exists? node.pxelinux_cfg_path
+            $stderr.puts <<~ERROR.squish
+              Skipping #{node.name}: Duplicate pxelinux -
+              #{node.pxelinux_cfg_path}
+            ERROR
+            false
+          elsif File.exists? node.pxelinux_template_path
+            FileUtils.cp node.pxelinux_template_path, node.pxelinux_cfg_path
+            true
+          else
+            $stderr.puts <<~ERROR.squish
+              Skipping #{node.name}: Missing pxelinux source -
+              #{node.pxelinux_template_path}
+            ERROR
+            false
+          end
         end
       end
     end

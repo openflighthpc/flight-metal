@@ -35,6 +35,15 @@ module FlightMetal
       include FlightConfig::Updater
       include FlightConfig::Globber
 
+      def self.flag(name)
+        define_method("#{name}?") { __data__.fetch(name, default: false) }
+        define_method("#{name}=") do |status|
+          __data__.set(name,  value: (status ? true : false))
+          __data__.set("#{name}_time",  value: Time.now.to_i)
+        end
+        define_method(:"#{name}_time") { __data__.fetch("#{name}_time") }
+      end
+
       attr_reader :cluster, :name
 
       def initialize(cluster, name)
@@ -53,6 +62,8 @@ module FlightMetal
           __data__.set(:mac, value: address)
         end
       end
+
+      flag :built
 
       def imported?
         __data__.fetch(:import_time) ? true : false
