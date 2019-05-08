@@ -20,6 +20,7 @@ GEM
     concurrent-ruby (1.1.5)
     flight_config (0.1.0)
       tty-config
+    hashie (3.6.0)
     highline (1.7.10)
     i18n (1.6.0)
       concurrent-ruby (~> 1.0)
@@ -47,6 +48,7 @@ DEPENDENCIES
   activesupport
   commander-openflighthpc
   flight_config
+  hashie
   highline
   net-dhcp
   pcap!

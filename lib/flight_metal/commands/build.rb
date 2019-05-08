@@ -27,6 +27,8 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/server'
+
 module FlightMetal
   module Commands
     class Build
@@ -50,6 +52,10 @@ module FlightMetal
               Copied #{node.name} pxelinux file: #{node.pxelinux_cfg_path}
             MSG
           end
+        end
+
+        Server.new('127.0.0.1', 2000, 256).loop do |message|
+          puts message
         end
       end
     end

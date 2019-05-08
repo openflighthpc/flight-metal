@@ -37,6 +37,14 @@ module FlightMetal
       ERROR
     end
   end
+
+  class BadMessageError < FlightMetalError
+    MESSAGE = 'Cannot parse message body, ensure it is JSON and not truncated'
+
+    def initialize(msg = MESSAGE)
+      super
+    end
+  end
 end
 
 

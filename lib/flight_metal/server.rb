@@ -27,22 +27,38 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-source "https://rubygems.org"
+require 'socket'
 
-git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
+require 'flight_metal/server/message'
 
-gem 'activesupport'
-gem 'commander-openflighthpc'
-gem 'flight_config'
-gem 'rubyzip'
-gem 'pcap', github: 'alces-software/ruby-pcap'
-gem 'net-dhcp'
-gem 'highline'
-gem 'hashie'
+module FlightMetal
+  class Server
+    attr_reader :host, :port, :max_size
 
-group :development do
-  gem 'pp'
-  gem 'pry'
-  gem 'pry-byebug'
+    def initialize(host, port, max_size)
+      @host = host
+      @port = port
+      @max_size = max_size
+    end
+
+    def socket
+      @socket ||= UDPSocket.new.tap do |soc|
+        soc.bind(host, port)
+      end
+    end
+
+    def loop
+      while res = socket.recvfrom(max_size)
+        message = Message.new(res)
+        begin
+          message.body
+        rescue BadMessageError => e
+          $stderr.puts e.message
+          next
+        end
+        yield message
+      end
+    end
+  end
 end
 
