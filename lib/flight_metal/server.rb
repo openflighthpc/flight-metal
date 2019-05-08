@@ -48,6 +48,7 @@ module FlightMetal
     end
 
     def loop
+      return unless block_given?
       while res = socket.recvfrom(max_size)
         message = Message.new(res)
         begin
@@ -56,7 +57,7 @@ module FlightMetal
           $stderr.puts e.message
           next
         end
-        yield message
+        return unless yield message
       end
     end
   end
