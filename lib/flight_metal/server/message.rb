@@ -28,13 +28,12 @@
 #===============================================================================
 
 require 'active_support/core_ext/module/delegation'
-require 'hashie'
+require 'hashie/trash'
 
 module FlightMetal
   class Server
     class Message
-      class Properties < Hashie::Dash
-        include Hashie::Extensions::Dash::PropertyTranslation
+      class Properties < Hashie::Trash
 
         def self.safe_load(data)
           data = YAML.safe_load(data)
