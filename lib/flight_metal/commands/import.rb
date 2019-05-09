@@ -48,7 +48,7 @@ module FlightMetal
               model = Models::Node.create_or_update(Config.cluster, data.name) do |node|
                 ImportError.raise(node.name) if node.imported?
                 data.extract(node.template_dir)
-                node.update_import_time
+                node.imported = true
               end
               puts "Imported node '#{model.name}'"
             rescue ImportError => e

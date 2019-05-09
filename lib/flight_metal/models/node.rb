@@ -41,10 +41,15 @@ module FlightMetal
           __data__.set(name,  value: (status ? true : false))
           __data__.set("#{name}_time",  value: Time.now.to_i)
         end
-        define_method(:"#{name}_time") { __data__.fetch("#{name}_time") }
+        define_method(:"#{name}_time") do
+          Time.at(__data__.fetch("#{name}_time"))
+        end
       end
 
       attr_reader :cluster, :name
+
+      flag :built
+      flag :imported
 
       def initialize(cluster, name)
         @cluster ||= cluster
@@ -61,20 +66,6 @@ module FlightMetal
         else
           __data__.set(:mac, value: address)
         end
-      end
-
-      flag :built
-
-      def imported?
-        __data__.fetch(:import_time) ? true : false
-      end
-
-      def update_import_time(time: Time.now.to_i)
-        __data__.set(:import_time, value: time)
-      end
-
-      def import_time
-        __data__.fetch(:import_time)
       end
 
       def path
