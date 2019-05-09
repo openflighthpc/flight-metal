@@ -27,10 +27,6 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'net/dhcp'
-require 'pcap'
-require 'highline'
-
 module FlightMetal
   module Commands
     class Hunter
@@ -67,6 +63,12 @@ module FlightMetal
             $stderr.puts "Detected hardware address: #{hwaddr}"
           end
         end
+      end
+
+      def initialize
+        require 'net/dhcp'
+        require 'pcap'
+        require 'highline'
       end
 
       def run

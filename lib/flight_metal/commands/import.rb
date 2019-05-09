@@ -27,19 +27,23 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'zip'
-require 'pathname'
-require 'ostruct'
-
-require 'active_support/core_ext/module/delegation'
-
-require 'flight_metal/models/node'
-
-require 'flight_metal/errors'
 
 module FlightMetal
   module Commands
     class Import
+
+      def initialize
+        require 'zip'
+        require 'pathname'
+        require 'ostruct'
+
+        require 'active_support/core_ext/module/delegation'
+
+        require 'flight_metal/models/node'
+
+        require 'flight_metal/errors'
+      end
+
       def run(path)
         zip_path = Pathname.new(path).expand_path.sub_ext('.zip').to_s
         Importer.extract(zip_path) do |importer|

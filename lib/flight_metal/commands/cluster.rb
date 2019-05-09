@@ -27,11 +27,13 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/models/cluster'
-
 module FlightMetal
   module Commands
     class Cluster
+      def initialize
+        require 'flight_metal/models/cluster'
+      end
+
       def init(identifier)
         cluster = Models::Cluster.create(identifier)
         Config.create_or_update { |c| c.cluster = cluster.identifier }
