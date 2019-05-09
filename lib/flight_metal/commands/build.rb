@@ -50,8 +50,9 @@ module FlightMetal
             $stderr.puts "Ignoring message from node: #{message.node}"
             next true
           end
-          node = Models::Node.update(Config.cluster, message.node) do |node|
-            node.built = true
+          node = Models::Node.update(Config.cluster, message.node) do |n|
+            FileUtils.rm n.pxelinux_cfg_path
+            n.built = true
           end
           puts "Built: #{node.name}"
           node_names.delete_if { |name| name == node.name }
