@@ -84,11 +84,19 @@ module FlightMetal
         File.join(base_dir, 'var/templates')
       end
 
+      def pxelinux_cfg?
+        File.exists?(pxelinux_cfg_path)
+      end
+
       def pxelinux_cfg_path
         File.join(Config.tftpboot_dir,
                   'pxelinux.cfg',
                   '01-' + mac.downcase.gsub(':', '-')
                  )
+      end
+
+      def pxelinux_template?
+        File.exists? pxelinux_template_path
       end
 
       def pxelinux_template_path

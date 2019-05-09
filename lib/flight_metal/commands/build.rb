@@ -66,24 +66,25 @@ module FlightMetal
                             .select do |node|
           if node.built?
             false
-          elsif node.mac.nil?
+          elsif node.mac? && node.pxelinux_cfg?
             $stderr.puts <<~ERROR.squish
-              Skipping #{node.name}: Missing hardware address
-            ERROR
-            false
-          elsif File.exists? node.pxelinux_cfg_path
-            $stderr.puts <<~ERROR.squish
-              Skipping #{node.name}: Duplicate pxelinux -
+              Warning #{node.name}: Building off an existing pxelinux file -
               #{node.pxelinux_cfg_path}
             ERROR
-            false
-          elsif File.exists? node.pxelinux_template_path
-            FileUtils.cp node.pxelinux_template_path, node.pxelinux_cfg_path
             true
-          else
+          elsif node.mac? && node.pxelinux_template?
+            FileUtils.cp node.pxelinux_template_path,
+                         node.pxelinux_cfg_path
+            true
+          elsif node.mac?
             $stderr.puts <<~ERROR.squish
               Skipping #{node.name}: Missing pxelinux source -
               #{node.pxelinux_template_path}
+            ERROR
+            false
+          else
+            $stderr.puts <<~ERROR.squish
+              Skipping #{node.name}: Missing hardware address
             ERROR
             false
           end
