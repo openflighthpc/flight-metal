@@ -29,7 +29,7 @@
 
 module FlightMetal
   module Commands
-    class Hunter
+    class Hunt
       PacketReader = Struct.new(:packet) do
         def message
           @message ||= DHCP::Message.from_udp_payload(packet.udp_data, debug: false)
