@@ -43,6 +43,8 @@ module FlightMetal
           return
         end
 
+        $stderr.puts "Building: #{node_names.join(',')}"
+
         Server.new('127.0.0.1', 2000, 256).loop do |message|
           next true unless message.built?
           unless node_names.include?(message.node)
