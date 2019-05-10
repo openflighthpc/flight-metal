@@ -57,7 +57,7 @@ module FlightMetal
         end
 
         define_method(:"#{name}_time") do
-          Time.at(__data__.fetch("__#{name}_time__"))
+          Time.at(__data__.fetch("__#{name}_time__") || 0)
         end
       end
 

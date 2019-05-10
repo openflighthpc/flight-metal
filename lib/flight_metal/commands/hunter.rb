@@ -69,6 +69,7 @@ module FlightMetal
         require 'net/dhcp'
         require 'pcap'
         require 'highline'
+        require 'flight_metal/models/node'
       end
 
       def run

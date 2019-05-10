@@ -27,23 +27,33 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-source "https://rubygems.org"
+module FlightMetal
+  module Commands
+    class Node
+      TEMPLATE = <<~ERB
+        # Node: '<%= name %>'
+        *Imported*: <%= imported? ? imported_time : 'n/a' %>
+        *Hunted*: <%= mac? ? mac_time : 'n/a' %>
+        *Built*: <%= built? ? built_time : 'n/a' %>
 
-git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
+        <% if mac?; %>*MAC*: <%= mac %><% end %>
 
-gem 'activesupport'
-gem 'commander-openflighthpc'
-gem 'flight_config'
-gem 'rubyzip'
-gem 'pcap', github: 'alces-software/ruby-pcap'
-gem 'net-dhcp'
-gem 'highline'
-gem 'hashie'
-gem 'tty-markdown'
+      ERB
 
-group :development do
-  gem 'pp'
-  gem 'pry'
-  gem 'pry-byebug'
+      def initialize
+        require 'erb'
+        require 'tty-markdown'
+        require 'flight_metal/models/node'
+      end
+
+      def list
+        renderer = ERB.new(TEMPLATE, nil, '-')
+        md = Models::Node.glob_read(Config.cluster, '*')
+                         .sort_by { |n| n.name }
+                         .map { |n| renderer.result(n.get_binding) }
+                         .join("\n")
+        puts TTY::Markdown.parse(md)
+      end
+    end
+  end
 end
-

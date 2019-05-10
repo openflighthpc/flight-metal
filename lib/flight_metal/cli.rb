@@ -37,6 +37,7 @@ require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/hunter'
+require 'flight_metal/commands/node'
 
 module FlightMetal
   class CLI
@@ -101,6 +102,12 @@ module FlightMetal
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
       action(c, FlightMetal::Commands::Cluster, method: :init)
+    end
+
+    command 'list' do |c|
+      syntax(c)
+      c.summary = 'Display the state of all the nodes'
+      action(c, FlightMetal::Commands::Node, method: :list)
     end
 
     command 'list-clusters' do |c|
