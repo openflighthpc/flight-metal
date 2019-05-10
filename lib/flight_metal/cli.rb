@@ -37,6 +37,7 @@ require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/hunter'
+require 'flight_metal/commands/mark'
 require 'flight_metal/commands/node'
 
 module FlightMetal
@@ -114,6 +115,12 @@ module FlightMetal
       syntax(c)
       c.summary = 'Display the list of clusters'
       action(c, FlightMetal::Commands::Cluster, method: :list)
+    end
+
+    command 'mark-rebuild' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'Flag the node to be rebuilt on next build'
+      action(c, FlightMetal::Commands::Mark, method: :rebuild)
     end
 
     command 'switch-cluster' do |c|
