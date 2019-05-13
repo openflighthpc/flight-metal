@@ -29,6 +29,7 @@
 
 require 'commander'
 require 'flight_metal/config'
+require 'flight_metal/log'
 require 'flight_metal/version'
 
 require 'active_support/core_ext/string'
@@ -53,6 +54,7 @@ module FlightMetal
 
     def self.run!
       ARGV.push '--help' if ARGV.empty?
+      Log.info "Command: #{Config.app_name} #{ARGV.join(' ')}"
       super
     end
 
@@ -67,7 +69,11 @@ module FlightMetal
             klass.new.public_send(method, *args, **hash)
           end
         rescue Interrupt
-          $stderr.puts 'Received Interrupt!'
+          Log.warn_puts 'Received Interrupt!'
+        rescue => e
+          puts e
+          Log.fatal(e)
+          raise e
         end
       end
     end
