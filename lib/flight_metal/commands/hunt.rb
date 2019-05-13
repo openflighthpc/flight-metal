@@ -78,6 +78,7 @@ module FlightMetal
       end
 
       def run
+        macs_to_nodes # Ensure the error occurs on startup
         Log.info_puts <<~MSG.squish
           Waiting for new nodes to appear on the network, please network boot
           them now...,
@@ -107,14 +108,16 @@ module FlightMetal
       end
 
       def macs_to_nodes
-        @macs_to_nodes ||= Models::Node.glob_read(Config.cluster, '*')
+        @macs_to_nodes ||= Models::Node.glob_read('*', '*')
           .reject { |n| n.mac.nil? }
-          .each_with_object({}) do |node, memo|
-            raise <<~ERROR.squish if memo[node.mac]
-              Nodes '#{memo[node.mac].name}' and '#{node.name}' have duplicate
-              hardware addresses.
+          .each_with_object({}) do |n1, memo|
+            n2 = memo[n1.mac]
+            raise <<~ERROR.squish if n2
+              Node '#{n2.name}' in cluster '#{n2.cluster}' shares a hardware
+              address with node '#{n1.name}' in cluster '#{n1.cluster}'. Please
+              remove the duplicate and try again
             ERROR
-            memo[node.mac] = node
+            memo[n1.mac] = n1
           end
       end
 
@@ -125,30 +128,38 @@ module FlightMetal
         end
         other_node = macs_to_nodes[hwaddr]
 
-        question = <<~QUESTION.squish
-          Detected a machine on the network (#{hwaddr}).
-          Please enter the hostname:
-        QUESTION
-        name = HighLine.new.ask(question) do |q|
-          q.default = other_node&.name || sequenced_name
-        end
-
-        unless (other_node.nil? || other_node.name == name)
-          Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
-          Models::Node.update(Config.cluster, other_node.name) do |n|
-            n.mac = nil
+        if other_node.nil? || other_node.cluster == Config.cluster
+          question = <<~QUESTION.squish
+            Detected a machine on the network (#{hwaddr}).
+            Please enter the hostname:
+          QUESTION
+          name = HighLine.new.ask(question) do |q|
+            q.default = other_node&.name || sequenced_name
           end
-          macs_to_nodes[hwaddr] = nil
-        end
 
-        node = Models::Node.create_or_update(Config.cluster, name) do |n|
-          n.mac = hwaddr
+          unless (other_node.nil? || other_node.name == name)
+            Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
+            Models::Node.update(Config.cluster, other_node.name) do |n|
+              n.mac = nil
+            end
+            macs_to_nodes[hwaddr] = nil
+          end
+
+          node = Models::Node.create_or_update(Config.cluster, name) do |n|
+            n.mac = hwaddr
+          end
+          macs_to_nodes[node.mac] = node
+
+          Log.info_puts "Saved #{name} : #{hwaddr}"
+        else
+          Log.error_puts <<~ERROR.squish
+            Can not reassign a hardware address between clusters. The address
+            '#{hwaddr}' belongs to node '#{other_node.name}' in cluster
+            '#{other_node.cluster}'. Please remove it and try again.
+          ERROR
         end
 
         detected_macs << hwaddr
-        macs_to_nodes[node.mac] = node
-
-        Log.info_puts "Saved #{name} : #{hwaddr}"
       rescue StandardError => e
         Log.error_puts "FAIL: #{e.message}"
         retry if HighLine.new.agree('Retry? [yes/no]:')
