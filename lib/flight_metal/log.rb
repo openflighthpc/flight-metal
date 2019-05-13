@@ -27,72 +27,40 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-require 'active_support/core_ext/module/delegation'
-require 'flight_metal/models/cluster'
+require 'logger'
+require 'flight_metal/config'
 
 module FlightMetal
-  class Config
-    include FlightConfig::Updater
-
-    allow_missing_read
-
+  class Log < DelegateClass(Logger)
     class << self
-      def cache
-        @cache ||= self.read
+      def logger
+        @logger ||= new
       end
 
-      delegate_missing_to :cache
+      delegate_missing_to :logger
     end
 
-    def root_dir
-      File.expand_path('../..', __dir__)
+    def initialize
+      FileUtils.mkdir_p(File.dirname(Config.log_path))
+      super(Logger.new(Config.log_path))
     end
 
-    def path
-      File.join(root_dir, 'etc/config.yaml')
+    def warn_puts(msg)
+      $stderr.puts msg
+      warn(msg)
     end
 
-    def app_name
-      'metal'
+    def info_puts(msg)
+      puts msg
+      info(msg)
     end
 
-    def log_path
-      __data__.fetch(:log_path) do
-        File.join(root_dir, 'var/log/metal.log')
-      end
-    end
-
-    def content_dir
-      __data__.fetch(:content_dir) do
-        File.expand_path('var', root_dir)
-      end
-    end
-
-    def cluster
-      __data__.fetch(:cluster) do
-        Models::Cluster.create_or_update('default').identifier
-      end
-    end
-
-    def cluster=(name)
-      __data__.set(:cluster, value: name)
-    end
-
-    def interface
-      __data__.fetch(:interface) { 'eth0' }
-    end
-
-    def node_prefix
-      __data__.fetch(:node_prefix) { 'node' }
-    end
-
-    def node_index_length
-      __data__.fetch(:node_index_length) { 2 }
-    end
-
-    def tftpboot_dir
-      __data__.fetch(:tftpboot_dir) { '/var/lib/tftpboot' }
+    def error_puts(msg)
+      $stderr.puts msg
+      error(msg)
     end
   end
 end
+
+FlightConfig.logger = FlightMetal::Log.logger
+

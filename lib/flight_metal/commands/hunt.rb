@@ -46,21 +46,25 @@ module FlightMetal
 
         def pxe_request?
           return false unless dhcp_discover?
-          $stderr.puts 'Processing DHCP::Discover message options'
+          Log.info 'Processing DHCP::Discover message options'
           pxe = message.options.find do |opt|
             next unless opt.is_a?(DHCP::VendorClassIDOption)
             vendor = opt.payload.pack('C*')
-            $stderr.puts "Detected vendor: #{vendor}"
             /^PXEClient/.match?(vendor)
           end
-          pxe ? true : false
+          if pxe
+            true
+          else
+            Log.warn('Ignoring non-pxe DHCP packet')
+            false
+          end
         end
 
         def mac
           message.chaddr.slice(0..(message.hlen - 1)).map do |b|
             b.to_s(16).upcase.rjust(2, '0')
           end.join(':').tap do |hwaddr|
-            $stderr.puts "Detected hardware address: #{hwaddr}"
+            Log.info "Detected hardware address: #{hwaddr}"
           end
         end
       end
@@ -70,15 +74,15 @@ module FlightMetal
         require 'pcap'
         require 'highline'
         require 'flight_metal/models/node'
+        require 'flight_metal/log'
       end
 
       def run
-        macs_to_nodes
-        $stderr.puts <<~MSG.squish
+        Log.info_puts <<~MSG.squish
           Waiting for new nodes to appear on the network, please network boot
           them now...,
         MSG
-        $stderr.puts '(Ctrl-C to terminate)'
+        Log.info_puts '(Ctrl-C to terminate)'
 
         network.each_packet do |packet|
           reader = PacketReader.new(packet)
@@ -116,7 +120,7 @@ module FlightMetal
 
       def detected(hwaddr)
         if detected_macs.include?(hwaddr)
-          $stderr.puts "Skipping repeated address: #{hwaddr}"
+          Log.warn "Skipping repeated address: #{hwaddr}"
           return
         end
         other_node = macs_to_nodes[hwaddr]
@@ -130,7 +134,7 @@ module FlightMetal
         end
 
         unless (other_node.nil? || other_node.name == name)
-          $stderr.puts "Unassigning address #{hwaddr} from: #{other_node.name}"
+          Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
           Models::Node.update(Config.cluster, other_node.name) do |n|
             n.mac = nil
           end
@@ -144,10 +148,9 @@ module FlightMetal
         detected_macs << hwaddr
         macs_to_nodes[node.mac] = node
 
-        $stderr.puts "#{name}-#{hwaddr}"
-        $stderr.puts'Logged node'
+        Log.info_puts "Saved #{name} : #{hwaddr}"
       rescue StandardError => e
-        $stderr.puts"FAIL: #{e.message}"
+        Log.error_puts "FAIL: #{e.message}"
         retry if HighLine.new.agree('Retry? [yes/no]:')
       end
 
