@@ -47,7 +47,7 @@ module FlightMetal
 
         Log.info_puts "Building: #{node_names.join(',')}"
 
-        Server.new('127.0.0.1', 2000, 256).loop do |message|
+        Server.new('127.0.0.1', Config.build_port, 256).loop do |message|
           next true unless message.built?
           unless node_names.include?(message.node)
             Log.warn "Ignoring message from node: #{message.node}"

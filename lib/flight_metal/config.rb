@@ -94,5 +94,9 @@ module FlightMetal
     def tftpboot_dir
       __data__.fetch(:tftpboot_dir) { '/var/lib/tftpboot' }
     end
+
+    def build_port
+      __data__.fetch(:build_port) { 24680 }
+    end
   end
 end
