@@ -54,7 +54,7 @@ module FlightMetal
         begin
           message.body
         rescue BadMessageError => e
-          $stderr.puts e.message
+          Log.error(e)
           next
         end
         return unless yield message

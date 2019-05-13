@@ -34,28 +34,30 @@ module FlightMetal
         require 'flight_metal/models/node'
         require 'flight_metal/server'
         require 'flight_metal/models/node'
+        require 'flight_metal/log'
       end
 
       def run
         node_names = load_nodes.map(&:name)
         if node_names.empty?
-          $stderr.puts 'Nothing to build'
+
+          Log.warn_puts 'Nothing to build'
           return
         end
 
-        $stderr.puts "Building: #{node_names.join(',')}"
+        Log.info_puts "Building: #{node_names.join(',')}"
 
         Server.new('127.0.0.1', 2000, 256).loop do |message|
           next true unless message.built?
           unless node_names.include?(message.node)
-            $stderr.puts "Ignoring message from node: #{message.node}"
+            Log.warn "Ignoring message from node: #{message.node}"
             next true
           end
           node = Models::Node.update(Config.cluster, message.node) do |n|
             FileUtils.rm n.pxelinux_cfg_path
             n.built = true
           end
-          puts "Built: #{node.name}"
+          Log.info_puts "Built: #{node.name}"
           node_names.delete_if { |name| name == node.name }
           !node_names.empty?
         end
@@ -69,7 +71,7 @@ module FlightMetal
           if node.built?
             false
           elsif node.mac? && node.pxelinux_cfg?
-            $stderr.puts <<~ERROR.squish
+            Log.warn_puts <<~ERROR.squish
               Warning #{node.name}: Building off an existing pxelinux file -
               #{node.pxelinux_cfg_path}
             ERROR
@@ -79,13 +81,13 @@ module FlightMetal
                          node.pxelinux_cfg_path
             true
           elsif node.mac?
-            $stderr.puts <<~ERROR.squish
+            Log.warn_puts <<~ERROR.squish
               Skipping #{node.name}: Missing pxelinux source -
               #{node.pxelinux_template_path}
             ERROR
             false
           else
-            $stderr.puts <<~ERROR.squish
+            Log.warn_puts <<~ERROR.squish
               Skipping #{node.name}: Missing hardware address
             ERROR
             false

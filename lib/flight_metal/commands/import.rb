@@ -54,9 +54,9 @@ module FlightMetal
                 data.extract(node.template_dir)
                 node.imported = true
               end
-              puts "Imported node '#{model.name}'"
+              Log.info_puts "Imported node '#{model.name}'"
             rescue ImportError => e
-              $stderr.puts "Skipping: #{e.message}"
+              Log.error_puts "Skipping: #{e.message}"
             end
           end
         end
