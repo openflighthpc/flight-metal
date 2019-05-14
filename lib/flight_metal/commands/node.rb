@@ -35,6 +35,7 @@ module FlightMetal
         *Imported*: <%= imported? ? imported_time : 'n/a' %>
         *Hunted*: <%= mac? ? mac_time : 'n/a' %>
         *Built*: <%= built? ? built_time : 'n/a' %>
+        *Rebuild*: <%= rebuild? ? 'Scheduled': 'n/a' %>
 
         <% if mac?; %>*MAC*: <%= mac %><% end %>
 

@@ -54,7 +54,7 @@ module FlightMetal
         begin
           message.body
         rescue BadMessageError => e
-          Log.error(e)
+          Log.error(e.message)
           next
         end
         return unless yield message

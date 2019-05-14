@@ -35,6 +35,7 @@ module FlightMetal
         require 'flight_metal/server'
         require 'flight_metal/models/node'
         require 'flight_metal/log'
+        require 'flight_metal/errors'
       end
 
       def run
@@ -46,6 +47,7 @@ module FlightMetal
         end
 
         Log.info_puts "Building: #{node_names.join(',')}"
+        Log.info_puts "Listening on port: #{Config.build_port}"
 
         Server.new('127.0.0.1', Config.build_port, 256).loop do |message|
           next true unless message.built?
@@ -56,6 +58,7 @@ module FlightMetal
           node = Models::Node.update(Config.cluster, message.node) do |n|
             FileUtils.rm n.pxelinux_cfg_path
             n.built = true
+            n.rebuild = false
           end
           Log.info_puts "Built: #{node.name}"
           node_names.delete_if { |name| name == node.name }
@@ -68,7 +71,7 @@ module FlightMetal
       def load_nodes
         Models::Node.glob_read(Config.cluster, '*')
                             .select do |node|
-          if node.built?
+          if node.built? && !node.rebuild?
             false
           elsif node.mac? && node.pxelinux_cfg?
             Log.warn_puts <<~ERROR.squish

@@ -64,6 +64,7 @@ module FlightMetal
       attr_reader :cluster, :name
 
       flag :built
+      flag :rebuild
       flag :imported
       flag :mac, fetch: true
 

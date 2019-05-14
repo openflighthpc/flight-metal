@@ -38,7 +38,7 @@ module FlightMetal
 
       def rebuild(node)
         Models::Node.update(Config.cluster, node) do |n|
-          n.built = false
+          n.rebuild = true
         end
         puts <<~MSG.squish
           Node #{node} will be rebuilt when '#{Config.app_name} build' is next
