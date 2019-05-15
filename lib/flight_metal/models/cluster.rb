@@ -46,6 +46,14 @@ module FlightMetal
       def path
         File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
       end
+
+      def bmc_user
+        __data__.fetch(:bmc_user) { 'default' }
+      end
+
+      def bmc_password
+        __data__.fetch(:bmc_password) { 'default' }
+      end
     end
   end
 end

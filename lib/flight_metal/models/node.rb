@@ -77,10 +77,6 @@ module FlightMetal
         @name ||= name
       end
 
-      def cluster_model
-        __read__(Models::Cluster, cluster)
-      end
-
       def path
         File.join(base_dir, 'etc/config.yaml')
       end
@@ -113,11 +109,15 @@ module FlightMetal
       end
 
       def bmc_user
-        __data__.fetch(:bmc_user) { 'default-bmc-user' }
+        __data__.fetch(:bmc_user) do
+          __read__(Models::Cluster, cluster).bmc_user
+        end
       end
 
       def bmc_password
-        __data__.fetch(:bmc_password) { 'default_bmc_password' }
+        __data__.fetch(:bmc_password) do
+          __read__(Models::Cluster, cluster).bmc_password
+        end
       end
 
       def ipmi_opts
