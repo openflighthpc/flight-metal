@@ -37,6 +37,7 @@ require 'active_support/core_ext/string'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/import'
+require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/mark'
 require 'flight_metal/commands/node'
@@ -71,16 +72,15 @@ module FlightMetal
         rescue Interrupt
           Log.warn_puts 'Received Interrupt!'
         rescue => e
-          puts e
           Log.fatal(e)
           raise e
         end
       end
     end
 
-    def self.syntax(command, args_str = '')
+    def self.syntax(command, args_str = '', opts: true)
       command.syntax = <<~SYNTAX.squish
-        #{program(:name)} #{command.name} #{args_str} [options]
+        #{program(:name)} #{command.name} #{args_str} #{'[options]' if opts}
       SYNTAX
     end
 
@@ -103,6 +103,29 @@ module FlightMetal
         Add node configuration profiles from a flight-architect output zip.
       DESC
       action(c, FlightMetal::Commands::Import)
+    end
+
+    command 'ipmi' do |c|
+      syntax(c, 'NODE [options] [--] COMMAND...', opts: false)
+      c.summary = 'Run commands with ipmitool'
+      c.description = <<~DESC
+        The ipmi command wraps the underlining ipmitool utility. Please
+        refer to `man ipmitool` for full list of subcommands.
+
+        This tool communicates using BMC over Ethernet and as such the
+        following ipmitool options will be set:
+
+        This tool always uses the ethernet interface using `-I lanplus`. The
+        NODE argument is used to set remote server address, and is always
+        passed down as `-H <NODE>.bmc`. The username and password are then
+        set using `-U <user>` and `-P <pass>` respectfully.
+
+        Additional options can be passed to directly to `ipmitool` by placing
+        them after the optional double hypen: `--`. Without the hypen, the
+        flags will be interpreted by `#{Config.app_name}` and likely cause an
+        eror.
+      DESC
+      action(c, FlightMetal::Commands::Ipmi)
     end
 
     command 'init-cluster' do |c|

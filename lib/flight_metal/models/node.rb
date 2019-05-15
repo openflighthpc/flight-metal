@@ -103,6 +103,18 @@ module FlightMetal
       def pxelinux_template_path
         File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
       end
+
+      def bmc_user
+        __data__.fetch(:bmc_user) { 'default-bmc-user' }
+      end
+
+      def bmc_password
+        __data__.fetch(:bmc_password) { 'default_bmc_password' }
+      end
+
+      def ipmi_opts
+        "-H #{name}.bmc -U #{bmc_user} -P #{bmc_password}"
+      end
     end
   end
 end

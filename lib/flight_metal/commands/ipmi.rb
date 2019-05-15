@@ -28,25 +28,41 @@
 #===============================================================================
 
 module FlightMetal
-  class FlightMetalError < StandardError; end
+  module Commands
+    class Ipmi
+      def initialize
+        require 'flight_metal/models/node'
+        require 'open3'
+        require 'flight_metal/errors'
+      end
 
-  class ImportError < FlightMetalError
-    def self.raise(name)
-      Kernel.raise self, <<~ERROR
-        Node '#{name}' has already been imported
-      ERROR
+      def run(name, *args)
+        node = Models::Node.read(Config.cluster, name)
+        ipmi_cmd = <<~CMD.squish
+          ipmitool -I lanplus #{node.ipmi_opts}
+                      #{args.map(&:shellescape).join(' ')}
+        CMD
+        run_cmd(ipmi_cmd)
+      end
+
+      def run_cmd(cmd)
+        Log.info("System Command: #{cmd}")
+        stdout, stderr, status = Open3.capture3(cmd)
+        if status.exitstatus == 0
+          puts stdout
+        else
+          raise SystemCommandError, <<~ERROR
+            The following command has exited with status #{status.exitstatus}:
+            #{cmd}
+
+            STDOUT:
+            #{stdout}
+
+            STDERR:
+            #{stderr}
+          ERROR
+        end
+      end
     end
   end
-
-  class BadMessageError < FlightMetalError
-    MESSAGE = 'Cannot parse message body, ensure it is JSON and not truncated'
-
-    def initialize(msg = MESSAGE)
-      super
-    end
-  end
-
-  class SystemCommandError < FlightMetalError; end
 end
-
-
