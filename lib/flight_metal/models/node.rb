@@ -37,7 +37,7 @@ module FlightMetal
       include FlightConfig::Updater
       include FlightConfig::Globber
 
-      include FlightMetal::FlightConfigRegistry
+      include FlightMetal::FlightConfigUtils
 
       def self.flag(name, fetch: nil)
         if fetch
@@ -71,6 +71,14 @@ module FlightMetal
       flag :rebuild
       flag :imported
       flag :mac, fetch: true
+
+      data_reader :bmc_user do
+        __read__(Models::Cluster, cluster).bmc_user
+      end
+
+      data_reader :bmc_password do
+        __read__(Models::Cluster, cluster).bmc_password
+      end
 
       def initialize(cluster, name)
         @cluster ||= cluster
@@ -106,18 +114,6 @@ module FlightMetal
 
       def pxelinux_template_path
         File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
-      end
-
-      def bmc_user
-        __data__.fetch(:bmc_user) do
-          __read__(Models::Cluster, cluster).bmc_user
-        end
-      end
-
-      def bmc_password
-        __data__.fetch(:bmc_password) do
-          __read__(Models::Cluster, cluster).bmc_password
-        end
       end
 
       def ipmi_opts

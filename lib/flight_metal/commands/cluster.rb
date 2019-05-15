@@ -34,8 +34,12 @@ module FlightMetal
         require 'flight_metal/models/cluster'
       end
 
-      def init(identifier)
-        cluster = Models::Cluster.create(identifier)
+      def init(identifier, bmc_user, bmc_password)
+        cluster = Models::Cluster.create(identifier) do |c|
+          c.bmc_user = bmc_user
+          c.bmc_password = bmc_password
+        end
+
         Config.create_or_update { |c| c.cluster = cluster.identifier }
         puts "Created cluster: #{cluster.identifier}"
       end

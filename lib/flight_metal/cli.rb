@@ -130,8 +130,12 @@ module FlightMetal
     end
 
     command 'init-cluster' do |c|
-      syntax(c, 'IDENTIFIER')
+      syntax(c, 'IDENTIFIER BMC_USERNAME BMC_PASSWORD')
       c.summary = 'Create a new cluster profile'
+      c.description = <<~DESC
+        Create and switch to the new cluster IDENTIFIER. The BMC_USERNAME and
+        BMC_PASSWORD become the defaults for the entire cluster
+      DESC
       action(c, FlightMetal::Commands::Cluster, method: :init)
     end
 

@@ -30,7 +30,27 @@
 require 'flight_metal/errors'
 
 module FlightMetal
-  module FlightConfigRegistry
+  module FlightConfigUtils
+    module ClassMethods
+      def data_writer(key)
+        define_method("#{key}=") do |value|
+          if value.nil?
+            __data__.delete(key)
+          else
+            __data__.set(key, value: value)
+          end
+        end
+      end
+
+      def data_reader(key, &b)
+        define_method(key) { __data__.fetch(key) { instance_exec(&b) } }
+      end
+    end
+
+    def self.included(base)
+      base.extend(ClassMethods)
+    end
+
     def __registry__=(reg)
       raise InternalError, <<~ERROR unless reg.is_a?(Registry)
         The model __registry__ must be a FlightMetal::Registry

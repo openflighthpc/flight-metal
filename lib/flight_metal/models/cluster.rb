@@ -30,12 +30,15 @@
 require 'flight_config'
 
 require 'flight_metal/config'
+require 'flight_metal/registry'
 
 module FlightMetal
   module Models
     class Cluster
       include FlightConfig::Updater
       include FlightConfig::Globber
+
+      include FlightMetal::FlightConfigUtils
 
       attr_reader :identifier
 
@@ -47,13 +50,11 @@ module FlightMetal
         File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
       end
 
-      def bmc_user
-        __data__.fetch(:bmc_user) { 'default' }
-      end
+      data_reader(:bmc_user) { 'default' }
+      data_reader(:bmc_password) { 'default' }
 
-      def bmc_password
-        __data__.fetch(:bmc_password) { 'default' }
-      end
+      data_writer :bmc_user
+      data_writer :bmc_password
     end
   end
 end
