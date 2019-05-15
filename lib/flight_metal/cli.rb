@@ -106,19 +106,20 @@ module FlightMetal
     end
 
     command 'ipmi' do |c|
-      syntax(c, 'NODE [options] [--] COMMAND...', opts: false)
+      syntax(c, 'NODE [...] [options] [--] [ipmi-options]', opts: false)
       c.summary = 'Run commands with ipmitool'
       c.description = <<~DESC
         The ipmi command wraps the underlining ipmitool utility. Please
-        refer to `man ipmitool` for full list of subcommands.
+        refer to ipmitool man page for full list of subcommands or run:
+        `#{Config.app_name} ipmi help`.
 
         This tool communicates using BMC over Ethernet and as such the
         following ipmitool options will be set:
 
-        This tool always uses the ethernet interface using `-I lanplus`. The
-        NODE argument is used to set remote server address, and is always
-        passed down as `-H <NODE>.bmc`. The username and password are then
-        set using `-U <user>` and `-P <pass>` respectfully.
+        * The interface will always be set with: `-I lanplus`,
+        * The remote server is set to: `-H <NODE>.bmc`
+        * And the username/password will be resolved from the configs and
+          set with: `-U <username>` and `-P <password>`
 
         Additional options can be passed to directly to `ipmitool` by placing
         them after the optional double hypen: `--`. Without the hypen, the

@@ -37,15 +37,35 @@ module FlightMetal
       end
 
       def run(name, *args)
-        node = Models::Node.read(Config.cluster, name)
-        ipmi_cmd = <<~CMD.squish
-          ipmitool -I lanplus #{node.ipmi_opts}
-                      #{args.map(&:shellescape).join(' ')}
-        CMD
-        run_cmd(ipmi_cmd)
+        if name == 'help'
+          puts ipmi_help
+        elsif args.empty?
+          raise SystemCommandError, <<~ERROR
+            No command provided to ipmitool. Please select one from the list below
+            #{ipmi_cmds}
+          ERROR
+
+        else
+          node = Models::Node.read(Config.cluster, name)
+          run_cmd(node, args)
+        end
       end
 
-      def run_cmd(cmd)
+      def ipmi_cmds
+        lines = ipmi_help.split("\n")
+        loop until /\ACommands:/.match?(lines.shift)
+        lines.join("\n")
+      end
+
+      def ipmi_help
+        _, help_text = Open3.capture3('ipmitool -h')
+        help_text
+      end
+
+      def run_cmd(node, args)
+        cmd = <<~CMD.squish
+          ipmitool -I lanplus #{node.ipmi_opts} #{args.map(&:shellescape).join(' ')}
+        CMD
         Log.info("System Command: #{cmd}")
         stdout, stderr, status = Open3.capture3(cmd)
         if status.exitstatus == 0
