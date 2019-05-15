@@ -28,12 +28,16 @@
 #===============================================================================
 
 require 'flight_config'
+require 'flight_metal/registry'
+require 'flight_metal/models/cluster'
 
 module FlightMetal
   module Models
     class Node
       include FlightConfig::Updater
       include FlightConfig::Globber
+
+      include FlightMetal::FlightConfigRegistry
 
       def self.flag(name, fetch: nil)
         if fetch
@@ -71,6 +75,10 @@ module FlightMetal
       def initialize(cluster, name)
         @cluster ||= cluster
         @name ||= name
+      end
+
+      def cluster_model
+        __read__(Models::Cluster, cluster)
       end
 
       def path

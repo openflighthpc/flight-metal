@@ -27,27 +27,46 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/errors'
+
 module FlightMetal
-  class FlightMetalError < StandardError; end
-
-  class ImportError < FlightMetalError
-    def self.raise(name)
-      Kernel.raise self, <<~ERROR
-        Node '#{name}' has already been imported
+  module FlightConfigRegistry
+    def __registry__=(reg)
+      raise InternalError, <<~ERROR unless reg.is_a?(Registry)
+        The model __registry__ must be a FlightMetal::Registry
       ERROR
+      @__registry__ = reg
+    end
+
+    def __registry__
+      @__registry__ ||= Registry.new
+    end
+
+    def __read__(*a)
+      __registry__.read(*a)
     end
   end
 
-  class BadMessageError < FlightMetalError
-    MESSAGE = 'Cannot parse message body, ensure it is JSON and not truncated'
 
-    def initialize(msg = MESSAGE)
-      super
+  class Registry
+    def read(klass, *args)
+      class_hash = (cache[klass] ||= {})
+      arity_hash = (class_hash[args.length] ||= {})
+      last_arg = args.pop
+      last_hash = args.reduce(arity_hash) { |hash, arg| hash[arg] ||= {} }
+      last_hash[last_arg] ||= first_read(klass, *args, last_arg)
+    end
+
+    private
+
+    def cache
+      @cache ||= {}
+    end
+
+    def first_read(klass, *args)
+      klass.read(*args).tap do |model|
+        model.__registry__ = self if model.respond_to?(:"__registry__=")
+      end
     end
   end
-
-  class SystemCommandError < FlightMetalError; end
-  class InternalError < FlightMetalError; end
 end
-
-
