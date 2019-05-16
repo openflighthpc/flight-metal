@@ -30,6 +30,7 @@
 require 'flight_config'
 require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
+require 'flight_metal/errors'
 
 module FlightMetal
   module Models
@@ -72,6 +73,10 @@ module FlightMetal
       flag :imported
       flag :mac, fetch: true
 
+      data_writer(:bmc_user)
+      data_writer(:bmc_password)
+      data_writer(:bmc_ip)
+
       data_reader :bmc_user do
         __read__(Models::Cluster, cluster).bmc_user
       end
@@ -79,6 +84,8 @@ module FlightMetal
       data_reader :bmc_password do
         __read__(Models::Cluster, cluster).bmc_password
       end
+
+      data_reader :bmc_ip
 
       def initialize(cluster, name)
         @cluster ||= cluster

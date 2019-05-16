@@ -43,7 +43,7 @@ module FlightMetal
       end
 
       def data_reader(key, &b)
-        define_method(key) { __data__.fetch(key) { instance_exec(&b) } }
+        define_method(key) { __data__.fetch(key) { instance_exec(&b) if b } }
       end
     end
 
