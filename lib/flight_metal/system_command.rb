@@ -27,46 +27,53 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/errors'
+require 'open3'
+
 module FlightMetal
-  module Commands
-    class Ipmi
-      def initialize
-        require 'flight_metal/models/node'
-        require 'flight_metal/system_command'
-        require 'flight_metal/errors'
+  class SystemCommand
+    CommandOutput = Struct.new(:cmd, :stdout, :stderr, :status) do
+      def self.run(cmd)
+        Log.info("System Command: #{cmd}")
+        new(cmd, *Open3.capture3(cmd))
       end
 
-      def run(name, *args)
-        if name == 'help'
-          puts ipmi_help
-        elsif args.empty?
-          raise SystemCommandError, <<~ERROR
-            No command provided to ipmitool. Please select one from the list below
-            #{ipmi_cmds}
-          ERROR
+      delegate :success?, :pid, to: :status
 
-        else
-          node = Models::Node.read(Config.cluster, name)
-          run_cmd(node, args)
-        end
+      def code
+        status.exitstatus
       end
 
-      def ipmi_cmds
-        lines = ipmi_help.split("\n")
-        loop until /\ACommands:/.match?(lines.shift)
-        lines.join("\n")
-      end
+      def raise_unless_exit_0
+        return if code == 0
+        raise SystemCommandError, <<~ERROR
+          The following command exited with status #{code}:
+          #{cmd}
 
-      def ipmi_help
-        _, help_text = Open3.capture3('ipmitool -h')
-        help_text
-      end
+          STDOUT:
+          #{stdout}
 
-      def run_cmd(node, args)
-        output = SystemCommand.new(node).ipmi(args).first
-        output.raise_unless_exit_0
-        puts output.stdout
+          STDERR:
+          #{stderr}
+        ERROR
       end
+    end
+
+    attr_reader :nodes
+
+    def initialize(*nodes)
+      @nodes = nodes.flatten
+    end
+
+    def run
+      return unless block_given?
+      nodes.map { |n| CommandOutput.run(yield n) }
+    end
+
+    def ipmi(args)
+      string_args = args.flatten.map(&:shellescape).join(' ')
+      run { |n| "ipmitool -I lanplus #{n.ipmi_opts} #{string_args}" }
     end
   end
 end
+
