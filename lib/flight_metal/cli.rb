@@ -151,6 +151,24 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
+    command 'power' do |c|
+      syntax(c, 'NODE COMMAND')
+      c.summary = 'Manage and check the power status of the nodes'
+      c.description = <<~DESC.chomp
+        Run a power related command using ipmitool. The valid commands
+        and their corresponding ipmi options are as follows:
+
+        #{
+          cmds_hash = FlightMetal::Commands::Ipmi::POWER_COMMANDS
+          max_len = cmds_hash.keys.max_by(&:length).length
+          cmds_hash.reduce([]) do |s, (k, v)|
+            s << "  * #{k}#{' ' * (max_len - k.length)} => #{v.join(' ')}"
+          end.join("\n")
+        }
+      DESC
+      action(c, FlightMetal::Commands::Ipmi, method: :power)
+    end
+
     command 'mark-rebuild' do |c|
       syntax(c, 'NODE')
       c.summary = 'Flag the node to be rebuilt on next build'

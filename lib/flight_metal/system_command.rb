@@ -70,7 +70,7 @@ module FlightMetal
       nodes.map { |n| CommandOutput.run(yield n) }
     end
 
-    def ipmi(args)
+    def ipmi(*args)
       string_args = args.flatten.map(&:shellescape).join(' ')
       run { |n| "ipmitool -I lanplus #{n.ipmi_opts} #{string_args}" }
     end

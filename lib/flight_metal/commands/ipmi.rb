@@ -30,10 +30,30 @@
 module FlightMetal
   module Commands
     class Ipmi
+      POWER_COMMANDS = {
+        'on'        => ['chassis', 'power', 'on'],
+        'off'       => ['chassis', 'power', 'off'],
+        'locate'    => ['chassis', 'identify', 'force'],
+        'locateoff' => ['chassis', 'identify', '0'],
+        'status'    => ['chassis', 'power', 'status'],
+        'cycle'     => ['chassis', 'power', 'cycle'],
+        'reset'     => ['chassis', 'power', 'reset'],
+        'sensor'    => ['sensor']
+      }
+
       def initialize
         require 'flight_metal/models/node'
         require 'flight_metal/system_command'
         require 'flight_metal/errors'
+      end
+
+      def power(name, cmd)
+        ipmi_cmd = POWER_COMMANDS[cmd]
+        raise InvalidInput <<~ERROR.chomp unless ipmi_cmd
+          '#{cmd}' is not a valid power command. Please select one of the following:
+          #{POWER_COMMANDS.keys.join(',')}
+        ERROR
+        run(name, *ipmi_cmd)
       end
 
       def run(name, *args)
@@ -44,12 +64,13 @@ module FlightMetal
             No command provided to ipmitool. Please select one from the list below
             #{ipmi_cmds}
           ERROR
-
         else
           node = Models::Node.read(Config.cluster, name)
           run_cmd(node, args)
         end
       end
+
+      private
 
       def ipmi_cmds
         lines = ipmi_help.split("\n")

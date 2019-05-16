@@ -48,6 +48,7 @@ module FlightMetal
 
   class SystemCommandError < FlightMetalError; end
   class InternalError < FlightMetalError; end
+  class InvalidInput < FlightMetalError; end
 end
 
 
