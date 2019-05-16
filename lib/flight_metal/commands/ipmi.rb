@@ -31,14 +31,34 @@ module FlightMetal
   module Commands
     class Ipmi
       POWER_COMMANDS = {
-        'on'        => ['chassis', 'power', 'on'],
-        'off'       => ['chassis', 'power', 'off'],
-        'locate'    => ['chassis', 'identify', 'force'],
-        'locateoff' => ['chassis', 'identify', '0'],
-        'status'    => ['chassis', 'power', 'status'],
-        'cycle'     => ['chassis', 'power', 'cycle'],
-        'reset'     => ['chassis', 'power', 'reset'],
-        'sensor'    => ['sensor']
+        'on' => {
+          cmd: ['chassis', 'power', 'on'],
+          help: 'Turns the node on'
+        },
+        'off' => {
+          cmd: ['chassis', 'power', 'off'],
+          help: 'Turns the node off'
+        },
+        'locate' => {
+          cmd: ['chassis', 'identify', 'force'],
+          help: 'Turns the node locater light on'
+        },
+        'locateoff' => {
+          cmd: ['chassis', 'identify', '0'],
+          help: 'Turns the node locater light off'
+        },
+        'status' => {
+          cmd: ['chassis', 'power', 'status'],
+          help: 'Display the power status'
+        },
+        'cycle' => {
+          cmd: ['chassis', 'power', 'cycle'],
+          help: 'Power cycle the node'
+        },
+        'reset' => {
+          cmd: ['chassis', 'power', 'reset'],
+          help: 'Warm reset the node'
+        }
       }
 
       def initialize
@@ -48,12 +68,12 @@ module FlightMetal
       end
 
       def power(name, cmd)
-        ipmi_cmd = POWER_COMMANDS[cmd]
-        raise InvalidInput <<~ERROR.chomp unless ipmi_cmd
+        power_cmd = POWER_COMMANDS[cmd]
+        raise InvalidInput, <<~ERROR.chomp unless power_cmd
           '#{cmd}' is not a valid power command. Please select one of the following:
           #{POWER_COMMANDS.keys.join(',')}
         ERROR
-        run(name, *ipmi_cmd)
+        run(name, *power_cmd[:cmd])
       end
 
       def run(name, *args)

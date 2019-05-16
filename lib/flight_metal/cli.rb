@@ -155,14 +155,14 @@ module FlightMetal
       syntax(c, 'NODE COMMAND')
       c.summary = 'Manage and check the power status of the nodes'
       c.description = <<~DESC.chomp
-        Run a power related command using ipmitool. The valid commands
-        and their corresponding ipmi options are as follows:
+        Runs a power related command using ipmitool. The valid commands
+        are:
 
         #{
           cmds_hash = FlightMetal::Commands::Ipmi::POWER_COMMANDS
           max_len = cmds_hash.keys.max_by(&:length).length
           cmds_hash.reduce([]) do |s, (k, v)|
-            s << "  * #{k}#{' ' * (max_len - k.length)} => #{v.join(' ')}"
+            s << "  * #{k}#{' ' * (max_len - k.length)} - #{v[:help]}"
           end.join("\n")
         }
       DESC
