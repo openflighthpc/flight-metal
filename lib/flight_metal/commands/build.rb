@@ -49,19 +49,24 @@ module FlightMetal
         Log.info_puts "Building: #{node_names.join(',')}"
 
         Server.new('127.0.0.1', Config.build_port, 256).loop do |message|
-          next true unless message.built?
           unless node_names.include?(message.node)
             Log.warn "Ignoring message from node: #{message.node}"
             next true
           end
-          node = Models::Node.update(Config.cluster, message.node) do |n|
-            FileUtils.rm n.pxelinux_cfg_path
-            n.built = true
-            n.rebuild = false
+          Log.info_puts "#{message.node}: #{message.message}"if message.message
+          if message.built?
+            node = Models::Node.update(Config.cluster, message.node) do |n|
+              FileUtils.rm n.pxelinux_cfg_path
+              n.built = true
+              n.rebuild = false
+            end
+            Log.info_puts "Built: #{node.name}"
+            node_names.delete_if { |name| name == node.name }
+            !node_names.empty?
+          else
+            # Process the next message
+            true
           end
-          Log.info_puts "Built: #{node.name}"
-          node_names.delete_if { |name| name == node.name }
-          !node_names.empty?
         end
       end
 

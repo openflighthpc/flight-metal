@@ -55,6 +55,7 @@ module FlightMetal
                  from: :built,
                  default: false,
                  transform_with: ->(v) { v ? true : false }
+        property :message
       end
 
       MetaData = Struct.new(:type, :port, :hostname, :ip)
