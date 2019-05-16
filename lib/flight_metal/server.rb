@@ -48,6 +48,7 @@ module FlightMetal
     end
 
     def loop
+      Log.info_puts "Listening on port: #{port}"
       return unless block_given?
       while res = socket.recvfrom(max_size)
         message = Message.new(res)

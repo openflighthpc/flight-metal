@@ -47,7 +47,6 @@ module FlightMetal
         end
 
         Log.info_puts "Building: #{node_names.join(',')}"
-        Log.info_puts "Listening on port: #{Config.build_port}"
 
         Server.new('127.0.0.1', Config.build_port, 256).loop do |message|
           next true unless message.built?
@@ -82,6 +81,10 @@ module FlightMetal
           elsif node.mac? && node.pxelinux_template?
             FileUtils.cp node.pxelinux_template_path,
                          node.pxelinux_cfg_path
+            Models::Node.update(Config.cluster, node.name) do |n|
+              n.built = false
+              n.rebuild = false
+            end
             true
           elsif node.mac?
             Log.warn_puts <<~ERROR.squish
