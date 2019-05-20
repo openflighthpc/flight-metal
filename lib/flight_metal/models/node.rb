@@ -54,7 +54,7 @@ module FlightMetal
 
         define_method("#{name}=") do |value|
           __data__.set("__#{name}_time__",  value: Time.now.to_i)
-          if value.nil?
+          if value.nil? || value == ''
             __data__.delete(name)
           else
             __data__.set(name, value: value)

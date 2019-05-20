@@ -91,6 +91,12 @@ module FlightMetal
       action(c, FlightMetal::Commands::Build)
     end
 
+    command 'edit' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'Edit the properties of the node'
+      action(c, FlightMetal::Commands::Node, method: :edit)
+    end
+
     command 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'

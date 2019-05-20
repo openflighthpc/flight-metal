@@ -34,7 +34,7 @@ module FlightMetal
     module ClassMethods
       def data_writer(key)
         define_method("#{key}=") do |value|
-          if value.nil?
+          if value.nil? || value == ''
             __data__.delete(key)
           else
             __data__.set(key, value: value)
