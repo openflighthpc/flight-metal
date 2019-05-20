@@ -68,6 +68,9 @@ module FlightMetal
 
       ERB
 
+      MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password]
+      SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip]
+
       EDIT_TEMPLATE = <<~ERB
         # NOTE: Editing this file will update the state information of all the nodes.
         # The following conventions are used when editting this file:
@@ -104,6 +107,7 @@ module FlightMetal
 
       command_require 'erb',
                       'tty-markdown',
+                      'tty-editor',
                       'flight_metal/models/node'
 
       include Concerns::NodeattrParser
@@ -118,9 +122,36 @@ module FlightMetal
 
       def edit(nodes_str)
         nodes = nodeattr_parser(nodes_str)
-        yaml = Templator.new(nodes.length == 1 ? nodes.first : NilStruct.new)
-                        .render(EDIT_TEMPLATE)
-        puts yaml
+        nodes.length == 1 ? edit_single(nodes.first) : edit_multiple(nodes)
+      end
+
+      private
+
+      def edit_single(node)
+        values = read_edit_yaml(node)
+        update_node(node, SINGLE_EDITABLE, values)
+      end
+
+      def edit_multiple(nodes)
+        values = read_edit_yaml(NilStruct.new)
+        nodes.each { |n| update_node(n, MULTI_EDITABLE, values) }
+      end
+
+      def read_edit_yaml(subject)
+        editor = TTY::Editor.new(
+          content: Templator.new(subject).render(EDIT_TEMPLATE)
+        )
+        editor.open
+        YAML.safe_load(File.read(editor.escape_file), symbolize_names: true)
+            .reject { |_, v| v.nil? }
+      end
+
+      def update_node(node, fields, hash)
+        Models::Node.update(Config.cluster, node.name) do |n|
+          fields.each do |field|
+            n.send("#{field}=", hash[field]) if hash.key?(field)
+          end
+        end
       end
     end
   end

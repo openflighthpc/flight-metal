@@ -85,6 +85,9 @@ module FlightMetal
         __read__(Models::Cluster, cluster).bmc_password
       end
 
+      alias_method :bmc_username, :bmc_user
+      alias_method :bmc_username=, :bmc_user=
+
       data_reader :bmc_ip
 
       def initialize(cluster, name)
