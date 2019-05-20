@@ -34,6 +34,7 @@ require 'flight_metal/version'
 
 require 'active_support/core_ext/string'
 
+require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/import'

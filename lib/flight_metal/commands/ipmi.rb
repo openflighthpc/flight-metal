@@ -27,9 +27,16 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/commands/concerns/nodeattr_parser'
+
 module FlightMetal
   module Commands
-    class Ipmi
+    class Ipmi < Command
+      command_require 'flight_metal/system_command',
+                      'flight_metal/errors'
+
+      include Concerns::NodeattrParser
+
       POWER_COMMANDS = {
         'on' => {
           cmd: ['chassis', 'power', 'on'],
@@ -61,23 +68,17 @@ module FlightMetal
         }
       }
 
-      def initialize
-        require 'flight_metal/models/node'
-        require 'flight_metal/system_command'
-        require 'flight_metal/errors'
-      end
-
-      def power(name, cmd)
+      def power(names_str, cmd)
         power_cmd = POWER_COMMANDS[cmd]
         raise InvalidInput, <<~ERROR.chomp unless power_cmd
           '#{cmd}' is not a valid power command. Please select one of the following:
           #{POWER_COMMANDS.keys.join(',')}
         ERROR
-        run(name, *power_cmd[:cmd])
+        run(names_str, *power_cmd[:cmd])
       end
 
-      def run(name, *args)
-        if name == 'help'
+      def run(names_str, *args)
+        if names_str == 'help'
           puts ipmi_help
         elsif args.empty?
           raise SystemCommandError, <<~ERROR
@@ -85,8 +86,14 @@ module FlightMetal
             #{ipmi_cmds}
           ERROR
         else
-          node = Models::Node.read(Config.cluster, name)
-          run_cmd(node, args)
+          nodes = nodeattr_parser(names_str)
+          raise InvalidInput, <<~ERROR.squish unless nodes.all_exist?
+            The following nodes do not exist:
+            #{nodes.missing.map(&:name).join(',')}
+          ERROR
+          nodes.each do |node|
+            run_cmd(node, args)
+          end
         end
       end
 
