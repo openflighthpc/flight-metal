@@ -92,8 +92,22 @@ module FlightMetal
     end
 
     command 'edit' do |c|
-      syntax(c, 'NODE')
-      c.summary = 'Edit the properties of the node'
+      syntax(c, 'NODE_RANGE')
+      c.summary = 'Edit the properties of the node(s)'
+      c.description = <<~DESC
+        Edits the nodes given by NODE_RANGE. The range is expanded using
+        standard nodeattr syntax. This command can be used to edit the
+        built state and address information for a single or multiple nodes.
+
+        By default the command will open the editable fields in your system
+        edittor. Refer to this document for a full list of fields that can
+        be edited.
+
+        Alternatively, the update values can be given using json syntax with
+        --fields flag. This bypasses the interactive editor and updates the
+        fields directly.
+      DESC
+      c.option '--fields JSON', 'The updated fields to be saved'
       action(c, FlightMetal::Commands::Node, method: :edit)
     end
 

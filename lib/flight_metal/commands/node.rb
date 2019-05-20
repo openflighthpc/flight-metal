@@ -120,37 +120,49 @@ module FlightMetal
         puts TTY::Markdown.parse(md)
       end
 
-      def edit(nodes_str)
+      def edit(nodes_str, fields: nil)
         nodes = nodeattr_parser(nodes_str)
         nodes.raise_if_missing
-        nodes.length == 1 ? edit_single(nodes.first) : edit_multiple(nodes)
+        if nodes.length == 1
+          edit_single(nodes.first, fields)
+        else
+          edit_multiple(nodes, fields)
+        end
       end
 
       private
 
-      def edit_single(node)
-        values = read_edit_yaml(node)
+      def edit_single(node, fields)
+        values = read_edit_yaml(node, fields)
         update_node(node, SINGLE_EDITABLE, values)
       end
 
-      def edit_multiple(nodes)
-        values = read_edit_yaml(NilStruct.new)
+      def edit_multiple(nodes, fields)
+        values = read_edit_yaml(NilStruct.new, fields)
         nodes.each { |n| update_node(n, MULTI_EDITABLE, values) }
       end
 
-      def read_edit_yaml(subject)
-        editor = TTY::Editor.new(
-          content: Templator.new(subject).render(EDIT_TEMPLATE)
-        )
-        editor.open
-        YAML.safe_load(File.read(editor.escape_file), symbolize_names: true)
-            .reject { |_, v| v.nil? }
+      def read_edit_yaml(subject, fields)
+        fields ||= begin
+          editor = TTY::Editor.new(
+            content: Templator.new(subject).render(EDIT_TEMPLATE)
+          )
+          editor.open
+          File.read(editor.escape_file)
+        end
+        YAML.safe_load(fields, symbolize_names: true)
       end
 
-      def update_node(node, fields, hash)
+      def update_node(node, allowed_fields, hash)
+        hash = hash.reject do |key, value|
+          next true unless allowed_fields.include?(key)
+          next true if value.nil?
+          next true if node.send(key) == value
+        end
+        return if hash.empty?
         Models::Node.update(Config.cluster, node.name) do |n|
-          fields.each do |field|
-            n.send("#{field}=", hash[field]) if hash.key?(field)
+          hash.each do |key, value|
+            n.send("#{key}=", value)
           end
         end
       end

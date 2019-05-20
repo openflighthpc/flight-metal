@@ -41,16 +41,13 @@ module FlightMetal
       include FlightMetal::FlightConfigUtils
 
       def self.flag(name, fetch: nil)
-        if fetch
-          if fetch.respond_to?(:call)
-            define_method(name) { fetch.call(__data__.fetch(name)) }
-          else
-            define_method(name) { __data__.fetch(name) }
-          end
-          define_method("#{name}?") { send(name) ? true : false }
+        if fetch.respond_to?(:call)
+          define_method(name) { fetch.call(__data__.fetch(name)) }
         else
-          define_method("#{name}?") { __data__.fetch(name) ? true : false }
+          define_method(name) { __data__.fetch(name) }
         end
+
+        define_method("#{name}?") { send(name) ? true : false }
 
         define_method("#{name}=") do |value|
           __data__.set("__#{name}_time__",  value: Time.now.to_i)
@@ -71,7 +68,7 @@ module FlightMetal
       flag :built
       flag :rebuild
       flag :imported
-      flag :mac, fetch: true
+      flag :mac
 
       data_writer(:bmc_user)
       data_writer(:bmc_password)
