@@ -41,8 +41,8 @@ module FlightMetal
           def raise_if_missing
             return if missing.empty?
             raise InvalidInput, <<~ERROR.squish
-              The following node#{missing.length > 1 ? 's do' : ' does'} not
-              exist: #{missing.map(&:name).join(',')}
+              The following node#{'s' if missing.length > 1} do not exist:
+              #{missing.map(&:name).join(',')}
             ERROR
           end
         end

@@ -122,6 +122,7 @@ module FlightMetal
 
       def edit(nodes_str)
         nodes = nodeattr_parser(nodes_str)
+        nodes.raise_if_missing
         nodes.length == 1 ? edit_single(nodes.first) : edit_multiple(nodes)
       end
 

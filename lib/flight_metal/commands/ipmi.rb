@@ -87,10 +87,7 @@ module FlightMetal
           ERROR
         else
           nodes = nodeattr_parser(names_str)
-          raise InvalidInput, <<~ERROR.squish unless nodes.all_exist?
-            The following nodes do not exist:
-            #{nodes.missing.map(&:name).join(',')}
-          ERROR
+          nodes.raise_if_missing
           nodes.each do |node|
             run_cmd(node, args)
           end
