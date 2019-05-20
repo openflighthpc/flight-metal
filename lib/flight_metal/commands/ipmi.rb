@@ -108,7 +108,7 @@ module FlightMetal
       end
 
       def run_cmd(node, args)
-        output = SystemCommand.new(node).ipmi(args).first
+        output = SystemCommand.new(node).ipmi(args)
         output.raise_unless_exit_0
         puts output.stdout
       end
