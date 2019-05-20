@@ -64,8 +64,10 @@ module FlightMetal
         *Built*: <%= built? ? built_time : 'n/a' %>
         *Rebuild*: <%= rebuild? ? 'Scheduled': 'n/a' %>
 
-        <% if mac?; %>*MAC*: <%= mac %><% end %>
-
+        <% if mac? %>*MAC*: <%= mac %><% end %>
+        <% if bmc_username %>*BMC Username*: <%= bmc_username %><% end %>
+        <% if bmc_password %>*BMC Password*: <%= bmc_password %><% end %>
+        <% if bmc_ip %>*BMC IP*: <%= bmc_ip %><% end %>
       ERB
 
       MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password]
@@ -73,11 +75,13 @@ module FlightMetal
 
       EDIT_TEMPLATE = <<~ERB
         # NOTE: Editing this file will update the state information of all the nodes.
-        # The following conventions are used when editting this file:
+        # The following conventions are used when editing:
         #  > Fields will skip updating if:
         #    1. The field is deleted
-        #    2. The key is set to null
+        #    2. The value is set to null
         #  > Fields can be unset by passing an empty string (*when supported)
+        #  > Use the --field flag to edit in a non-interactive shell
+        #  > Only the listed fields can be edited
 
         # Trigger the node to rebuild next build:
         # > #{Config.app_name} build
