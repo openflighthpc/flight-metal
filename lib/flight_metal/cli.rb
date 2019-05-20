@@ -40,7 +40,6 @@ require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
-require 'flight_metal/commands/mark'
 require 'flight_metal/commands/node'
 
 module FlightMetal
@@ -188,12 +187,6 @@ module FlightMetal
         }
       DESC
       action(c, FlightMetal::Commands::Ipmi, method: :power)
-    end
-
-    command 'mark-rebuild' do |c|
-      syntax(c, 'NODE')
-      c.summary = 'Flag the node to be rebuilt on next build'
-      action(c, FlightMetal::Commands::Mark, method: :rebuild)
     end
 
     command 'switch-cluster' do |c|
