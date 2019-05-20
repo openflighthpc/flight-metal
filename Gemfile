@@ -40,6 +40,7 @@ gem 'net-dhcp'
 gem 'highline'
 gem 'hashie'
 gem 'tty-markdown'
+gem 'nodeattr_utils'
 
 group :development do
   gem 'pp'
