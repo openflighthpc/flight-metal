@@ -106,9 +106,13 @@ module FlightMetal
       end
 
       def run_cmd(nodes, args)
-        puts SystemCommand.new(nodes, eager_error: true)
-                          .ipmi(args)
-                          .map(&:stdout)
+        SystemCommand.new(nodes).ipmi(args) do |output|
+          if output.code == 0
+            puts output.stdout
+          else
+            puts output.verbose
+          end
+        end
       end
     end
   end

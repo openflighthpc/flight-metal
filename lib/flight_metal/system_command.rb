@@ -46,38 +46,40 @@ module FlightMetal
 
       def raise_unless_exit_0
         return if code == 0
-        raise SystemCommandError, <<~ERROR
-          The following command exited with status #{code}:
-          #{cmd}
+        raise SystemCommandError, verbose
+      end
 
+      def verbose
+        <<~VERBOSE
+          COMMAND: #{cmd}
+          CODE: #{code}
           STDOUT:
           #{stdout}
-
           STDERR:
           #{stderr}
-        ERROR
+        VERBOSE
       end
     end
 
-    attr_reader :nodes, :eager_error
+    attr_reader :nodes
 
-    def initialize(*nodes, eager_error: false)
+    def initialize(*nodes)
       @nodes = nodes.flatten
-      @eager_error = eager_error
     end
 
-    def run
-      return unless block_given?
+    def run(cmd:, output: nil)
       nodes.map do |node|
-        CommandOutput.run(yield node).tap do |out|
-          out.raise_unless_exit_0 if eager_error
+        str_cmd = (cmd.respond_to?(:call) ? cmd.call(node) : cmd)
+        CommandOutput.run(str_cmd).tap do |out|
+          output.call(out) if output.respond_to?(:call)
         end
       end
     end
 
-    def ipmi(*args)
+    def ipmi(*args, &b)
       string_args = args.flatten.map(&:shellescape).join(' ')
-      run { |n| "ipmitool -I lanplus #{n.ipmi_opts} #{string_args}" }
+      run cmd: proc { |n| "ipmitool -I lanplus #{n.ipmi_opts} #{string_args}" },
+          output: b
     end
   end
 end
