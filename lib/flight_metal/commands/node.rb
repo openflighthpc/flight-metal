@@ -84,7 +84,7 @@ module FlightMetal
         #    1. The field is deleted
         #    2. The value is set to null
         #  > Fields can be unset by passing an empty string (*when supported)
-        #  > Use the --field flag to edit in a non-interactive shell
+        #  > Use the --fields flag to edit in a non-interactive shell
         #  > Only the listed fields can be edited
 
         # Trigger the node to rebuild next build:
@@ -98,13 +98,15 @@ module FlightMetal
         bmc_username: <%= nil_to_null(bmc_user) %>
         bmc_password: <%= nil_to_null(bmc_password) %>
 
-        <%# DEV NOTE: A NilStruct is used when editting multiple nodes
+        <%# DEV NOTE: A NilStruct is used when editing multiple nodes
             This works fine with the above properties as is renders to null,
             and thus skips being set unless changed. However, the properties
             below are unsettable in a bulk edit as they need to unique
         -%>
         <% if __getobj__.is_a? FlightMetal::Commands::Node::NilStruct -%>
         # The hardware and bmc ip addresses can not be set using a bulk edit
+        # mac: IGNORED
+        # bmc_ip: IGNORED
         <% else -%>
         # NOTE: The following can be unset with an empty string
         # Set the hardware address (mac) and the bmc ip address (bmc_ip)
