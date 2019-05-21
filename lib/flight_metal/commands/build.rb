@@ -39,9 +39,8 @@ module FlightMetal
       end
 
       def run
-        node_names = load_nodes.map(&:name)
+        node_names = nodes.map(&:name)
         if node_names.empty?
-
           Log.warn_puts 'Nothing to build'
           return
         end
@@ -55,22 +54,8 @@ module FlightMetal
           end
           Log.info_puts "#{message.node}: #{message.message}"if message.message
           if message.built?
-            node = Models::Node.update(Config.cluster, message.node) do |n|
-              FileUtils.rm n.pxelinux_cfg_path
-              n.built = true
-              n.rebuild = false
-              n.bmc_user = message.bmc_username if message.bmc_username
-              n.bmc_password = message.bmc_password if message.bmc_password
-              n.bmc_ip = message.bmc_ip if message.bmc_ip
-            end
-            Log.info_puts <<~REPORT
-
-              Build Report:  #{node.name}
-              BMC Username:  #{node.bmc_user ? node.bmc_user : '-'}
-              BMC Passsword: #{node.bmc_password ? 'SET' : '-'}
-              BMC IP:        #{node.bmc_ip ? node.bmc_ip : '-'}
-            REPORT
-            node_names.delete_if { |name| name == node.name }
+            register_built(message)
+            node_names.delete_if { |name| name == message.node }
             !node_names.empty?
           else
             # Process the next message
@@ -81,37 +66,57 @@ module FlightMetal
 
       private
 
-      def load_nodes
-        Models::Node.glob_read(Config.cluster, '*')
-                    .select(&:rebuild?)
-                    .select do |node|
-          if node.mac? && node.pxelinux_cfg?
-            Log.warn_puts <<~ERROR.squish
-              Warning #{node.name}: Building off an existing pxelinux file -
-              #{node.pxelinux_cfg_path}
-            ERROR
-            true
-          elsif node.mac? && node.pxelinux_template?
-            FileUtils.cp node.pxelinux_template_path,
-                         node.pxelinux_cfg_path
-            Models::Node.update(Config.cluster, node.name) do |n|
-              n.built = false
-              n.rebuild = true
+      def nodes
+        @nodes ||= begin
+          Models::Node.glob_read(Config.cluster, '*')
+                      .select(&:rebuild?)
+                      .select do |node|
+            if node.mac? && node.pxelinux_cfg?
+              Log.warn_puts <<~ERROR.squish
+                Warning #{node.name}: Building off an existing pxelinux file -
+                #{node.pxelinux_cfg_path}
+              ERROR
+              true
+            elsif node.mac? && node.pxelinux_template?
+              FileUtils.cp node.pxelinux_template_path,
+                           node.pxelinux_cfg_path
+              Models::Node.update(Config.cluster, node.name) do |n|
+                n.built = false
+                n.rebuild = true
+              end
+              true
+            elsif node.mac?
+              Log.warn_puts <<~ERROR.squish
+                Skipping #{node.name}: Missing pxelinux source -
+                #{node.pxelinux_template_path}
+              ERROR
+              false
+            else
+              Log.warn_puts <<~ERROR.squish
+                Skipping #{node.name}: Missing hardware address
+              ERROR
+              false
             end
-            true
-          elsif node.mac?
-            Log.warn_puts <<~ERROR.squish
-              Skipping #{node.name}: Missing pxelinux source -
-              #{node.pxelinux_template_path}
-            ERROR
-            false
-          else
-            Log.warn_puts <<~ERROR.squish
-              Skipping #{node.name}: Missing hardware address
-            ERROR
-            false
           end
         end
+      end
+
+      def register_built(message)
+        node = Models::Node.update(Config.cluster, message.node) do |n|
+          FileUtils.rm n.pxelinux_cfg_path
+          n.built = true
+          n.rebuild = false
+          n.bmc_user = message.bmc_username if message.bmc_username
+          n.bmc_password = message.bmc_password if message.bmc_password
+          n.bmc_ip = message.bmc_ip if message.bmc_ip
+        end
+        Log.info_puts <<~REPORT
+
+          Build Report:  #{node.name}
+          BMC Username:  #{node.bmc_user ? node.bmc_user : '-'}
+          BMC Passsword: #{node.bmc_password ? 'SET' : '-'}
+          BMC IP:        #{node.bmc_ip ? node.bmc_ip : '-'}
+        REPORT
       end
     end
   end
