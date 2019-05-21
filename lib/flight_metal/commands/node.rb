@@ -61,8 +61,12 @@ module FlightMetal
         # Node: '<%= name %>'
         *Imported*: <%= imported? ? imported_time : 'n/a' %>
         *Hunted*: <%= mac? ? mac_time : 'n/a' %>
-        *Built*: <%= built? ? built_time : 'n/a' %>
+        <% if built? -%>
+        *Built*: <%= built_time %>
         *Rebuild*: <%= rebuild? ? 'Scheduled': 'n/a' %>
+        <% else  -%>
+        *Build*: <%= rebuild? ? 'Scheduled' : 'Skipping' %>
+        <% end -%>
 
         <% if mac? %>*MAC*: <%= mac %><% end %>
         <% if bmc_username %>*BMC Username*: <%= bmc_username %><% end %>

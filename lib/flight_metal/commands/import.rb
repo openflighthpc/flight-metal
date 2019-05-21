@@ -53,6 +53,7 @@ module FlightMetal
                 ImportError.raise(node.name) if node.imported?
                 data.extract(node.template_dir)
                 node.imported = true
+                node.rebuild = true
               end
               Log.info_puts "Imported node '#{model.name}'"
             rescue ImportError => e

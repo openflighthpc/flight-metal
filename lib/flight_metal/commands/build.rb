@@ -83,10 +83,9 @@ module FlightMetal
 
       def load_nodes
         Models::Node.glob_read(Config.cluster, '*')
-                            .select do |node|
-          if node.built? && !node.rebuild?
-            false
-          elsif node.mac? && node.pxelinux_cfg?
+                    .select(&:rebuild?)
+                    .select do |node|
+          if node.mac? && node.pxelinux_cfg?
             Log.warn_puts <<~ERROR.squish
               Warning #{node.name}: Building off an existing pxelinux file -
               #{node.pxelinux_cfg_path}
@@ -97,7 +96,7 @@ module FlightMetal
                          node.pxelinux_cfg_path
             Models::Node.update(Config.cluster, node.name) do |n|
               n.built = false
-              n.rebuild = false
+              n.rebuild = true
             end
             true
           elsif node.mac?
