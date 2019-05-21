@@ -40,6 +40,7 @@ module FlightMetal
 
       def run
         node_names = nodes.map(&:name)
+        build_files # Puts the build files into place
         if node_names.empty?
           Log.warn_puts 'Nothing to build'
           return
@@ -71,15 +72,7 @@ module FlightMetal
           Models::Node.glob_read(Config.cluster, '*')
                       .select(&:rebuild?)
                       .select do |node|
-            if node.mac? && node.pxelinux_cfg?
-              Log.warn_puts <<~ERROR.squish
-                Warning #{node.name}: Building off an existing pxelinux file -
-                #{node.pxelinux_cfg_path}
-              ERROR
-              true
-            elsif node.mac? && node.pxelinux_template?
-              FileUtils.cp node.pxelinux_template_path,
-                           node.pxelinux_cfg_path
+            if node.mac? && (node.pxelinux_template? || node.pxelinux_cfg?)
               Models::Node.update(Config.cluster, node.name) do |n|
                 n.built = false
                 n.rebuild = true
@@ -101,9 +94,24 @@ module FlightMetal
         end
       end
 
+      def build_files
+        @build_files ||= nodes.each_with_object({}) do |node, memo|
+          if node.pxelinux_cfg?
+            Log.warn_puts <<~ERROR.squish
+              Warning #{node.name}: Building off an existing pxelinux file -
+              #{node.pxelinux_cfg_path}
+            ERROR
+          else
+            FileUtils.cp node.pxelinux_template_path,
+                         node.pxelinux_cfg_path
+          end
+          memo[node.name] = [node.pxelinux_cfg_path]
+        end
+      end
+
       def register_built(message)
         node = Models::Node.update(Config.cluster, message.node) do |n|
-          FileUtils.rm n.pxelinux_cfg_path
+          build_files[n.name].each { |f| FileUtils.rm(f) }
           n.built = true
           n.rebuild = false
           n.bmc_user = message.bmc_username if message.bmc_username
