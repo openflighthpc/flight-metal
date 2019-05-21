@@ -88,9 +88,7 @@ module FlightMetal
         else
           nodes = nodeattr_parser(names_str)
           nodes.raise_if_missing
-          nodes.each do |node|
-            run_cmd(node, args)
-          end
+          run_cmd(nodes, args)
         end
       end
 
@@ -107,10 +105,10 @@ module FlightMetal
         help_text
       end
 
-      def run_cmd(node, args)
-        output = SystemCommand.new(node).ipmi(args)
-        output.raise_unless_exit_0
-        puts output.stdout
+      def run_cmd(nodes, args)
+        puts SystemCommand.new(nodes, eager_error: true)
+                          .ipmi(args)
+                          .map(&:stdout)
       end
     end
   end

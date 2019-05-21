@@ -59,15 +59,20 @@ module FlightMetal
       end
     end
 
-    attr_reader :nodes
+    attr_reader :nodes, :eager_error
 
-    def initialize(*nodes)
+    def initialize(*nodes, eager_error: false)
       @nodes = nodes.flatten
+      @eager_error = eager_error
     end
 
     def run
       return unless block_given?
-      nodes.map { |n| CommandOutput.run(yield n) }
+      nodes.map do |node|
+        CommandOutput.run(yield node).tap do |out|
+          out.raise_unless_exit_0 if eager_error
+        end
+      end
     end
 
     def ipmi(*args)
