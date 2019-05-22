@@ -55,6 +55,18 @@ module FlightMetal
 
       data_writer :bmc_user
       data_writer :bmc_password
+
+      def template_dir
+        File.join(Config.content_dir, 'clusters', identifier, 'var/templates')
+      end
+
+      def post_hunt_script_path
+        File.join(template_dir, 'post-hunt.sh')
+      end
+
+      def post_hunt_script?
+        File.exists? post_hunt_script_path
+      end
     end
   end
 end

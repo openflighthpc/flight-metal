@@ -75,6 +75,7 @@ module FlightMetal
         require 'highline'
         require 'flight_metal/models/node'
         require 'flight_metal/log'
+        require 'flight_metal/system_command'
       end
 
       def run
@@ -140,16 +141,30 @@ module FlightMetal
           unless (other_node.nil? || other_node.name == name)
             Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
             Models::Node.update(Config.cluster, other_node.name) do |n|
+              n.__registry__ = registry
               n.mac = nil
             end
             macs_to_nodes[hwaddr] = nil
           end
 
           node = Models::Node.create_or_update(Config.cluster, name) do |n|
+            n.__registry__ = registry
             n.mac = hwaddr
           end
           macs_to_nodes[node.mac] = node
 
+          cluster = node.links.cluster
+          if cluster.post_hunt_script?
+            cmd = "bash #{cluster.post_hunt_script_path} #{node.name} #{node.mac}"
+            puts SystemCommand::CommandOutput.run(cmd)
+                                             .tap(&:raise_unless_exit_0)
+                                             .stdout
+          else
+            Log.warn <<~WARN.squish
+              Warning: Skipping post hunt script as it does not exist -
+              #{cluster.post_hunt_script_path}
+            WARN
+          end
           Log.info_puts "Saved #{name} : #{hwaddr}"
         else
           Log.error_puts <<~ERROR.squish
@@ -168,6 +183,10 @@ module FlightMetal
       def sequenced_name
         Config.node_prefix + \
           detected_macs.length.to_s.rjust(Config.node_index_length, '0')
+      end
+
+      def registry
+        @registry ||= Registry.new
       end
     end
   end
