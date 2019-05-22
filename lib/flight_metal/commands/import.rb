@@ -47,10 +47,21 @@ module FlightMetal
       def run(path)
         zip_path = Pathname.new(path).expand_path.sub_ext('.zip').to_s
         Importer.extract(zip_path) do |importer|
+          begin
+            Models::Cluster.create_or_update(Config.cluster) do |c|
+              ImportError.raise(c.identifier, type: 'Cluster') if c.imported?
+              importer.domain.extract(c.template_dir)
+              c.imported = true
+            end
+            Log.info_puts "Imported cluster '#{Config.cluster}'"
+          rescue ImportError => e
+            Log.error_puts(e.message)
+          end
+
           importer.nodes.each do |data|
             begin
               model = Models::Node.create_or_update(Config.cluster, data.name) do |node|
-                ImportError.raise(node.name) if node.imported?
+                ImportError.raise("Node '#{node.name}'") if node.imported?
                 data.extract(node.template_dir)
                 node.imported = true
                 node.rebuild = true
@@ -64,7 +75,7 @@ module FlightMetal
       end
 
       Importer = Struct.new(:zip) do
-        NodeStruct = Struct.new(:name, :base) do
+        module Extractor
           def entries
             @entries ||= []
           end
@@ -78,8 +89,22 @@ module FlightMetal
           end
         end
 
-        PLATFORM_GLOB = 'kickstart/node/*/platform/**/*'
-        PLATFORM_REGEX = /\A(?<base>kickstart\/node\/(?<node>[^\/]+)\/platform)\/.*/
+        DomainStruct = Struct.new(:base) do
+          include Extractor
+
+          def initialize
+            super('kickstart/domain/platform')
+          end
+        end
+
+        NodeStruct = Struct.new(:name, :base) do
+          include Extractor
+        end
+
+        DOMAIN_GLOB = 'kickstart/domain/platform/**/*'
+
+        NODE_GLOB = 'kickstart/node/*/platform/**/*'
+        NODE_REGEX = /\A(?<base>kickstart\/node\/(?<node>[^\/]+)\/platform)\/.*/
 
         def self.extract(path)
           Zip::File.open(path) do |f|
@@ -89,9 +114,15 @@ module FlightMetal
 
         delegate_missing_to :zip
 
+        def domain
+          glob(DOMAIN_GLOB).each_with_object(DomainStruct.new) do |entry, memo|
+            memo.entries << entry
+          end
+        end
+
         def nodes
-          glob(PLATFORM_GLOB).each_with_object({}) do |entry, memo|
-            match = PLATFORM_REGEX.match(entry.name)
+          glob(NODE_GLOB).each_with_object({}) do |entry, memo|
+            match = NODE_REGEX.match(entry.name)
             node = match[:node].to_s
             memo[node] ||= NodeStruct.new(node, match[:base])
             memo[node].entries << entry

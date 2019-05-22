@@ -52,29 +52,6 @@ module FlightMetal
 
       include FlightMetal::FlightConfigUtils
 
-      def self.flag(name, fetch: nil)
-        if fetch.respond_to?(:call)
-          define_method(name) { fetch.call(__data__.fetch(name)) }
-        else
-          define_method(name) { __data__.fetch(name) }
-        end
-
-        define_method("#{name}?") { send(name) ? true : false }
-
-        define_method("#{name}=") do |value|
-          __data__.set("__#{name}_time__",  value: Time.now.to_i)
-          if value.nil? || value == ''
-            __data__.delete(name)
-          else
-            __data__.set(name, value: value)
-          end
-        end
-
-        define_method(:"#{name}_time") do
-          Time.at(__data__.fetch("__#{name}_time__") || 0)
-        end
-      end
-
       attr_reader :cluster, :name
 
       flag :built

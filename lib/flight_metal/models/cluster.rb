@@ -50,6 +50,8 @@ module FlightMetal
         File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
       end
 
+      flag :imported
+
       data_reader(:bmc_user) { 'default' }
       data_reader(:bmc_password) { 'default' }
 
