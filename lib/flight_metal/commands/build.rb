@@ -31,7 +31,6 @@ module FlightMetal
   module Commands
     class Build
       def initialize
-        require 'flight_metal/models/node'
         require 'flight_metal/server'
         require 'flight_metal/models/node'
         require 'flight_metal/log'

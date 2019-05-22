@@ -35,6 +35,18 @@ require 'flight_metal/errors'
 module FlightMetal
   module Models
     class Node
+      NodeLinks = Struct.new(:node) do
+        def cluster
+          read(Models::Cluster, node.cluster)
+        end
+
+        private
+
+        def read(klass, *a)
+          node.__registry__.read(klass, *a)
+        end
+      end
+
       include FlightConfig::Updater
       include FlightConfig::Globber
 
@@ -74,13 +86,8 @@ module FlightMetal
       data_writer(:bmc_password)
       data_writer(:bmc_ip)
 
-      data_reader :bmc_user do
-        __read__(Models::Cluster, cluster).bmc_user
-      end
-
-      data_reader :bmc_password do
-        __read__(Models::Cluster, cluster).bmc_password
-      end
+      data_reader(:bmc_user) { links.cluster.bmc_user }
+      data_reader(:bmc_password) { links.cluster.bmc_password }
 
       alias_method :bmc_username, :bmc_user
       alias_method :bmc_username=, :bmc_user=
@@ -90,6 +97,10 @@ module FlightMetal
       def initialize(cluster, name)
         @cluster ||= cluster
         @name ||= name
+      end
+
+      def links
+        @models ||= NodeLinks.new(self)
       end
 
       def path

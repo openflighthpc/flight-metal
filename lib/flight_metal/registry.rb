@@ -61,10 +61,6 @@ module FlightMetal
     def __registry__
       @__registry__ ||= Registry.new
     end
-
-    def __read__(*a)
-      __registry__.read(*a)
-    end
   end
 
 

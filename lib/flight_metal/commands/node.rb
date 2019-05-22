@@ -123,8 +123,10 @@ module FlightMetal
       include Concerns::NodeattrParser
 
       def list
+        registry = Registry.new
         md = Models::Node.glob_read(Config.cluster, '*')
                          .sort_by { |n| n.name }
+                         .each { |n| n.__registry__ = registry }
                          .map { |n| Templator.new(n).render(LIST_TEMPLATE) }
                          .join("\n")
         puts TTY::Markdown.parse(md)
