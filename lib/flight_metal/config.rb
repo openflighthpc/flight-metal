@@ -95,6 +95,10 @@ module FlightMetal
       __data__.fetch(:tftpboot_dir) { '/var/lib/tftpboot' }
     end
 
+    def kickstart_dir
+      __data__.fetch(:kickstart_dir) { '/var/www/kickstart' }
+    end
+
     def build_port
       __data__.fetch(:build_port) { 24680 }
     end

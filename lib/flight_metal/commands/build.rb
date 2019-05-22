@@ -106,6 +106,22 @@ module FlightMetal
                          node.pxelinux_cfg_path
           end
           memo[node.name] = [node.pxelinux_cfg_path]
+          if node.kickstart_www?
+            Log.warn_puts <<~WARN.squish
+              Warning #{node.name}: Building off an existing kickstart file -
+              #{node.kickstart_www_path}
+            WARN
+            memo[node.name] << node.kickstart_www_path
+          elsif node.kickstart_template?
+            FileUtils.mkdir_p File.dirname(node.kickstart_www_path)
+            FileUtils.cp node.kickstart_template_path,
+                         node.kickstart_www_path
+            memo[node.name] << node.kickstart_www_path
+          else
+            Log.warn <<~WARN.squish
+              Warning #{node.name}: No kickstart file detected
+            WARN
+          end
         end
       end
 

@@ -123,6 +123,22 @@ module FlightMetal
         File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
       end
 
+      def kickstart_www_path
+        File.join(Config.kickstart_dir, "#{name}.ks")
+      end
+
+      def kickstart_www?
+        File.exists? kickstart_www_path
+      end
+
+      def kickstart_template_path
+        File.join(template_dir, cluster, "#{name}.ks")
+      end
+
+      def kickstart_template?
+        File.exists? kickstart_template_path
+      end
+
       def ipmi_opts
         "-H #{name}.bmc -U #{bmc_user} -P #{bmc_password}"
       end
