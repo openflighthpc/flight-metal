@@ -37,6 +37,7 @@ require 'active_support/core_ext/string'
 require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
+require 'flight_metal/commands/create_node'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
@@ -88,6 +89,29 @@ module FlightMetal
       syntax(c)
       c.summary = 'Setup the pxelinux file for the build'
       action(c, FlightMetal::Commands::Build)
+    end
+
+    command 'create' do |c|
+      syntax(c, 'NODE PXELINUX_FILE')
+      c.summary = 'Add a new node to the cluster'
+      c.description = <<~DESC
+        Adds a new node to the current cluster with the given PXELINUX_FILE.
+        This file will be internally cached, along with the other optional
+        inputs.
+
+        The bmc information is required to use the ipmi and power commands. The
+        optional kickstart file will be put into place during the build. It
+        however is optional as it can be hosted elsewhere (e.g. the cloud).
+      DESC
+      c.option '--bmc-username BMC_USERNAME', String,
+               'Set a different bmc username from the cluster default'
+      c.option '--bmc-password BMC_PASSWORD', String,
+               'Set a different bmc password from the cluster default'
+      c.option '--bmc-ip BMC_IP', String,
+               'Set the bmc ip address'
+      c.option '--kickstart KICKSTART_FILE', String,
+               'Give the kickstart file to use with the build'
+      action(c, FlightMetal::Commands::CreateNode)
     end
 
     command 'edit' do |c|

@@ -112,7 +112,7 @@ module FlightMetal
       end
 
       def kickstart_www_path
-        File.join(Config.kickstart_dir, "#{name}.ks")
+        File.join(Config.kickstart_dir, cluster, "#{name}.ks")
       end
 
       def kickstart_www?
@@ -120,7 +120,7 @@ module FlightMetal
       end
 
       def kickstart_template_path
-        File.join(template_dir, cluster, "#{name}.ks")
+        File.join(template_dir, "#{name}.ks")
       end
 
       def kickstart_template?
