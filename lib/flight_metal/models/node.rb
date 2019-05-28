@@ -134,6 +134,14 @@ module FlightMetal
         File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
       end
 
+      def pxelinux?
+        pxelinux_template? || pxelinux_cfg?
+      end
+
+      def kickstart?
+        kickstart_template? || kickstart_www?
+      end
+
       def kickstart_www_path
         File.join(Config.kickstart_dir, cluster, "#{name}.ks")
       end

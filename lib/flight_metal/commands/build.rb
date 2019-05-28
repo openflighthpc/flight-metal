@@ -71,12 +71,18 @@ module FlightMetal
           Models::Node.glob_read(Config.cluster, '*')
                       .select(&:rebuild?)
                       .select do |node|
-            if node.mac? && (node.pxelinux_template? || node.pxelinux_cfg?)
+            if node.mac? && node.pxelinux? && node.kickstart?
               Models::Node.update(Config.cluster, node.name) do |n|
                 n.built = false
                 n.rebuild = true
               end
               true
+            elsif node.mac? && node.pxelinux?
+              Log.warn_puts <<~ERROR.squish
+                Skipping #{node.name}: Missing kickstart source -
+                #{node.kickstart_template_path}
+              ERROR
+              false
             elsif node.mac?
               Log.warn_puts <<~ERROR.squish
                 Skipping #{node.name}: Missing pxelinux source -
@@ -110,17 +116,12 @@ module FlightMetal
               Warning #{node.name}: Building off an existing kickstart file -
               #{node.kickstart_www_path}
             WARN
-            memo[node.name] << node.kickstart_www_path
-          elsif node.kickstart_template?
+          else
             FileUtils.mkdir_p File.dirname(node.kickstart_www_path)
             FileUtils.cp node.kickstart_template_path,
                          node.kickstart_www_path
-            memo[node.name] << node.kickstart_www_path
-          else
-            Log.warn <<~WARN.squish
-              Warning #{node.name}: No kickstart file detected
-            WARN
           end
+          memo[node.name] << node.kickstart_www_path
         end
       end
 
