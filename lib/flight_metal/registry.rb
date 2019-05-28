@@ -75,6 +75,17 @@ module FlightMetal
       base.extend(ClassMethods)
     end
 
+    def update
+      arity = self.method(:initialize).arity
+      args = FlightConfig::Globber::Matcher.new(self.class, arity).args(path)
+      self.class.update(*args) do |obj|
+        self.instance_variable_set(:@__data__, obj.__data__)
+        obj.__registry__ = self.__registry__
+        yield obj if block_given?
+      end
+      self
+    end
+
     def __registry__=(reg)
       raise InternalError, <<~ERROR unless reg.is_a?(Registry)
         The model __registry__ must be a FlightMetal::Registry
@@ -101,10 +112,13 @@ module FlightMetal
         @registry ||= Registry.new
       end
 
-      def read(path)
+      def args(path)
         data = regex.match(path)
-        init_args = keys.map { |key| data[key] }
-        registry.read(klass, *init_args)
+        keys.map { |k| data[k] }
+      end
+
+      def read(path)
+        registry.read(klass, *args(path))
       end
     end
   end
