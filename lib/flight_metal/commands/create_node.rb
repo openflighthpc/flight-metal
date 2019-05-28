@@ -33,16 +33,15 @@ module FlightMetal
     class CreateNode < Command
       command_require 'flight_metal/models/node'
 
-      def run(node, pxe_file,
+      def run(node, pxe_file, kickstart,
               mac: nil,
-              kickstart: nil,
               bmc_ip: nil,
               bmc_username: nil,
               bmc_password: nil)
         Models::Node.create(Config.cluster, node) do |n|
           FileUtils.mkdir_p File.dirname(n.pxelinux_template_path)
           FileUtils.cp pxe_file, n.pxelinux_template_path
-          FileUtils.cp kickstart, n.kickstart_template_path if kickstart
+          FileUtils.cp kickstart, n.kickstart_template_path
           n.mac = mac
           n.bmc_username = bmc_username
           n.bmc_password = bmc_password
