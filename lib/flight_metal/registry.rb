@@ -132,6 +132,15 @@ module FlightMetal
       last_hash[last_arg] ||= first_read(klass, *args, last_arg)
     end
 
+    # TODO: Merge this into the actual glob_read
+    # Duplicated!
+    def glob_read(klass, *a)
+      matcher = FlightConfig::Globber::Matcher.new(klass, a.length, registry: self)
+      glob_regex = klass.new(*a).path
+      Dir.glob(glob_regex)
+        .map { |path| matcher.read(path) }
+    end
+
     private
 
     def cache

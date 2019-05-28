@@ -40,6 +40,7 @@ task :setup do
   require 'pry-byebug'
 
   $LOAD_PATH.unshift(File.join(__dir__, 'lib'))
+  require 'flight_metal/log'
   require 'flight_metal'
 end
 
