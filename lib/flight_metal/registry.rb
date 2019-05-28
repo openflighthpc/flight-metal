@@ -28,6 +28,7 @@
 #===============================================================================
 
 require 'flight_metal/errors'
+require 'flight_config/globber'
 
 module FlightMetal
   module FlightConfigUtils
@@ -86,6 +87,27 @@ module FlightMetal
     end
   end
 
+  # Override the default FlilghtConfig `glob_read` to use the registry
+  # This is useful when loading lots of files
+  # TODO: Port this into FlightConfig
+  module FlightConfigPatches
+    module Matcher
+      def initialize(k, a, registry: nil)
+        @registry ||= registry
+        super(k, a)
+      end
+
+      def registry
+        @registry ||= Registry.new
+      end
+
+      def read(path)
+        data = regex.match(path)
+        init_args = keys.map { |key| data[key] }
+        registry.read(klass, *init_args)
+      end
+    end
+  end
 
   class Registry
     def read(klass, *args)
@@ -109,3 +131,6 @@ module FlightMetal
     end
   end
 end
+
+FlightConfig::Globber::Matcher.prepend FlightMetal::FlightConfigPatches::Matcher
+

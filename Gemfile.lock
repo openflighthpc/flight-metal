@@ -86,7 +86,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport
   commander-openflighthpc
-  flight_config
+  flight_config (= 0.1.0)
   hashie
   highline
   net-dhcp
