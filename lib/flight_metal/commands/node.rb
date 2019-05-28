@@ -55,6 +55,13 @@ module FlightMetal
         def nil_to_null(value)
           value.nil? ? 'null' : value
         end
+
+        def catch_error
+          yield
+        rescue => e
+          Log.error e
+          'Error (See Logs)'
+        end
       end
 
       LIST_TEMPLATE = <<~ERB
@@ -67,6 +74,9 @@ module FlightMetal
         <% else  -%>
         *Build*: <%= rebuild? ? 'Scheduled' : 'Skipping' %>
         <% end -%>
+
+        *IP*: <%= catch_error { ip } %>
+        *Domain Name*: <%= catch_error { fqdn } %>
 
         <% if mac? %>*MAC*: <%= mac %><% end %>
         <% if bmc_username %>*BMC Username*: <%= bmc_username %><% end %>
