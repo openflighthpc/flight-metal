@@ -32,6 +32,7 @@ require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
+require 'flight_metal/system_command'
 
 module FlightMetal
   module Models
@@ -82,6 +83,16 @@ module FlightMetal
       alias_method :bmc_username=, :bmc_user=
 
       data_reader :bmc_ip
+
+      data_reader(:ip) do
+        gethostip_set_if_empty
+        __data__.fetch(:ip)
+      end
+
+      data_reader(:fqdn) do
+        gethostip_set_if_empty
+        __data__.fetch(:fqdn)
+      end
 
       def initialize(cluster, name)
         @cluster ||= cluster
@@ -141,6 +152,21 @@ module FlightMetal
 
       def ipmi_opts
         "-H #{name}.bmc -U #{bmc_user} -P #{bmc_password}"
+      end
+
+      private
+
+      def gethostip_set_if_empty
+        SystemCommand.new(self)
+                     .run(cmd: ->(n) { "gethostip -nd #{n.name}" })
+                     .first
+                     .tap(&:raise_unless_exit_0)
+                     .stdout
+                     .split
+                     .tap do |fqdn, ip|
+          __data__.set_if_empty(:fqdn, value: fqdn)
+          __data__.set_if_empty(:ip, value: ip)
+        end
       end
     end
   end
