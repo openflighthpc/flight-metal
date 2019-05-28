@@ -31,6 +31,7 @@ require 'flight_config'
 require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
 require 'flight_metal/errors'
+require 'flight_metal/macs'
 
 module FlightMetal
   module Models
@@ -57,7 +58,16 @@ module FlightMetal
       flag :built
       flag :rebuild
       flag :imported
-      flag :mac
+      flag :mac, set: ->(original_mac) do
+        original_mac.tap do |mac|
+          if node = Macs.new(__registry__).find(mac)
+            raise InvalidModel, <<~ERROR.squish
+              Failed to update mac address '#{mac}' as it is already taken by:
+              node '#{node.name}' in cluster '#{node.cluster}'
+            ERROR
+          end
+        end
+      end
 
       data_writer(:bmc_user)
       data_writer(:bmc_password)

@@ -33,16 +33,17 @@ require 'flight_config/globber'
 module FlightMetal
   module FlightConfigUtils
     module ClassMethods
-      def flag(name, fetch: nil)
+      def flag(name, fetch: nil, set: nil)
         if fetch.respond_to?(:call)
-          define_method(name) { fetch.call(__data__.fetch(name)) }
+          define_method(name) { instance_exec(__data__.fetch(name), &fetch) }
         else
           define_method(name) { __data__.fetch(name) }
         end
 
         define_method("#{name}?") { send(name) ? true : false }
 
-        define_method("#{name}=") do |value|
+        define_method("#{name}=") do |raw|
+          value = (set ? instance_exec(raw, &set) : raw)
           __data__.set("__#{name}_time__",  value: Time.now.to_i)
           if value.nil? || value == ''
             __data__.delete(name)
