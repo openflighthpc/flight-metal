@@ -33,37 +33,6 @@ require 'flight_metal/commands/concerns/nodeattr_parser'
 module FlightMetal
   module Commands
     class Node < Command
-      class NilStruct < OpenStruct
-        def initialize
-          super(nil)
-        end
-
-        def respond_to?(_s)
-          true
-        end
-      end
-
-      class Templator < SimpleDelegator
-        def initialize(obj)
-          self.__setobj__(obj)
-        end
-
-        def render(text)
-          ERB.new(text, nil, '-').result(binding)
-        end
-
-        def nil_to_null(value)
-          value.nil? ? 'null' : value
-        end
-
-        def catch_error
-          yield
-        rescue => e
-          Log.error e
-          'Error (See Logs)'
-        end
-      end
-
       LIST_TEMPLATE = <<~ERB
         # Node: '<%= name %>'
         *Imported*: <%= imported? ? imported_time : 'n/a' %>
@@ -113,7 +82,7 @@ module FlightMetal
             and thus skips being set unless changed. However, the properties
             below are unsettable in a bulk edit as they need to unique
         -%>
-        <% if __getobj__.is_a? FlightMetal::Commands::Node::NilStruct -%>
+        <% if __getobj__.is_a? FlightMetal::Templator::NilStruct -%>
         # The hardware and bmc ip addresses can not be set using a bulk edit
         # mac: IGNORED
         # bmc_ip: IGNORED
@@ -125,21 +94,18 @@ module FlightMetal
         <% end -%>
       ERB
 
-      command_require 'erb',
-                      'tty-markdown',
-                      'tty-editor',
-                      'flight_metal/models/node'
+      command_require 'flight_metal/models/node',
+                      'flight_metal/templator'
 
       include Concerns::NodeattrParser
 
       def list
-        registry = Registry.new
-        md = Models::Node.glob_read(Config.cluster, '*')
-                         .sort_by { |n| n.name }
-                         .each { |n| n.__registry__ = registry }
-                         .map { |n| Templator.new(n).render(LIST_TEMPLATE) }
-                         .join("\n")
-        puts TTY::Markdown.parse(md)
+        md = Registry.new
+                     .glob_read(Models::Node, Config.cluster, '*')
+                     .sort_by { |n| n.name }
+                     .map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
+                     .join
+        puts md
       end
 
       def edit(nodes_str, fields: nil)
@@ -160,18 +126,12 @@ module FlightMetal
       end
 
       def edit_multiple(nodes, fields)
-        values = read_edit_yaml(NilStruct.new, fields)
+        values = read_edit_yaml(nil, fields)
         nodes.each { |n| update_node(n, MULTI_EDITABLE, values) }
       end
 
       def read_edit_yaml(subject, fields)
-        fields ||= begin
-          editor = TTY::Editor.new(
-            content: Templator.new(subject).render(EDIT_TEMPLATE)
-          )
-          editor.open
-          File.read(editor.escape_file)
-        end
+        fields ||= Templator.new(subject).edit(EDIT_TEMPLATE)
         YAML.safe_load(fields, symbolize_names: true)
       end
 
