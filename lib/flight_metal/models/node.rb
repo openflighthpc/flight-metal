@@ -60,7 +60,9 @@ module FlightMetal
       flag :imported
       flag :mac, set: ->(original_mac) do
         original_mac.tap do |mac|
-          if node = Macs.new(__registry__).find(mac)
+          if mac.nil? || mac.empty?
+            next
+          elsif node = Macs.new(__registry__).find(mac)
             raise InvalidModel, <<~ERROR.squish
               Failed to update mac address '#{mac}' as it is already taken by:
               node '#{node.name}' in cluster '#{node.cluster}'

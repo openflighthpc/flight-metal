@@ -79,7 +79,6 @@ module FlightMetal
       end
 
       def run
-        macs_to_nodes # Ensure the error occurs on startup
         Log.info_puts <<~MSG.squish
           Waiting for new nodes to appear on the network, please network boot
           them now...,
@@ -108,71 +107,37 @@ module FlightMetal
         @detected_macs ||= []
       end
 
-      def macs_to_nodes
-        @macs_to_nodes ||= Models::Node.glob_read('*', '*')
-          .reject { |n| n.mac.nil? }
-          .each_with_object({}) do |n1, memo|
-            n2 = memo[n1.mac]
-            raise <<~ERROR.squish if n2
-              Node '#{n2.name}' in cluster '#{n2.cluster}' shares a hardware
-              address with node '#{n1.name}' in cluster '#{n1.cluster}'. Please
-              remove the duplicate and try again
-            ERROR
-            memo[n1.mac] = n1
-          end
-      end
-
       def detected(hwaddr)
         if detected_macs.include?(hwaddr)
           Log.warn "Skipping repeated address: #{hwaddr}"
           return
         end
-        other_node = macs_to_nodes[hwaddr]
 
-        if other_node.nil? || other_node.cluster == Config.cluster
-          question = <<~QUESTION.squish
-            Detected a machine on the network (#{hwaddr}).
-            Please enter the hostname:
-          QUESTION
-          name = HighLine.new.ask(question) do |q|
-            q.default = other_node&.name || sequenced_name
-          end
+        # Reform the mac hash every loop
+        macs = Macs.new(registry)
+        other_node = macs.find(hwaddr)
 
-          unless (other_node.nil? || other_node.name == name)
-            Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
-            Models::Node.update(Config.cluster, other_node.name) do |n|
-              n.__registry__ = registry
-              n.mac = nil
-            end
-            macs_to_nodes[hwaddr] = nil
-          end
-
-          node = Models::Node.create_or_update(Config.cluster, name) do |n|
-            n.__registry__ = registry
-            n.mac = hwaddr
-          end
-          macs_to_nodes[node.mac] = node
-
-          cluster = node.links.cluster
-          if cluster.post_hunt_script?
-            cmd = "bash #{cluster.post_hunt_script_path} #{node.name} #{node.mac}"
-            puts SystemCommand::CommandOutput.run(cmd)
-                                             .tap(&:raise_unless_exit_0)
-                                             .stdout
-          else
-            Log.warn <<~WARN.squish
-              Warning: Skipping post hunt script as it does not exist -
-              #{cluster.post_hunt_script_path}
-            WARN
-          end
-          Log.info_puts "Saved #{name} : #{hwaddr}"
-        else
-          Log.error_puts <<~ERROR.squish
-            Can not reassign a hardware address between clusters. The address
-            '#{hwaddr}' belongs to node '#{other_node.name}' in cluster
-            '#{other_node.cluster}'. Please remove it and try again.
-          ERROR
+        question = <<~QUESTION.squish
+          Detected a machine on the network (#{hwaddr}).
+          Please enter the hostname:
+        QUESTION
+        name = HighLine.new.ask(question) do |q|
+          q.default = other_node&.name || sequenced_name
         end
+
+        current_node = macs.nodes.find do |n|
+          n.name == name && n.cluster == Config.cluster
+        end
+        current_node ||= Models::Node.create_or_update(Config.cluster, name)
+
+        if other_node && (other_node != current_node)
+          Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
+          other_node.update { |n| n.mac = nil }
+        end
+
+        current_node.update { |n| n.mac = hwaddr }
+
+        Log.info_puts "Saved #{name} : #{hwaddr}"
 
         detected_macs << hwaddr
       rescue StandardError => e
