@@ -38,6 +38,7 @@ require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/create_node'
+require 'flight_metal/commands/dhcp'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
@@ -208,6 +209,12 @@ module FlightMetal
         }
       DESC
       action(c, FlightMetal::Commands::Ipmi, method: :power)
+    end
+
+    command 'update-dhcp' do |c|
+      syntax(c)
+      c.summary = 'Update the DHCP server with the nodes mac addresses'
+      action(c, FlightMetal::Commands::DHCP, method: :update)
     end
 
     command 'switch-cluster' do |c|

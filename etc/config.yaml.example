@@ -25,6 +25,21 @@
 # kickstart_dir: /var/www/kickstart
 
 # =============================================================================
+# DHCPD Config Path
+# The path to the dhcpd config that will be rendered by the application. This
+# config is owned and managed directly by the application. All other changes
+# will be lost. It is recommended that other configuration be kept in a
+# separate file.
+# =============================================================================
+# dhcpd_path: /etc/dhcp/dhcpd.flight
+
+# =============================================================================
+# Restart DHCPD Command
+# The command used to restart dhcp. By default it uses systemctl
+# =============================================================================
+# restart_dhcpd_command: systemctl restart dhcpd
+
+# =============================================================================
 # Build Port
 # In order to end the build loop, the nodes need to report back to the host.
 # This is done by communicating over the build port. The build address needs to
