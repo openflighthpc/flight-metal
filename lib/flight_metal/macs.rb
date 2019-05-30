@@ -27,23 +27,26 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/models/node'
+require 'flight_metal/registry'
+
 module FlightMetal
-  module Commands
-    class Mark
-      attr_reader :opts
+  Macs = Struct.new(:registry) do
+    def initialize(registry = nil)
+      super(registry || Registry.new)
+    end
 
-      def initialize
-        require 'flight_metal/models/node'
-      end
+    def find(mac)
+      nodes.find { |n| n.mac == mac }
+    end
 
-      def rebuild(node)
-        Models::Node.update(Config.cluster, node) do |n|
-          n.built = false
-        end
-        puts <<~MSG.squish
-          Node #{node} will be rebuilt when '#{Config.app_name} build' is next
-          called
-        MSG
+    def nodes
+      registry.glob_read(Models::Node, '*', '*')
+    end
+
+    def macs
+      nodes.each_with_object({}) do |node, memo|
+        memo[node.mac] ||= node
       end
     end
   end

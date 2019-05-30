@@ -34,11 +34,13 @@ require 'flight_metal/version'
 
 require 'active_support/core_ext/string'
 
+require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
+require 'flight_metal/commands/dhcp'
 require 'flight_metal/commands/import'
+require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
-require 'flight_metal/commands/mark'
 require 'flight_metal/commands/node'
 
 module FlightMetal
@@ -71,16 +73,15 @@ module FlightMetal
         rescue Interrupt
           Log.warn_puts 'Received Interrupt!'
         rescue => e
-          puts e
           Log.fatal(e)
           raise e
         end
       end
     end
 
-    def self.syntax(command, args_str = '')
+    def self.syntax(command, args_str = '', opts: true)
       command.syntax = <<~SYNTAX.squish
-        #{program(:name)} #{command.name} #{args_str} [options]
+        #{program(:name)} #{command.name} #{args_str} #{'[options]' if opts}
       SYNTAX
     end
 
@@ -88,6 +89,43 @@ module FlightMetal
       syntax(c)
       c.summary = 'Setup the pxelinux file for the build'
       action(c, FlightMetal::Commands::Build)
+    end
+
+    command 'create' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'Add a new node to the cluster'
+      c.description = <<~DESC
+        Opens up the the NODE configuration in your system edittor. The
+        `pxelinux_file` and `kickstart_file` fields are required and must
+        specify the paths to the corresponding files.
+
+        All other fields are optional on create, but maybe required for the
+        advanced features to work. See the edittor notes for further details.
+
+        To create a node in a non-interactive shell, use the --fields flag
+        with JSON syntax.
+      DESC
+      action(c, FlightMetal::Commands::Node, method: :create)
+    end
+
+    command 'edit' do |c|
+      syntax(c, 'NODE_RANGE')
+      c.summary = 'Edit the properties of the node(s)'
+      c.description = <<~DESC
+        Edits the nodes given by NODE_RANGE. The range is expanded using
+        standard nodeattr syntax. This command can be used to edit the
+        built state and address information for a single or multiple nodes.
+
+        By default the command will open the editable fields in your system
+        edittor. Refer to this document for a full list of fields that can
+        be edited.
+
+        Alternatively, the update values can be given using json syntax with
+        --fields flag. This bypasses the interactive editor and updates the
+        fields directly.
+      DESC
+      c.option '--fields JSON', 'The updated fields to be saved'
+      action(c, FlightMetal::Commands::Node, method: :edit)
     end
 
     command 'hunt' do |c|
@@ -105,9 +143,37 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
+    command 'ipmi' do |c|
+      syntax(c, 'NODE [...] [options] [--] [ipmi-options]', opts: false)
+      c.summary = 'Run commands with ipmitool'
+      c.description = <<~DESC
+        The ipmi command wraps the underlining ipmitool utility. Please
+        refer to ipmitool man page for full list of subcommands or run:
+        `#{Config.app_name} ipmi help`.
+
+        This tool communicates using BMC over Ethernet and as such the
+        following ipmitool options will be set:
+
+        * The interface will always be set with: `-I lanplus`,
+        * The remote server is set to: `-H <NODE>.bmc`
+        * And the username/password will be resolved from the configs and
+          set with: `-U <username>` and `-P <password>`
+
+        Additional options can be passed to directly to `ipmitool` by placing
+        them after the optional double hypen: `--`. Without the hypen, the
+        flags will be interpreted by `#{Config.app_name}` and likely cause an
+        eror.
+      DESC
+      action(c, FlightMetal::Commands::Ipmi)
+    end
+
     command 'init-cluster' do |c|
-      syntax(c, 'IDENTIFIER')
+      syntax(c, 'IDENTIFIER BMC_USERNAME BMC_PASSWORD')
       c.summary = 'Create a new cluster profile'
+      c.description = <<~DESC
+        Create and switch to the new cluster IDENTIFIER. The BMC_USERNAME and
+        BMC_PASSWORD become the defaults for the entire cluster
+      DESC
       action(c, FlightMetal::Commands::Cluster, method: :init)
     end
 
@@ -123,10 +189,28 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
-    command 'mark-rebuild' do |c|
-      syntax(c, 'NODE')
-      c.summary = 'Flag the node to be rebuilt on next build'
-      action(c, FlightMetal::Commands::Mark, method: :rebuild)
+    command 'power' do |c|
+      syntax(c, 'NODE COMMAND')
+      c.summary = 'Manage and check the power status of the nodes'
+      c.description = <<~DESC.chomp
+        Runs a power related command using ipmitool. The valid commands
+        are:
+
+        #{
+          cmds_hash = FlightMetal::Commands::Ipmi::POWER_COMMANDS
+          max_len = cmds_hash.keys.max_by(&:length).length
+          cmds_hash.reduce([]) do |s, (k, v)|
+            s << "  * #{k}#{' ' * (max_len - k.length)} - #{v[:help]}"
+          end.join("\n")
+        }
+      DESC
+      action(c, FlightMetal::Commands::Ipmi, method: :power)
+    end
+
+    command 'update-dhcp' do |c|
+      syntax(c)
+      c.summary = 'Update the DHCP server with the nodes mac addresses'
+      action(c, FlightMetal::Commands::DHCP, method: :update)
     end
 
     command 'switch-cluster' do |c|

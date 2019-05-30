@@ -27,47 +27,40 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-
-require 'flight_metal/config'
-require 'flight_metal/registry'
+require 'active_support/concern'
 
 module FlightMetal
-  module Models
-    class Cluster
-      include FlightConfig::Updater
-      include FlightConfig::Globber
+  module Commands
+    module Concerns
+      module NodeattrParser
+        class NodeArray < DelegateClass(Array)
+          def missing
+            self.reject { |n| File.exists?(n.path) }
+          end
 
-      include FlightMetal::FlightConfigUtils
+          def raise_if_missing
+            return if missing.empty?
+            raise InvalidInput, <<~ERROR.squish
+              The following node#{missing.length > 1 ? 's do' : ' does'} not
+              exist: #{missing.map(&:name).join(',')}
+            ERROR
+          end
+        end
 
-      attr_reader :identifier
+        extend ActiveSupport::Concern
 
-      def initialize(identifier)
-        @identifier = identifier
-      end
+        included do
+          command_require 'nodeattr_utils/node_parser',
+                          'flight_metal/models/node',
+                          'flight_metal/errors'
+        end
 
-      def path
-        File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
-      end
-
-      flag :imported
-
-      data_reader(:bmc_user) { 'default' }
-      data_reader(:bmc_password) { 'default' }
-
-      data_writer :bmc_user
-      data_writer :bmc_password
-
-      def template_dir
-        File.join(Config.content_dir, 'clusters', identifier, 'var/templates')
-      end
-
-      def post_hunt_script_path
-        File.join(template_dir, 'post-hunt.sh')
-      end
-
-      def post_hunt_script?
-        File.exists? post_hunt_script_path
+        def nodeattr_parser(string)
+          nodes = NodeattrUtils::NodeParser.expand(string).map do |name|
+            FlightMetal::Models::Node.read_or_new(Config.cluster, name)
+          end
+          NodeArray.new(nodes.sort_by(&:name))
+        end
       end
     end
   end

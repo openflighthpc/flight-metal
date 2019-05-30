@@ -27,48 +27,18 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-
-require 'flight_metal/config'
-require 'flight_metal/registry'
-
 module FlightMetal
-  module Models
-    class Cluster
-      include FlightConfig::Updater
-      include FlightConfig::Globber
+  class Command
+    def self.command_require(*a)
+      command_requires.push(*a)
+    end
 
-      include FlightMetal::FlightConfigUtils
+    def self.command_requires
+      @command_requires ||= []
+    end
 
-      attr_reader :identifier
-
-      def initialize(identifier)
-        @identifier = identifier
-      end
-
-      def path
-        File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
-      end
-
-      flag :imported
-
-      data_reader(:bmc_user) { 'default' }
-      data_reader(:bmc_password) { 'default' }
-
-      data_writer :bmc_user
-      data_writer :bmc_password
-
-      def template_dir
-        File.join(Config.content_dir, 'clusters', identifier, 'var/templates')
-      end
-
-      def post_hunt_script_path
-        File.join(template_dir, 'post-hunt.sh')
-      end
-
-      def post_hunt_script?
-        File.exists? post_hunt_script_path
-      end
+    def initialize
+      self.class.command_requires.each { |d| require d }
     end
   end
 end

@@ -32,7 +32,7 @@ module FlightMetal
     class Hunt
       PacketReader = Struct.new(:packet) do
         def message
-          @message ||= DHCP::Message.from_udp_payload(packet.udp_data, debug: false)
+          @message ||= ::DHCP::Message.from_udp_payload(packet.udp_data, debug: false)
         end
 
         def udp?
@@ -41,14 +41,14 @@ module FlightMetal
 
         def dhcp_discover?
           return false unless udp?
-          message.is_a?(DHCP::Discover)
+          message.is_a?(::DHCP::Discover)
         end
 
         def pxe_request?
           return false unless dhcp_discover?
-          Log.info 'Processing DHCP::Discover message options'
+          Log.info 'Processing ::DHCP::Discover message options'
           pxe = message.options.find do |opt|
-            next unless opt.is_a?(DHCP::VendorClassIDOption)
+            next unless opt.is_a?(::DHCP::VendorClassIDOption)
             vendor = opt.payload.pack('C*')
             /^PXEClient/.match?(vendor)
           end
@@ -75,6 +75,7 @@ module FlightMetal
         require 'highline'
         require 'flight_metal/models/node'
         require 'flight_metal/log'
+        require 'flight_metal/system_command'
       end
 
       def run
@@ -106,24 +107,15 @@ module FlightMetal
         @detected_macs ||= []
       end
 
-      def macs_to_nodes
-        @macs_to_nodes ||= Models::Node.glob_read(Config.cluster, '*')
-          .reject { |n| n.mac.nil? }
-          .each_with_object({}) do |node, memo|
-            raise <<~ERROR.squish if memo[node.mac]
-              Nodes '#{memo[node.mac].name}' and '#{node.name}' have duplicate
-              hardware addresses.
-            ERROR
-            memo[node.mac] = node
-          end
-      end
-
       def detected(hwaddr)
         if detected_macs.include?(hwaddr)
           Log.warn "Skipping repeated address: #{hwaddr}"
           return
         end
-        other_node = macs_to_nodes[hwaddr]
+
+        # Reform the mac hash every loop
+        macs = Macs.new(registry)
+        other_node = macs.find(hwaddr)
 
         question = <<~QUESTION.squish
           Detected a machine on the network (#{hwaddr}).
@@ -133,22 +125,21 @@ module FlightMetal
           q.default = other_node&.name || sequenced_name
         end
 
-        unless (other_node.nil? || other_node.name == name)
+        current_node = macs.nodes.find do |n|
+          n.name == name && n.cluster == Config.cluster
+        end
+        current_node ||= Models::Node.create_or_update(Config.cluster, name)
+
+        if other_node && (other_node != current_node)
           Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
-          Models::Node.update(Config.cluster, other_node.name) do |n|
-            n.mac = nil
-          end
-          macs_to_nodes[hwaddr] = nil
+          other_node.update { |n| n.mac = nil }
         end
 
-        node = Models::Node.create_or_update(Config.cluster, name) do |n|
-          n.mac = hwaddr
-        end
-
-        detected_macs << hwaddr
-        macs_to_nodes[node.mac] = node
+        current_node.update { |n| n.mac = hwaddr }
 
         Log.info_puts "Saved #{name} : #{hwaddr}"
+
+        detected_macs << hwaddr
       rescue StandardError => e
         Log.error_puts "FAIL: #{e.message}"
         retry if HighLine.new.agree('Retry? [yes/no]:')
@@ -157,6 +148,10 @@ module FlightMetal
       def sequenced_name
         Config.node_prefix + \
           detected_macs.length.to_s.rjust(Config.node_index_length, '0')
+      end
+
+      def registry
+        @registry ||= Registry.new
       end
     end
   end

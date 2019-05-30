@@ -1,0 +1,91 @@
+# =============================================================================
+# GETTING STARTED
+# COPY this file into place, please leave this example as a reference.
+# NOTE: Comments in the main config will be removed by the application
+#
+# cp etc/config.yaml.example etc/config.yaml
+#
+# The following parameters are configurable for the install. Commented out keys
+# give the default values used. Uncomment the line to manually set it
+# =============================================================================
+
+# =============================================================================
+# TFTP Boot Directory
+# The directory that the tftp service is running on. The pxelinux files will
+# always be placed within it as: `pxelinux.cfg/<mac-address>`
+# =============================================================================
+# tftpboot_dir: /var/lib/tftpboot
+
+# =============================================================================
+# Kickstart Web Directory
+# The kickstart files are optional as they can be hosted anywhere accessible
+# over the network/internet. Provided kickstart files will be placed within the
+# kickstart web directory, which can then be served by an external service
+# =============================================================================
+# kickstart_dir: /var/www/kickstart
+
+# =============================================================================
+# DHCPD Config Path
+# The path to the dhcpd config that will be rendered by the application. This
+# config is owned and managed directly by the application. All other changes
+# will be lost. It is recommended that other configuration be kept in a
+# separate file.
+# =============================================================================
+# dhcpd_path: /etc/dhcp/dhcpd.flight
+
+# =============================================================================
+# Restart DHCPD Command
+# The command used to restart dhcp. By default it uses systemctl
+# =============================================================================
+# restart_dhcpd_command: systemctl restart dhcpd
+
+# =============================================================================
+# Build Port
+# In order to end the build loop, the nodes need to report back to the host.
+# This is done by communicating over the build port. The build address needs to
+# be setup externally to the application
+# =============================================================================
+# build_port: 24680
+
+# =============================================================================
+# Hunting Interface
+# This gives the interface to listen on for DHCP packets. This is used to hunt
+# the mac address of nodes as they boot the first time
+#
+# IMPORTANT: This configuration is will likely need to be changed
+# =============================================================================
+# inteface: eth0
+
+# =============================================================================
+# Node Prefix
+# Gives the default base name when hunting new nodes. The index is appended to
+# the prefix
+# =============================================================================
+# node_prefix: node
+
+# =============================================================================
+# Node Index Length
+# Gives the minimum character width of the node index. The node index is
+# appended to the node prefix during hunting. Numbers shorter than the length
+# will be padded with leading zeros. For example, with a length of 3:
+#    1 =>  001
+#   22 =>  022
+#  333 =>  333
+# 4444 => 4444
+# =============================================================================
+# node_index_length: 2
+
+# =============================================================================
+# Log Path
+# Location to store the log file. Paths can either be absolute or relative to
+# the install directory
+# =============================================================================
+# log_path: var/log/metal.log
+
+# =============================================================================
+# Content Directory
+# The location to store internal configuration files. Paths can either be
+# absolute or relative to the install directory
+# =============================================================================
+# content_dir: var
+

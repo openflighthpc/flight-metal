@@ -48,13 +48,14 @@ module FlightMetal
     end
 
     def loop
+      Log.info_puts "Listening on port: #{port}"
       return unless block_given?
       while res = socket.recvfrom(max_size)
         message = Message.new(res)
         begin
           message.body
         rescue BadMessageError => e
-          $stderr.puts e.message
+          Log.error(e.message)
           next
         end
         return unless yield message

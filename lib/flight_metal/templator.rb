@@ -27,48 +27,71 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-
-require 'flight_metal/config'
-require 'flight_metal/registry'
+require 'erb'
+require 'tty-editor'
+require 'tty-markdown'
+require 'flight_metal/log'
 
 module FlightMetal
-  module Models
-    class Cluster
-      include FlightConfig::Updater
-      include FlightConfig::Globber
-
-      include FlightMetal::FlightConfigUtils
-
-      attr_reader :identifier
-
-      def initialize(identifier)
-        @identifier = identifier
+  class Templator
+    class NilStruct < OpenStruct
+      def initialize
+        super(nil)
       end
 
-      def path
-        File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
+      def respond_to?(_s)
+        true
+      end
+    end
+
+    class TemplatorDelegator < SimpleDelegator
+      def initialize(obj)
+        self.__setobj__(obj)
       end
 
-      flag :imported
-
-      data_reader(:bmc_user) { 'default' }
-      data_reader(:bmc_password) { 'default' }
-
-      data_writer :bmc_user
-      data_writer :bmc_password
-
-      def template_dir
-        File.join(Config.content_dir, 'clusters', identifier, 'var/templates')
+      def get_binding
+        binding
       end
 
-      def post_hunt_script_path
-        File.join(template_dir, 'post-hunt.sh')
+      def nil_to_null(value)
+        value.nil? ? 'null' : value
       end
 
-      def post_hunt_script?
-        File.exists? post_hunt_script_path
+      def catch_error
+        yield
+      rescue => e
+        Log.error e
+        'Error (See Logs)'
       end
+    end
+
+    attr_reader :erb_binding
+
+    def initialize(obj = nil)
+      obj = (obj.nil? ? NilStruct.new : obj)
+      @erb_binding = TemplatorDelegator.new(obj).get_binding
+    end
+
+    def render(text)
+      ERB.new(text, nil, '-').result(erb_binding)
+    end
+
+    def edit(text)
+      editor = TTY::Editor.new(content: render(text))
+      editor.open
+      File.read(editor.escape_file)
+    end
+
+    def edit_yaml(text)
+      YAML.safe_load(edit(text), symbolize_names: true)
+    end
+
+    def yaml(text)
+      YAML.safe_load(render(text), symbolize_names: true)
+    end
+
+    def markdown(text)
+      TTY::Markdown.parse(render text)
     end
   end
 end

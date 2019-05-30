@@ -94,5 +94,21 @@ module FlightMetal
     def tftpboot_dir
       __data__.fetch(:tftpboot_dir) { '/var/lib/tftpboot' }
     end
+
+    def kickstart_dir
+      __data__.fetch(:kickstart_dir) { '/var/www/kickstart' }
+    end
+
+    def build_port
+      __data__.fetch(:build_port) { 24680 }
+    end
+
+    def dhcpd_path
+      __data__.fetch(:dhcpd_path) { '/etc/dhcp/dhcpd.flight' }
+    end
+
+    def restart_dhcpd_command
+      __data__.fetch(:restart_dhcpd_command) { 'systemctl restart dhcpd' }
+    end
   end
 end

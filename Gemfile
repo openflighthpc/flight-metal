@@ -33,13 +33,18 @@ git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
 
 gem 'activesupport'
 gem 'commander-openflighthpc'
-gem 'flight_config'
+# The experimental FlightRegistry code modifies FlightConfig. It should be moved
+# to this gem when stabilised
+gem 'flight_config', '0.1.0'
 gem 'rubyzip'
 gem 'pcap', github: 'alces-software/ruby-pcap'
 gem 'net-dhcp'
 gem 'highline'
 gem 'hashie'
+gem 'parallel'
 gem 'tty-markdown'
+gem 'tty-editor'
+gem 'nodeattr_utils'
 
 group :development do
   gem 'pp'

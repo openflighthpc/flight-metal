@@ -28,48 +28,74 @@
 #===============================================================================
 
 require 'flight_config'
+require 'flight_metal/registry'
+require 'flight_metal/models/cluster'
+require 'flight_metal/errors'
+require 'flight_metal/macs'
+require 'flight_metal/system_command'
 
 module FlightMetal
   module Models
     class Node
+      NodeLinks = Struct.new(:node) do
+        def cluster
+          read(Models::Cluster, node.cluster)
+        end
+
+        private
+
+        def read(klass, *a)
+          node.__registry__.read(klass, *a)
+        end
+      end
+
       include FlightConfig::Updater
       include FlightConfig::Globber
 
-      def self.flag(name, fetch: nil)
-        if fetch
-          if fetch.respond_to?(:call)
-            define_method(name) { fetch.call(__data__.fetch(name)) }
-          else
-            define_method(name) { __data__.fetch(name) }
-          end
-          define_method("#{name}?") { send(name) ? true : false }
-        else
-          define_method("#{name}?") { __data__.fetch(name) ? true : false }
-        end
-
-        define_method("#{name}=") do |value|
-          __data__.set("__#{name}_time__",  value: Time.now.to_i)
-          if value.nil?
-            __data__.delete(name)
-          else
-            __data__.set(name, value: value)
-          end
-        end
-
-        define_method(:"#{name}_time") do
-          Time.at(__data__.fetch("__#{name}_time__") || 0)
-        end
-      end
+      include FlightMetal::FlightConfigUtils
 
       attr_reader :cluster, :name
 
       flag :built
+      flag :rebuild
       flag :imported
-      flag :mac, fetch: true
+      flag :mac, set: ->(original_mac) do
+        original_mac.tap do |mac|
+          if mac.nil? || mac.empty?
+            next
+          elsif node = Macs.new(__registry__).find(mac)
+            raise InvalidModel, <<~ERROR.squish
+              Failed to update mac address '#{mac}' as it is already taken by:
+              node '#{node.name}' in cluster '#{node.cluster}'
+            ERROR
+          end
+        end
+      end
+
+      data_writer(:bmc_user)
+      data_writer(:bmc_password)
+      data_writer(:bmc_ip)
+
+      data_reader(:bmc_user) { links.cluster.bmc_user }
+      data_reader(:bmc_password) { links.cluster.bmc_password }
+
+      alias_method :bmc_username, :bmc_user
+      alias_method :bmc_username=, :bmc_user=
+
+      data_reader :bmc_ip
+
+      data_reader(:ip)
+      data_reader(:fqdn)
+      data_writer(:ip)
+      data_writer(:fqdn)
 
       def initialize(cluster, name)
         @cluster ||= cluster
         @name ||= name
+      end
+
+      def links
+        @models ||= NodeLinks.new(self)
       end
 
       def path
@@ -101,6 +127,34 @@ module FlightMetal
 
       def pxelinux_template_path
         File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
+      end
+
+      def pxelinux?
+        pxelinux_template? || pxelinux_cfg?
+      end
+
+      def kickstart?
+        kickstart_template? || kickstart_www?
+      end
+
+      def kickstart_www_path
+        File.join(Config.kickstart_dir, cluster, "#{name}.ks")
+      end
+
+      def kickstart_www?
+        File.exists? kickstart_www_path
+      end
+
+      def kickstart_template_path
+        File.join(template_dir, "#{name}.ks")
+      end
+
+      def kickstart_template?
+        File.exists? kickstart_template_path
+      end
+
+      def ipmi_opts
+        "-H #{name}.bmc -U #{bmc_user} -P #{bmc_password}"
       end
     end
   end

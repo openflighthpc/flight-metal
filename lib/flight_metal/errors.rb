@@ -31,9 +31,9 @@ module FlightMetal
   class FlightMetalError < StandardError; end
 
   class ImportError < FlightMetalError
-    def self.raise(name)
+    def self.raise(name, type: 'Node')
       Kernel.raise self, <<~ERROR
-        Node '#{name}' has already been imported
+        #{type} '#{name}' has already been imported
       ERROR
     end
   end
@@ -45,6 +45,12 @@ module FlightMetal
       super
     end
   end
+
+  class SystemCommandError < FlightMetalError; end
+  class InternalError < FlightMetalError; end
+  class InvalidInput < FlightMetalError; end
+
+  class InvalidModel < FlightMetalError; end
 end
 
 
