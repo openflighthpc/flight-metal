@@ -93,7 +93,7 @@ module FlightMetal
     end
 
     command 'create' do |c|
-      syntax(c, 'NODE PXELINUX_FILE KICKSTART_FILE')
+      syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
       c.description = <<~DESC
         Adds a new node to the current cluster with the given PXELINUX_FILE
@@ -103,13 +103,7 @@ module FlightMetal
         The bmc information is required to use the ipmi and power commands. The
         primary ip and hostname will be inferred using `gethostip`
       DESC
-      c.option '--bmc-username BMC_USERNAME', String,
-               'Set a different bmc username from the cluster default'
-      c.option '--bmc-password BMC_PASSWORD', String,
-               'Set a different bmc password from the cluster default'
-      c.option '--bmc-ip BMC_IP', String,
-               'Set the bmc ip address'
-      action(c, FlightMetal::Commands::CreateNode)
+      action(c, FlightMetal::Commands::Node, method: :create)
     end
 
     command 'edit' do |c|

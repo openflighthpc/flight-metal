@@ -45,8 +45,12 @@ module FlightMetal
       end
 
       def raise_unless_exit_0
-        return if code == 0
+        return if exit_0?
         raise SystemCommandError, verbose
+      end
+
+      def exit_0?
+        code == 0
       end
 
       def verbose
@@ -80,6 +84,10 @@ module FlightMetal
       string_args = args.flatten.map(&:shellescape).join(' ')
       run cmd: proc { |n| "ipmitool -I lanplus #{n.ipmi_opts} #{string_args}" },
           output: b
+    end
+
+    def fqdn_and_ip
+      run cmd: proc { |n| "gethostip -nd #{n.name.shellescape}" }
     end
   end
 end

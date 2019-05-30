@@ -82,6 +82,10 @@ module FlightMetal
       File.read(editor.escape_file)
     end
 
+    def edit_yaml(text)
+      YAML.safe_load(edit(text), symbolize_names: true)
+    end
+
     def markdown(text)
       TTY::Markdown.parse(render text)
     end

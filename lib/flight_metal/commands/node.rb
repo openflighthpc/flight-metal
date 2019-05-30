@@ -53,11 +53,8 @@ module FlightMetal
         <% if bmc_ip %>*BMC IP*: <%= bmc_ip %><% end %>
       ERB
 
-      MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password]
-      SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip]
-
-      EDIT_TEMPLATE = <<~ERB
-        # NOTE: Editing this file will update the state information of all the nodes.
+      HEADER_COMMENT = <<~DOC
+        # NOTE: Editing this file will set the state information of the node(s).
         # The following conventions are used when editing:
         #  > Fields will skip updating if:
         #    1. The field is deleted
@@ -65,6 +62,47 @@ module FlightMetal
         #  > Fields can be unset by passing an empty string (*when supported)
         #  > Use the --fields flag to edit in a non-interactive shell
         #  > Only the listed fields can be edited
+      DOC
+
+      MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password, :gateway_ip]
+      SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
+
+      CREATE_TEMPLATE = <<~ERB
+        #{HEADER_COMMENT}
+
+        # Set the primary network ip and fully qualified domain name. The
+        # pre-set values (if present) have been retrieved using `gethostip`.
+        # Only the cached values will be used to render the DHCP config
+        <%
+          output = FlightMetal::SystemCommand.new(self).fqdn_and_ip.first
+          sys_fqdn , sys_ip = if output.exit_0?
+                                output.split
+                              else
+                                ['null', 'null']
+                              end
+        -%>
+        ip: <%= sys_ip %>
+        fqdn: <%= sys_fqdn %>
+
+        # Set the management ip address to preform ipmi/power commands
+        bmc_ip: null
+
+        # The hardware address can optional be set now or with the 'hunt'
+        # command later
+        # mac: null
+
+        # Override the default bmc username/ password.
+        # Uncomment the fields to hard set the values:
+        # bmc_username: <%= nil_to_null links.cluster.bmc_user %>
+        # bmc_password: <%= nil_to_null links.cluster.bmc_password %>
+
+        # Sets the node to build when the mac address is set, edit with caution
+        rebuild: true
+        built: false
+      ERB
+
+      EDIT_TEMPLATE = <<~ERB
+        #{HEADER_COMMENT}
 
         # Trigger the node to rebuild next build:
         # > #{Config.app_name} build
@@ -95,9 +133,34 @@ module FlightMetal
       ERB
 
       command_require 'flight_metal/models/node',
-                      'flight_metal/templator'
+                      'flight_metal/templator',
+                      'flight_metal/system_command'
 
       include Concerns::NodeattrParser
+
+      def create(name, fields: nil)
+        Models::Node.create(Config.cluster, name) do |node|
+          data = Templator.new(node).edit_yaml(CREATE_TEMPLATE)
+          trim_data(node, data, SINGLE_EDITABLE).each do |k, v|
+            node.send("#{k}=", v)
+          end
+        end
+      end
+
+      def edit(nodes_str, fields: nil)
+        nodes = nodeattr_parser(nodes_str)
+        nodes.raise_if_missing
+        data = edit_data(nodes, fields)
+        if nodes.length == 1
+          trim = trim_data(nodes.first, data, SINGLE_EDITABLE)
+          update(nodes.first, trim)
+        else
+          nodes.each do |node|
+            trim = trim_data(node, data, MULTI_EDITABLE)
+            update(node, trim)
+          end
+        end
+      end
 
       def list
         md = Registry.new
@@ -108,44 +171,26 @@ module FlightMetal
         puts md
       end
 
-      def edit(nodes_str, fields: nil)
-        nodes = nodeattr_parser(nodes_str)
-        nodes.raise_if_missing
-        if nodes.length == 1
-          edit_single(nodes.first, fields)
-        else
-          edit_multiple(nodes, fields)
-        end
-      end
-
       private
 
-      def edit_single(node, fields)
-        values = read_edit_yaml(node, fields)
-        update_node(node, SINGLE_EDITABLE, values)
+      def edit_data(nodes, fields)
+        YAML.safe_load(fields) if fields
+        subject = (nodes.length == 1 ? nodes.first : nil)
+        Templator.new(subject).edit_yaml(EDIT_TEMPLATE)
       end
 
-      def edit_multiple(nodes, fields)
-        values = read_edit_yaml(nil, fields)
-        nodes.each { |n| update_node(n, MULTI_EDITABLE, values) }
-      end
-
-      def read_edit_yaml(subject, fields)
-        fields ||= Templator.new(subject).edit(EDIT_TEMPLATE)
-        YAML.safe_load(fields, symbolize_names: true)
-      end
-
-      def update_node(node, allowed_fields, hash)
-        hash = hash.reject do |key, value|
-          next true unless allowed_fields.include?(key)
+      def trim_data(node, data, whitelist)
+        data.reject do |key, value|
+          next true unless whitelist.include?(key)
           next true if value.nil?
           next true if node.send(key) == value
         end
-        return if hash.empty?
+      end
+
+      def update(node, data)
+        return if data.empty?
         Models::Node.update(Config.cluster, node.name) do |n|
-          hash.each do |key, value|
-            n.send("#{key}=", value)
-          end
+          data.each { |k, v| n.send("#{k}=", v) }
         end
       end
     end
