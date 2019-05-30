@@ -66,6 +66,7 @@ module FlightMetal
 
       MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password, :gateway_ip]
       SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
+      CREATE_EDITABLE = [*SINGLE_EDITABLE, :pxelinux_file, :kickstart_file]
 
       CREATE_TEMPLATE = <<~ERB
         #{HEADER_COMMENT}
@@ -121,12 +122,16 @@ module FlightMetal
             below are unsettable in a bulk edit as they need to unique
         -%>
         <% if __getobj__.is_a? FlightMetal::Templator::NilStruct -%>
-        # The hardware and bmc ip addresses can not be set using a bulk edit
+        # The addresses can not be set using a bulk edit
+        # ip: IGNORED
+        # fqdn: IGNORED
         # mac: IGNORED
         # bmc_ip: IGNORED
         <% else -%>
         # NOTE: The following can be unset with an empty string
         # Set the hardware address (mac) and the bmc ip address (bmc_ip)
+        ip: <%= nil_to_null(ip) %>
+        fqdn: <%= nil_to_null(fqdn) %>
         mac: <%= nil_to_null(mac) %>
         bmc_ip: <%= nil_to_null(bmc_ip) %>
         <% end -%>
@@ -140,8 +145,8 @@ module FlightMetal
 
       def create(name, fields: nil)
         Models::Node.create(Config.cluster, name) do |node|
-          data = Templator.new(node).edit_yaml(CREATE_TEMPLATE)
-          trim_data(node, data, SINGLE_EDITABLE).each do |k, v|
+          data = create_data(node, fields)
+          data.each do |k, v|
             node.send("#{k}=", v)
           end
         end
@@ -177,6 +182,16 @@ module FlightMetal
         YAML.safe_load(fields) if fields
         subject = (nodes.length == 1 ? nodes.first : nil)
         Templator.new(subject).edit_yaml(EDIT_TEMPLATE)
+      end
+
+      def create_data(node, fields)
+        templator = Templator.new(node)
+        data = if fields
+          templator.yaml(CREATE_TEMPLATE).merge(YAML.safe_load(fields))
+        else
+          templator.edit_yaml(CREATE_TEMPLATE)
+        end
+        trim_data(node, data, CREATE_EDITABLE)
       end
 
       def trim_data(node, data, whitelist)

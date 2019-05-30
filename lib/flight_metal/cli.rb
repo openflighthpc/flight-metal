@@ -37,7 +37,6 @@ require 'active_support/core_ext/string'
 require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
-require 'flight_metal/commands/create_node'
 require 'flight_metal/commands/dhcp'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
@@ -96,12 +95,15 @@ module FlightMetal
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
       c.description = <<~DESC
-        Adds a new node to the current cluster with the given PXELINUX_FILE
-        and KICKSTART_FILE. These files will be internally cached, along with
-        the other optional inputs.
+        Opens up the the NODE configuration in your system edittor. The
+        `pxelinux_file` and `kickstart_file` fields are required and must
+        specify the paths to the corresponding files.
 
-        The bmc information is required to use the ipmi and power commands. The
-        primary ip and hostname will be inferred using `gethostip`
+        All other fields are optional on create, but maybe required for the
+        advanced features to work. See the edittor notes for further details.
+
+        To create a node in a non-interactive shell, use the --fields flag
+        with JSON syntax.
       DESC
       action(c, FlightMetal::Commands::Node, method: :create)
     end

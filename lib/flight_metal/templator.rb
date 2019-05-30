@@ -86,6 +86,10 @@ module FlightMetal
       YAML.safe_load(edit(text), symbolize_names: true)
     end
 
+    def yaml(text)
+      YAML.safe_load(render(text), symbolize_names: true)
+    end
+
     def markdown(text)
       TTY::Markdown.parse(render text)
     end
