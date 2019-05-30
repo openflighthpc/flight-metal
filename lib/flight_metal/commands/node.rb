@@ -33,6 +33,16 @@ require 'flight_metal/commands/concerns/nodeattr_parser'
 module FlightMetal
   module Commands
     class Node < Command
+      class SysIPDelegator < SimpleDelegator
+        attr_reader :sys_ip, :sys_fqdn
+
+        def initialize(node, sys_fqdn = nil, sys_ip = nil)
+          super(node)
+          @sys_ip = sys_ip
+          @sys_fqdn = sys_fqdn
+        end
+      end
+
       LIST_TEMPLATE = <<~ERB
         # Node: '<%= name %>'
         *Imported*: <%= imported? ? imported_time : 'n/a' %>
@@ -44,13 +54,23 @@ module FlightMetal
         *Build*: <%= rebuild? ? 'Scheduled' : 'Skipping' %>
         <% end -%>
 
-        *IP*: <%= catch_error { ip } %>
-        *Domain Name*: <%= catch_error { fqdn } %>
+        *IP*: <%= ip %>
+        <% if ip && sys_ip.nil? -%>
+        __Warning__: The node IP does not appear in the hosts list
+        <% elsif ip != sys_ip -%>
+        __Warning__: The node IP is different in the hosts list: <%= sys_ip %>
+        <% end -%>
+        *Domain Name*: <%= fqdn %>
+        <% if fqdn && sys_fqdn.nil? -%>
+        __Warning__: The domain name does not appear in the hosts list
+        <% elsif fqdn != sys_fqdn -%>
+        __Warning__: The domain name is different in the hosts list: <%= sys_fqdn %>
+        <% end -%>
 
         <% if mac? %>*MAC*: <%= mac %><% end %>
         <% if bmc_username %>*BMC Username*: <%= bmc_username %><% end %>
         <% if bmc_password %>*BMC Password*: <%= bmc_password %><% end %>
-        <% if bmc_ip %>*BMC IP*: <%= bmc_ip %><% end %>
+        <% if bmc_ip %>*BMC fqdn*: <%= bmc_ip %><% end %>
       ERB
 
       HEADER_COMMENT = <<~DOC
@@ -192,11 +212,16 @@ module FlightMetal
       end
 
       def list
-        md = Registry.new
-                     .glob_read(Models::Node, Config.cluster, '*')
-                     .sort_by { |n| n.name }
-                     .map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
-                     .join
+        nodes = Registry.new
+                        .glob_read(Models::Node, Config.cluster, '*')
+                        .sort_by { |n| n.name }
+        outputs = SystemCommand.new(*nodes).fqdn_and_ip
+        sys_nodes = nodes.each_with_index
+                         .map do |node, idx|
+          SysIPDelegator.new(node, *outputs[idx].stdout.split)
+        end
+        md = sys_nodes.map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
+                      .join
         puts md
       end
 

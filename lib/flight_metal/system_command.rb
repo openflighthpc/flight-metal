@@ -29,6 +29,7 @@
 
 require 'flight_metal/errors'
 require 'open3'
+require 'parallel'
 
 module FlightMetal
   class SystemCommand
@@ -71,8 +72,8 @@ module FlightMetal
       @nodes = nodes.flatten
     end
 
-    def run(cmd:, output: nil)
-      nodes.map do |node|
+    def run(cmd:, output: nil, workers: 1)
+      Parallel.map(nodes, in_threads: workers) do |node|
         str_cmd = (cmd.respond_to?(:call) ? cmd.call(node) : cmd)
         CommandOutput.run(str_cmd).tap do |out|
           output.call(out) if output.respond_to?(:call)
@@ -87,7 +88,8 @@ module FlightMetal
     end
 
     def fqdn_and_ip
-      run cmd: proc { |n| "gethostip -nd #{n.name.shellescape}" }
+      run workers: nodes.length,
+          cmd: proc { |n| "gethostip -nd #{n.name.shellescape}" }
     end
   end
 end
