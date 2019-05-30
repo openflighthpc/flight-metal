@@ -32,7 +32,7 @@ module FlightMetal
     class Hunt
       PacketReader = Struct.new(:packet) do
         def message
-          @message ||= DHCP::Message.from_udp_payload(packet.udp_data, debug: false)
+          @message ||= ::DHCP::Message.from_udp_payload(packet.udp_data, debug: false)
         end
 
         def udp?
@@ -41,14 +41,14 @@ module FlightMetal
 
         def dhcp_discover?
           return false unless udp?
-          message.is_a?(DHCP::Discover)
+          message.is_a?(::DHCP::Discover)
         end
 
         def pxe_request?
           return false unless dhcp_discover?
-          Log.info 'Processing DHCP::Discover message options'
+          Log.info 'Processing ::DHCP::Discover message options'
           pxe = message.options.find do |opt|
-            next unless opt.is_a?(DHCP::VendorClassIDOption)
+            next unless opt.is_a?(::DHCP::VendorClassIDOption)
             vendor = opt.payload.pack('C*')
             /^PXEClient/.match?(vendor)
           end
