@@ -66,10 +66,16 @@ module FlightMetal
 
       MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password, :gateway_ip]
       SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
-      CREATE_EDITABLE = [*SINGLE_EDITABLE, :pxelinux_file, :kickstart_file]
 
       CREATE_TEMPLATE = <<~ERB
         #{HEADER_COMMENT}
+
+        # Give the paths to the pxelinux and kickstart files. These files are
+        # required for the build and must be given on create. The files will
+        # be internally cached, so future changes to the source files will not
+        # affect the build
+        pxelinux_file:
+        kickstart_file:
 
         # Set the primary network ip and fully qualified domain name. The
         # pre-set values (if present) have been retrieved using `gethostip`.
@@ -77,7 +83,7 @@ module FlightMetal
         <%
           output = FlightMetal::SystemCommand.new(self).fqdn_and_ip.first
           sys_fqdn , sys_ip = if output.exit_0?
-                                output.split
+                                output.stdout.split
                               else
                                 ['null', 'null']
                               end
@@ -146,8 +152,26 @@ module FlightMetal
       def create(name, fields: nil)
         Models::Node.create(Config.cluster, name) do |node|
           data = create_data(node, fields)
-          data.each do |k, v|
-            node.send("#{k}=", v)
+          pxelinux = data.delete(:pxelinux_file).to_s
+          kickstart = data.delete(:kickstart_file).to_s
+          if File.exists?(pxelinux) && File.exists?(kickstart)
+            trim_data(node, data, SINGLE_EDITABLE).each do |k, v|
+              node.send("#{k}=", v)
+            end
+            FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
+            FileUtils.cp pxelinux, node.pxelinux_template_path
+            FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
+            FileUtils.cp kickstart, node.kickstart_template_path
+          elsif File.exists?(pxelinux)
+            raise InvalidInput, <<~ERROR.squish
+              The `kickstart_file` input is either missing or the file doesn't
+              exist: #{kickstart}
+            ERROR
+          else
+            raise InvalidInput, <<~ERROR.squish
+              The `pxelinux_file` input is either missing or the file doesn't
+              exist: #{pxelinux}
+            ERROR
           end
         end
       end
@@ -186,12 +210,11 @@ module FlightMetal
 
       def create_data(node, fields)
         templator = Templator.new(node)
-        data = if fields
+        if fields
           templator.yaml(CREATE_TEMPLATE).merge(YAML.safe_load(fields))
         else
           templator.edit_yaml(CREATE_TEMPLATE)
         end
-        trim_data(node, data, CREATE_EDITABLE)
       end
 
       def trim_data(node, data, whitelist)
