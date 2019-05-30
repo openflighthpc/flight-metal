@@ -31,103 +31,47 @@
 module FlightMetal
   module Commands
     class Import
+      MANIFEST_PATH = 'kickstart/manifest.yaml'
 
       def initialize
         require 'zip'
         require 'pathname'
-        require 'ostruct'
-
-        require 'active_support/core_ext/module/delegation'
 
         require 'flight_metal/models/node'
-
         require 'flight_metal/errors'
+        require 'flight_metal/commands/node'
+
+        require 'tempfile'
       end
 
       def run(path)
         zip_path = Pathname.new(path).expand_path.sub_ext('.zip').to_s
-        Importer.extract(zip_path) do |importer|
-          begin
-            Models::Cluster.create_or_update(Config.cluster) do |c|
-              ImportError.raise(c.identifier, type: 'Cluster') if c.imported?
-              importer.domain.extract(c.template_dir)
-              c.imported = true
-            end
-            Log.info_puts "Imported cluster '#{Config.cluster}'"
-          rescue ImportError => e
-            Log.error_puts(e.message)
-          end
-
-          importer.nodes.each do |data|
-            begin
-              model = Models::Node.create_or_update(Config.cluster, data.name) do |node|
-                ImportError.raise("Node '#{node.name}'") if node.imported?
-                data.extract(node.template_dir)
-                node.imported = true
-                node.rebuild = true
-              end
-              Log.info_puts "Imported node '#{model.name}'"
-            rescue ImportError => e
-              Log.error_puts "Skipping: #{e.message}"
-            end
-          end
-        end
+        Zip::File.open(zip_path) { |z| run_zip(z) }
       end
 
-      Importer = Struct.new(:zip) do
-        module Extractor
-          def entries
-            @entries ||= []
-          end
+      private
 
-          def extract(dst_base)
-            entries.each do |entry|
-              dst = File.join(dst_base, entry.name.sub(base, ''))
-              FileUtils.mkdir_p(File.dirname(dst))
-              entry.extract(dst)
-            end
-          end
-        end
+      def run_zip(zip)
+        yaml = zip.read(zip.get_entry(MANIFEST_PATH))
+        data = YAML.safe_load(yaml)
+        data.each { |*a| add_node(zip, *a.first) }
+      end
 
-        DomainStruct = Struct.new(:base) do
-          include Extractor
-
-          def initialize
-            super('kickstart/domain/platform')
-          end
-        end
-
-        NodeStruct = Struct.new(:name, :base) do
-          include Extractor
-        end
-
-        DOMAIN_GLOB = 'kickstart/domain/platform/**/*'
-
-        NODE_GLOB = 'kickstart/node/*/platform/**/*'
-        NODE_REGEX = /\A(?<base>kickstart\/node\/(?<node>[^\/]+)\/platform)\/.*/
-
-        def self.extract(path)
-          Zip::File.open(path) do |f|
-            yield new(f) if block_given?
-          end
-        end
-
-        delegate_missing_to :zip
-
-        def domain
-          glob(DOMAIN_GLOB).each_with_object(DomainStruct.new) do |entry, memo|
-            memo.entries << entry
-          end
-        end
-
-        def nodes
-          glob(NODE_GLOB).each_with_object({}) do |entry, memo|
-            match = NODE_REGEX.match(entry.name)
-            node = match[:node].to_s
-            memo[node] ||= NodeStruct.new(node, match[:base])
-            memo[node].entries << entry
-          end.values
-        end
+      def add_node(zip, node, data)
+        tmp_ks = Tempfile.new(File.join(node.to_s, 'kickstart'))
+        tmp_pxe = Tempfile.new(File.join(node.to_s, 'pxelinux'))
+        tmp_ks.write zip.read(data['kickstart_file'])
+        data['kickstart_file'] = tmp_ks.path
+        tmp_pxe.write zip.read(data['pxelinux_file'])
+        data['pxelinux_file'] = tmp_pxe.path
+        Commands::Node.new.create(node.to_s, fields: YAML.dump(data))
+        Log.info_puts "Imported: #{node.to_s}"
+      rescue => e
+        Log.error_puts "Failed to import node: #{node.to_s}"
+        Log.error_puts e
+      ensure
+        tmp_ks.tap(&:close).tap(&:unlink)
+        tmp_pxe.tap(&:close).tap(&:unlink)
       end
     end
   end

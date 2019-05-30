@@ -203,7 +203,7 @@ module FlightMetal
       private
 
       def edit_data(nodes, fields)
-        YAML.safe_load(fields) if fields
+        return YAML.safe_load(fields, symbolize_names: true) if fields
         subject = (nodes.length == 1 ? nodes.first : nil)
         Templator.new(subject).edit_yaml(EDIT_TEMPLATE)
       end
@@ -211,7 +211,8 @@ module FlightMetal
       def create_data(node, fields)
         templator = Templator.new(node)
         if fields
-          templator.yaml(CREATE_TEMPLATE).merge(YAML.safe_load(fields))
+          templator.yaml(CREATE_TEMPLATE)
+                   .merge(YAML.safe_load(fields, symbolize_names: true))
         else
           templator.edit_yaml(CREATE_TEMPLATE)
         end
