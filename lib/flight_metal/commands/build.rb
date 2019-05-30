@@ -130,17 +130,8 @@ module FlightMetal
           build_files[n.name].each { |f| FileUtils.rm(f) }
           n.built = true
           n.rebuild = false
-          n.bmc_user = message.bmc_username if message.bmc_username
-          n.bmc_password = message.bmc_password if message.bmc_password
-          n.bmc_ip = message.bmc_ip if message.bmc_ip
         end
-        Log.info_puts <<~REPORT
-
-          Build Report:  #{node.name}
-          BMC Username:  #{node.bmc_user ? node.bmc_user : '-'}
-          BMC Passsword: #{node.bmc_password ? 'SET' : '-'}
-          BMC IP:        #{node.bmc_ip ? node.bmc_ip : '-'}
-        REPORT
+        Log.info_puts "Built: #{node.name}"
       end
     end
   end
