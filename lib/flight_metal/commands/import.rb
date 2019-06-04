@@ -61,8 +61,10 @@ module FlightMetal
         tmp_ks = Tempfile.new(File.join(node.to_s, 'kickstart'))
         tmp_pxe = Tempfile.new(File.join(node.to_s, 'pxelinux'))
         tmp_ks.write zip.read(data['kickstart_file'])
+        tmp_ks.flush
         data['kickstart_file'] = tmp_ks.path
         tmp_pxe.write zip.read(data['pxelinux_file'])
+        tmp_pxe.flush
         data['pxelinux_file'] = tmp_pxe.path
         Commands::Node.new.create(node.to_s, fields: YAML.dump(data))
         Log.info_puts "Imported: #{node.to_s}"
