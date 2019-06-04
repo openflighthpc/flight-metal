@@ -109,6 +109,7 @@ module FlightMetal
           else
             FileUtils.cp node.pxelinux_template_path,
                          node.pxelinux_cfg_path
+            FileUtils.chmod 0644, node.pxelinux_cfg_path
           end
           memo[node.name] = [node.pxelinux_cfg_path]
           if node.kickstart_www?
