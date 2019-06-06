@@ -37,9 +37,16 @@ module FlightMetal
     include Hashie::Extensions::Dash::Coercion
     include Hashie::Extensions::IndifferentAccess
 
-    def self.load(base)
-      path = File.join(base, 'manifest.yaml')
+    FILENAME = 'manifest.yaml'
+
+    def self.load(input_path)
+      path =  if /#{FILENAME}\Z/.match?(input_path)
+                input_path
+              else
+                File.join(input_path, FILENAME)
+              end
       data = YAML.safe_load(File.read(path)).to_h
+      data[:base] = File.dirname(path)
       Manifests::Base.new(data)
     end
   end
@@ -59,6 +66,7 @@ module FlightMetal
     class Node < Manifest
       property :name
       property :build_ip
+      property :fqdn
       property :gateway_ip
       property :bmc_ip
       property :bmc_username
@@ -72,6 +80,7 @@ module FlightMetal
     end
 
     class Base < Manifest
+      property :base, required: true
       property :domain, default: {}, coerce: Domain
       property :groups, default: [], coerce: Array[Group]
       property :nodes,  default: [], coerce: Array[Node]
