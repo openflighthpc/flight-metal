@@ -66,11 +66,13 @@ module FlightMetal
         <% elsif fqdn != sys_fqdn -%>
         __Warning__: The domain name is different in the hosts list: <%= sys_fqdn %>
         <% end -%>
+        *Gateway*: <%= gateway_ip %>
 
         <% if mac? %>*MAC*: <%= mac %><% end %>
         <% if bmc_username %>*BMC Username*: <%= bmc_username %><% end %>
         <% if bmc_password %>*BMC Password*: <%= bmc_password %><% end %>
         <% if bmc_ip %>*BMC fqdn*: <%= bmc_ip %><% end %>
+
       ERB
 
       HEADER_COMMENT = <<~DOC
@@ -118,10 +120,11 @@ module FlightMetal
         # command later
         # mac: null
 
-        # Override the default bmc username/ password.
+        # Override the default bmc username/ password and gateway ip.
         # Uncomment the fields to hard set the values:
         # bmc_username: <%= nil_to_null links.cluster.bmc_user %>
         # bmc_password: <%= nil_to_null links.cluster.bmc_password %>
+        # gateway_ip: <%= nil_to_null links.cluster.gateway_ip %>
 
         # Sets the node to build when the mac address is set, edit with caution
         rebuild: true
@@ -138,9 +141,10 @@ module FlightMetal
         # Flags the built state of the node
         built: <%= nil_to_null(built?) %>
 
-        # Set the bmc username and password
+        # Set the bmc username/ password and gateway ip
         bmc_username: <%= nil_to_null(bmc_user) %>
         bmc_password: <%= nil_to_null(bmc_password) %>
+        gateway_ip: <%= nil_to_null(gateway_ip) %>
 
         <%# DEV NOTE: A NilStruct is used when editing multiple nodes
             This works fine with the above properties as is renders to null,

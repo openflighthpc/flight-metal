@@ -58,6 +58,9 @@ module FlightMetal
       data_writer :bmc_user
       data_writer :bmc_password
 
+      data_reader :gateway_ip
+      data_writer :gateway_ip
+
       def template_dir
         File.join(Config.content_dir, 'clusters', identifier, 'var/templates')
       end

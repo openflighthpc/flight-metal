@@ -89,6 +89,9 @@ module FlightMetal
       data_writer(:ip)
       data_writer(:fqdn)
 
+      data_reader(:gateway_ip) { links.cluster.gateway_ip }
+      data_writer :gateway_ip
+
       def initialize(cluster, name)
         @cluster ||= cluster
         @name ||= name
