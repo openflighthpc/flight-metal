@@ -36,7 +36,9 @@ module FlightMetal
   class Manifest < Hashie::Trash
     include Hashie::Extensions::Dash::Coercion
     include Hashie::Extensions::IndifferentAccess
+  end
 
+  module Manifests
     FILENAME = 'manifest.yaml'
 
     def self.load(input_path)
@@ -49,9 +51,7 @@ module FlightMetal
       data[:base] = File.dirname(path)
       Manifests::Base.new(data)
     end
-  end
 
-  module Manifests
     class Domain < Manifest
       property :name
       property :bmc_username

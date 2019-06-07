@@ -43,7 +43,7 @@ module FlightMetal
       end
 
       def run(path)
-        manifest = Manifest.load(path)
+        manifest = Manifests.load(path)
         manifest.nodes.each { |node| add_node(manifest.base, node) }
       end
 
