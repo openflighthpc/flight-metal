@@ -49,7 +49,7 @@ module FlightMetal
       private
 
       def add_node(base, node_manifest)
-        Models::Node.from_manifest(node_manifest).create(Config.cluster)
+        Models::Node.from_manifest(base, node_manifest).create(Config.cluster)
         Log.info_puts "Imported: #{node_manifest.name}"
       rescue => e
         Log.error_puts "Failed to import node_manifest: #{node_manifest.name}"

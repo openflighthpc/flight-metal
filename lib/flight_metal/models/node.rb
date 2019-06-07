@@ -37,7 +37,7 @@ require 'flight_metal/system_command'
 module FlightMetal
   module Models
     class Node
-      ManifestAdapter = Struct.new(:manifest) do
+      ManifestAdapter = Struct.new(:base, :manifest) do
         def initialize(*a)
           super
           # NOTE: SystemCommand is meant to take a Models::Node NOT a Manifest
@@ -57,11 +57,21 @@ module FlightMetal
 
         def create(cluster)
           Models::Node.create(cluster, manifest.name) do |node|
+            store_templates(node)
             update_attributes(node)
           end
         end
 
         private
+
+        def store_templates(node)
+          FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
+          FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
+          FileUtils.cp  manifest.pxelinux.expand_path(base),
+                        node.pxelinux_template_path
+          FileUtils.cp  manifest.kickstart.expand_path(base),
+                        node.kickstart_template_path
+        end
 
         def update_attributes(node)
           node.ip = manifest.build_ip
@@ -90,8 +100,8 @@ module FlightMetal
 
       attr_reader :cluster, :name
 
-      def self.from_manifest(manifest)
-        ManifestAdapter.new(manifest)
+      def self.from_manifest(base, manifest)
+        ManifestAdapter.new(base, manifest)
       end
 
       flag :built
