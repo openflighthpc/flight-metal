@@ -27,7 +27,6 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-
 module FlightMetal
   module Commands
     class Import
@@ -49,20 +48,11 @@ module FlightMetal
 
       private
 
-      def add_node(base, node)
-        data = {
-          "ip" => node.build_ip,
-          "fqdn" => node.fqdn,
-          "bmc_ip" => node.bmc_ip,
-          "bmc_username" => node.bmc_username,
-          "bmc_password" => node.bmc_password,
-          "pxelinux_file" => node.pxelinux.expand_path(base).to_s,
-          "kickstart_file" => node.kickstart.expand_path(base).to_s
-        }
-        Commands::Node.new.create(node.name, fields: YAML.dump(data))
-        Log.info_puts "Imported: #{node.name}"
+      def add_node(base, node_manifest)
+        Models::Node.from_manifest(node_manifest).create(Config.cluster)
+        Log.info_puts "Imported: #{node_manifest.name}"
       rescue => e
-        Log.error_puts "Failed to import node: #{node.name}"
+        Log.error_puts "Failed to import node_manifest: #{node_manifest.name}"
         Log.error_puts e
       end
     end

@@ -37,6 +37,40 @@ require 'flight_metal/system_command'
 module FlightMetal
   module Models
     class Node
+      ManifestAdapter = Struct.new(:manifest) do
+        def initialize(*a)
+          super
+          # NOTE: SystemCommand is meant to take a Models::Node NOT a Manifest
+          # This is a bit of a hack, however as manifest responds to :name
+          # `fqdn_and_ip` still works. Consider refactoring
+          unless manifest.build_ip && manifest.fqdn
+            output = SystemCommand.new(input_manifest).fqdn_and_ip.first
+            fqdn, build_ip =  if output.exit_0?
+                                output.stdout.split
+                              else
+                                [nil, nil]
+                              end
+            manifest.fqdn ||= fqdn if fqdn
+            manifest.build_ip ||= build_ip if build_ip
+          end
+        end
+
+        def create(cluster)
+          Models::Node.create(cluster, manifest.name) do |node|
+            update_attributes(node)
+          end
+        end
+
+        private
+
+        def update_attributes(node)
+          node.ip = manifest.build_ip
+          [
+            :fqdn, :bmc_ip, :bmc_username, :bmc_password, :gateway_ip
+          ].each { |a| node.send("#{a}=", manifest.send(a)) }
+        end
+      end
+
       NodeLinks = Struct.new(:node) do
         def cluster
           read(Models::Cluster, node.cluster)
@@ -55,6 +89,10 @@ module FlightMetal
       include FlightMetal::FlightConfigUtils
 
       attr_reader :cluster, :name
+
+      def self.from_manifest(manifest)
+        ManifestAdapter.new(manifest)
+      end
 
       flag :built
       flag :rebuild
