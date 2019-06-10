@@ -127,7 +127,6 @@ module FlightMetal
 
       flag :built
       flag :rebuild
-      flag :imported
       flag :mac, set: ->(original_mac) do
         original_mac.tap do |mac|
           if mac.nil? || mac.empty?

@@ -45,7 +45,6 @@ module FlightMetal
 
       LIST_TEMPLATE = <<~ERB
         # Node: '<%= name %>'
-        *Imported*: <%= imported? ? imported_time : 'n/a' %>
         *Hunted*: <%= mac? ? mac_time : 'n/a' %>
         <% if built? -%>
         *Built*: <%= built_time %>
