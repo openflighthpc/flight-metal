@@ -90,14 +90,14 @@ module FlightMetal
         end
 
         def store_model_templates(node)
-          raise_unless_file('pxelinux', pxelinux)
-          raise_unless_file('kickstart', kickstart)
+          pxelinux_src = pxelinux.expand_path(base)
+          kickstart_src = kickstart.expand_path(base)
+          raise_unless_file('pxelinux', pxelinux_src)
+          raise_unless_file('kickstart', kickstart_src)
           FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
           FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
-          FileUtils.cp  pxelinux.expand_path(base),
-                        node.pxelinux_template_path
-          FileUtils.cp  kickstart.expand_path(base),
-                        node.kickstart_template_path
+          FileUtils.cp  pxelinux_src, node.pxelinux_template_path
+          FileUtils.cp  kickstart_src, node.kickstart_template_path
         end
 
         def raise_unless_file(name, path)
@@ -118,6 +118,10 @@ module FlightMetal
         def read(klass, *a)
           node.__registry__.read(klass, *a)
         end
+      end
+
+      def self.exists?(*a)
+        Pathname.new(new(*a).path).file?
       end
 
       def self.delete!(*a)

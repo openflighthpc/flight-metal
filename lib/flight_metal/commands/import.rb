@@ -41,9 +41,15 @@ module FlightMetal
         require 'flight_metal/manifest'
       end
 
-      def run(path)
+      def run(path, force: nil)
         manifest = Manifests.load(path)
-        manifest.nodes.each { |node| add_node(manifest.base, node) }
+        manifest.nodes.each do |node|
+          if Models::Node.exists?(Config.cluster, node.name) && force
+            Log.warn_puts "Removing old configuration for node: #{node.name}"
+            Models::Node.delete!(Config.cluster, node.name)
+          end
+          add_node(manifest.base, node)
+        end
       end
 
       private
