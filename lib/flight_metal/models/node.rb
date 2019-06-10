@@ -33,51 +33,62 @@ require 'flight_metal/models/cluster'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
+require 'flight_metal/manifest'
 
 module FlightMetal
   module Models
     class Node
-      ManifestAdapter = Struct.new(:base, :manifest) do
+      # The Builder class adds the additional fields
+      class Builder < Manifests::Node
+        property :base, default: -> { Dir.pwd }
+        property :rebuild, default: true
+        property :built, default:  false
+        property :cluster
+
+        # The following redefine methods on Manifests::Node, your usage may vary
+        property :name, default: ''
+
         def initialize(*a)
           super
-          # NOTE: SystemCommand is meant to take a Models::Node NOT a Manifest
+          # NOTE: SystemCommand is meant to take a Models::Node NOT a Manifest/Builder
           # This is a bit of a hack, however as manifest responds to :name
           # `fqdn_and_ip` still works. Consider refactoring
-          unless manifest.build_ip && manifest.fqdn
-            output = SystemCommand.new(input_manifest).fqdn_and_ip.first
+          unless build_ip && fqdn
+            output = SystemCommand.new(self).fqdn_and_ip.first
             fqdn, build_ip =  if output.exit_0?
                                 output.stdout.split
                               else
                                 [nil, nil]
                               end
-            manifest.fqdn ||= fqdn if fqdn
-            manifest.build_ip ||= build_ip if build_ip
+            self.fqdn ||= fqdn if fqdn
+            self.build_ip ||= build_ip if build_ip
           end
         end
 
-        def create(cluster)
-          Models::Node.create(cluster, manifest.name) do |node|
-            store_templates(node)
-            update_attributes(node)
+        def create
+          Models::Node.create(cluster, name) do |node|
+            store_model_templates(node)
+            update_model_attributes(node)
           end
         end
 
         private
 
-        def store_templates(node)
-          FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
-          FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
-          FileUtils.cp  manifest.pxelinux.expand_path(base),
-                        node.pxelinux_template_path
-          FileUtils.cp  manifest.kickstart.expand_path(base),
-                        node.kickstart_template_path
+        def update_model_attributes(node)
+          node.ip = build_ip
+          [
+            :fqdn, :bmc_ip, :bmc_username, :bmc_password, :gateway_ip,
+            :rebuild, :built
+          ].each { |a| node.send("#{a}=", self.send(a)) }
         end
 
-        def update_attributes(node)
-          node.ip = manifest.build_ip
-          [
-            :fqdn, :bmc_ip, :bmc_username, :bmc_password, :gateway_ip
-          ].each { |a| node.send("#{a}=", manifest.send(a)) }
+        def store_model_templates(node)
+          FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
+          FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
+          FileUtils.cp  pxelinux.expand_path(base),
+                        node.pxelinux_template_path
+          FileUtils.cp  kickstart.expand_path(base),
+                        node.kickstart_template_path
         end
       end
 
@@ -99,10 +110,6 @@ module FlightMetal
       include FlightMetal::FlightConfigUtils
 
       attr_reader :cluster, :name
-
-      def self.from_manifest(base, manifest)
-        ManifestAdapter.new(base, manifest)
-      end
 
       flag :built
       flag :rebuild
