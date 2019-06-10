@@ -209,6 +209,10 @@ module FlightMetal
         puts md
       end
 
+      def delete(name)
+        Models::Node.delete!(Config.cluster, name)
+      end
+
       private
 
       def edit_data(nodes, fields)

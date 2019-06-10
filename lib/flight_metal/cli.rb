@@ -108,6 +108,12 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :create)
     end
 
+    command 'delete' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'Remove the node and associated configurations'
+      action(c, FlightMetal::Commands::Node, method: :delete)
+    end
+
     command 'edit' do |c|
       syntax(c, 'NODE_RANGE')
       c.summary = 'Edit the properties of the node(s)'

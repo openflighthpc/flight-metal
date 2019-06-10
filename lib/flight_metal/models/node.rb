@@ -38,6 +38,8 @@ require 'flight_metal/manifest'
 module FlightMetal
   module Models
     class Node
+      include FlightConfig::Deleter
+
       # The Builder class adds the additional fields
       class Builder < Manifests::Node
         include Hashie::Extensions::IgnoreUndeclared
@@ -115,6 +117,14 @@ module FlightMetal
 
         def read(klass, *a)
           node.__registry__.read(klass, *a)
+        end
+      end
+
+      def self.delete!(*a)
+        delete(*a) do |node|
+          FileUtils.rm_f node.pxelinux_template_path
+          FileUtils.rm_f node.kickstart_template_path
+          true
         end
       end
 
