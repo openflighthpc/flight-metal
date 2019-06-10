@@ -47,7 +47,7 @@ module FlightMetal
         # Update the cluster configuration if force update
         if force
           Log.warn_puts 'Force updating cluster configuration'
-          Models::Cluster.update(Config.cluster) do |cluster|
+          Models::Cluster.update(current_cluster) do |cluster|
             man = manifest.domain
             cluster.gateway_ip = man.gateway_ip if man.gateway_ip
             cluster.bmc_username = man.bmc_username if man.bmc_username
@@ -55,9 +55,9 @@ module FlightMetal
           end
         end
         manifest.nodes.each do |node|
-          if Models::Node.exists?(Config.cluster, node.name) && force
+          if Models::Node.exists?(current_cluster, node.name) && force
             Log.warn_puts "Removing old configuration for node: #{node.name}"
-            Models::Node.delete!(Config.cluster, node.name)
+            Models::Node.delete!(current_cluster, node.name)
           end
           add_node(manifest.base, node)
         end
@@ -65,13 +65,18 @@ module FlightMetal
 
       private
 
+      def current_cluster(new_cluster = nil)
+        @current_cluster = new_cluster if new_cluster
+        @current_cluster ||= Config.cluster
+      end
+
       def registry
         @registry ||= Registry.new
       end
 
       def add_node(base, manifest)
         inputs = manifest.symbolize_keys
-                         .merge(cluster: Config.cluster, base: base, registry: registry)
+                         .merge(cluster: current_cluster, base: base, registry: registry)
         Models::Node::Builder.new(**inputs).create
         Log.info_puts "Imported: #{manifest.name}"
       rescue => e
