@@ -48,9 +48,13 @@ module FlightMetal
 
       private
 
+      def registry
+        @registry ||= Registry.new
+      end
+
       def add_node(base, manifest)
         inputs = manifest.symbolize_keys
-                         .merge(cluster: Config.cluster, base: base)
+                         .merge(cluster: Config.cluster, base: base, registry: registry)
         Models::Node::Builder.new(**inputs).create
         Log.info_puts "Imported: #{manifest.name}"
       rescue => e

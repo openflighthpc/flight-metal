@@ -40,13 +40,19 @@ module FlightMetal
     class Node
       # The Builder class adds the additional fields
       class Builder < Manifests::Node
+        include Hashie::Extensions::IgnoreUndeclared
+
+        property :registry, default: -> { Registry.new }
         property :base, default: -> { Dir.pwd }
         property :rebuild, default: true
         property :built, default:  false
         property :cluster
+        property :ip, from: :build_ip
 
         # The following redefine methods on Manifests::Node, your usage may vary
         property :name, default: ''
+        property :kickstart, default: -> { Pathname.new('') }, coerce: Pathname
+        property :pxelinux, default: -> { Pathname.new('') }, coerce: Pathname
 
         def initialize(*a)
           super
@@ -75,20 +81,28 @@ module FlightMetal
         private
 
         def update_model_attributes(node)
-          node.ip = build_ip
           [
-            :fqdn, :bmc_ip, :bmc_username, :bmc_password, :gateway_ip,
+            :ip, :fqdn, :bmc_ip, :bmc_username, :bmc_password, :gateway_ip,
             :rebuild, :built
           ].each { |a| node.send("#{a}=", self.send(a)) }
         end
 
         def store_model_templates(node)
+          raise_unless_file('pxelinux', pxelinux)
+          raise_unless_file('kickstart', kickstart)
           FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
           FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
           FileUtils.cp  pxelinux.expand_path(base),
                         node.pxelinux_template_path
           FileUtils.cp  kickstart.expand_path(base),
                         node.kickstart_template_path
+        end
+
+        def raise_unless_file(name, path)
+          return if path.file?
+          raise InvalidInput, <<~ERROR.chomp
+            The #{name} input is not a regular file: '#{path.to_s}'
+          ERROR
         end
       end
 
