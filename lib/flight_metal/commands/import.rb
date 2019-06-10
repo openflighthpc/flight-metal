@@ -35,6 +35,7 @@ module FlightMetal
       def initialize
         require 'pathname'
 
+        require 'flight_metal/models/cluster'
         require 'flight_metal/models/node'
         require 'flight_metal/errors'
         require 'flight_metal/commands/node'
@@ -43,6 +44,16 @@ module FlightMetal
 
       def run(path, force: nil)
         manifest = Manifests.load(path)
+        # Update the cluster configuration if force update
+        if force
+          Log.warn_puts 'Force updating cluster configuration'
+          Models::Cluster.update(Config.cluster) do |cluster|
+            man = manifest.domain
+            cluster.gateway_ip = man.gateway_ip if man.gateway_ip
+            cluster.bmc_username = man.bmc_username if man.bmc_username
+            cluster.bmc_password = man.bmc_password if man.bmc_password
+          end
+        end
         manifest.nodes.each do |node|
           if Models::Node.exists?(Config.cluster, node.name) && force
             Log.warn_puts "Removing old configuration for node: #{node.name}"
