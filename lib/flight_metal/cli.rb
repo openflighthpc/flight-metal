@@ -134,6 +134,19 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :edit)
     end
 
+    command 'edit-cluster' do |c|
+      syntax(c)
+      c.summary = 'Update the current cluster configuration'
+      c.description = <<~DESC
+        Opens the current cluster configuration in and edittor to be updated.
+        See the edittor comments for a description of the edittable fields.
+
+        The edittor can be bypassed by using the --fields flag instead.
+      DESC
+      c.option '--fields JSON', 'The updated fields to be saved'
+      action(c, FlightMetal::Commands::Cluster, method: :edit)
+    end
+
     command 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'
