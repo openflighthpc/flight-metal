@@ -39,7 +39,7 @@ module FlightMetal
       host <%= name %> {
         hardware ethernet <%= mac %>;
         option host-name "<%= fqdn %>";
-      <%# option routers GATEWAY_IP;  -- TODO: Workout how to do gateways -%>
+        option routers <%= gateway_ip %>;
         fixed-address <%= ip %>;
       }
       ERB
