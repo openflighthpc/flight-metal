@@ -33,10 +33,81 @@ require 'flight_metal/models/cluster'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
+require 'flight_metal/manifest'
 
 module FlightMetal
   module Models
     class Node
+      include FlightConfig::Deleter
+
+      # The Builder class adds the additional fields
+      class Builder < Manifests::Node
+        include Hashie::Extensions::IgnoreUndeclared
+
+        property :registry, default: -> { Registry.new }
+        property :base, default: -> { Dir.pwd }
+        property :rebuild, default: true
+        property :built, default:  false
+        property :cluster
+        property :ip, from: :build_ip
+
+        # The following redefine methods on Manifests::Node, your usage may vary
+        property :name, default: ''
+        property :kickstart, default: -> { Pathname.new('') }, coerce: Pathname
+        property :pxelinux, default: -> { Pathname.new('') }, coerce: Pathname
+
+        def initialize(*a)
+          super
+          # NOTE: SystemCommand is meant to take a Models::Node NOT a Manifest/Builder
+          # This is a bit of a hack, however as manifest responds to :name
+          # `fqdn_and_ip` still works. Consider refactoring
+          unless build_ip && fqdn
+            output = SystemCommand.new(self).fqdn_and_ip.first
+            fqdn, build_ip =  if output.exit_0?
+                                output.stdout.split
+                              else
+                                [nil, nil]
+                              end
+            self.fqdn ||= fqdn if fqdn
+            self.build_ip ||= build_ip if build_ip
+          end
+        end
+
+        def create
+          Models::Node.create(cluster, name) do |node|
+            store_model_templates(node)
+            update_model_attributes(node)
+          end
+        end
+
+        private
+
+        def update_model_attributes(node)
+          [
+            :ip, :fqdn, :bmc_ip, :bmc_username, :bmc_password, :gateway_ip,
+            :rebuild, :built
+          ].each { |a| node.send("#{a}=", self.send(a)) }
+        end
+
+        def store_model_templates(node)
+          pxelinux_src = pxelinux.expand_path(base)
+          kickstart_src = kickstart.expand_path(base)
+          raise_unless_file('pxelinux', pxelinux_src)
+          raise_unless_file('kickstart', kickstart_src)
+          FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
+          FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
+          FileUtils.cp  pxelinux_src, node.pxelinux_template_path
+          FileUtils.cp  kickstart_src, node.kickstart_template_path
+        end
+
+        def raise_unless_file(name, path)
+          return if path.file?
+          raise InvalidInput, <<~ERROR.chomp
+            The #{name} input is not a regular file: '#{path.to_s}'
+          ERROR
+        end
+      end
+
       NodeLinks = Struct.new(:node) do
         def cluster
           read(Models::Cluster, node.cluster)
@@ -49,6 +120,18 @@ module FlightMetal
         end
       end
 
+      def self.exists?(*a)
+        Pathname.new(new(*a).path).file?
+      end
+
+      def self.delete!(*a)
+        delete(*a) do |node|
+          FileUtils.rm_f node.pxelinux_template_path
+          FileUtils.rm_f node.kickstart_template_path
+          true
+        end
+      end
+
       include FlightConfig::Updater
       include FlightConfig::Globber
 
@@ -58,7 +141,6 @@ module FlightMetal
 
       flag :built
       flag :rebuild
-      flag :imported
       flag :mac, set: ->(original_mac) do
         original_mac.tap do |mac|
           if mac.nil? || mac.empty?
@@ -88,6 +170,9 @@ module FlightMetal
       data_reader(:fqdn)
       data_writer(:ip)
       data_writer(:fqdn)
+
+      data_reader(:gateway_ip) { links.cluster.gateway_ip }
+      data_writer :gateway_ip
 
       def initialize(cluster, name)
         @cluster ||= cluster

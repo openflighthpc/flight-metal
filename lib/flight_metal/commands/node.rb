@@ -45,7 +45,6 @@ module FlightMetal
 
       LIST_TEMPLATE = <<~ERB
         # Node: '<%= name %>'
-        *Imported*: <%= imported? ? imported_time : 'n/a' %>
         *Hunted*: <%= mac? ? mac_time : 'n/a' %>
         <% if built? -%>
         *Built*: <%= built_time %>
@@ -66,11 +65,13 @@ module FlightMetal
         <% elsif fqdn != sys_fqdn -%>
         __Warning__: The domain name is different in the hosts list: <%= sys_fqdn %>
         <% end -%>
+        *Gateway*: <%= gateway_ip %>
 
         <% if mac? %>*MAC*: <%= mac %><% end %>
         <% if bmc_username %>*BMC Username*: <%= bmc_username %><% end %>
         <% if bmc_password %>*BMC Password*: <%= bmc_password %><% end %>
         <% if bmc_ip %>*BMC fqdn*: <%= bmc_ip %><% end %>
+
       ERB
 
       HEADER_COMMENT = <<~DOC
@@ -87,6 +88,8 @@ module FlightMetal
       MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password, :gateway_ip]
       SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
 
+      # NOTE: This template is rendered against the Models::Node::Builder so
+      # the syntax will vary slightly
       CREATE_TEMPLATE = <<~ERB
         #{HEADER_COMMENT}
 
@@ -94,38 +97,32 @@ module FlightMetal
         # required for the build and must be given on create. The files will
         # be internally cached, so future changes to the source files will not
         # affect the build
-        pxelinux_file:
-        kickstart_file:
+        pxelinux: <%= pxelinux if pxelinux %>
+        kickstart: <%= kickstart if kickstart %>
 
         # Set the primary network ip and fully qualified domain name. The
         # pre-set values (if present) have been retrieved using `gethostip`.
         # Only the cached values will be used to render the DHCP config
-        <%
-          output = FlightMetal::SystemCommand.new(self).fqdn_and_ip.first
-          sys_fqdn , sys_ip = if output.exit_0?
-                                output.stdout.split
-                              else
-                                ['null', 'null']
-                              end
-        -%>
-        ip: <%= sys_ip %>
-        fqdn: <%= sys_fqdn %>
+        ip: <%= nil_to_null ip %>
+        fqdn: <%= nil_to_null fqdn %>
 
         # Set the management ip address to preform ipmi/power commands
-        bmc_ip: null
+        bmc_ip: <%= nil_to_null bmc_ip %>
 
         # The hardware address can optional be set now or with the 'hunt'
         # command later
         # mac: null
 
-        # Override the default bmc username/ password.
+        <% cluster_model = registry.read(FlightMetal::Models::Cluster, cluster) -%>
+        # Override the default bmc username/ password and gateway ip.
         # Uncomment the fields to hard set the values:
-        # bmc_username: <%= nil_to_null links.cluster.bmc_user %>
-        # bmc_password: <%= nil_to_null links.cluster.bmc_password %>
+        # bmc_username: <%= nil_to_null cluster_model.bmc_user %>
+        # bmc_password: <%= nil_to_null cluster_model.bmc_password %>
+        # gateway_ip: <%= nil_to_null cluster_model.gateway_ip %>
 
         # Sets the node to build when the mac address is set, edit with caution
-        rebuild: true
-        built: false
+        rebuild: <%= rebuild %>
+        built: <%= built %>
       ERB
 
       EDIT_TEMPLATE = <<~ERB
@@ -138,9 +135,10 @@ module FlightMetal
         # Flags the built state of the node
         built: <%= nil_to_null(built?) %>
 
-        # Set the bmc username and password
+        # Set the bmc username/ password and gateway ip
         bmc_username: <%= nil_to_null(bmc_user) %>
         bmc_password: <%= nil_to_null(bmc_password) %>
+        gateway_ip: <%= nil_to_null(gateway_ip) %>
 
         <%# DEV NOTE: A NilStruct is used when editing multiple nodes
             This works fine with the above properties as is renders to null,
@@ -170,30 +168,16 @@ module FlightMetal
       include Concerns::NodeattrParser
 
       def create(name, fields: nil)
-        Models::Node.create(Config.cluster, name) do |node|
-          data = create_data(node, fields)
-          pxelinux = data.delete(:pxelinux_file).to_s
-          kickstart = data.delete(:kickstart_file).to_s
-          if File.exists?(pxelinux) && File.exists?(kickstart)
-            trim_data(node, data, SINGLE_EDITABLE).each do |k, v|
-              node.send("#{k}=", v)
-            end
-            FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
-            FileUtils.cp pxelinux, node.pxelinux_template_path
-            FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
-            FileUtils.cp kickstart, node.kickstart_template_path
-          elsif File.exists?(pxelinux)
-            raise InvalidInput, <<~ERROR.squish
-              The `kickstart_file` input is either missing or the file doesn't
-              exist: #{kickstart}
-            ERROR
-          else
-            raise InvalidInput, <<~ERROR.squish
-              The `pxelinux_file` input is either missing or the file doesn't
-              exist: #{pxelinux}
-            ERROR
-          end
+        builder = Models::Node::Builder.new(cluster: Config.cluster, name: name)
+        new_data = if fields
+          YAML.safe_load(fields, symbolize_names: true)
+        else
+          Templator.new(builder).edit_yaml(CREATE_TEMPLATE)
         end
+        new_data.reject! do |key, value|
+          builder[key] == value || value.nil?
+        end
+        builder.merge!(new_data).create
       end
 
       def edit(nodes_str, fields: nil)
@@ -225,22 +209,16 @@ module FlightMetal
         puts md
       end
 
+      def delete(name)
+        Models::Node.delete!(Config.cluster, name)
+      end
+
       private
 
       def edit_data(nodes, fields)
         return YAML.safe_load(fields, symbolize_names: true) if fields
         subject = (nodes.length == 1 ? nodes.first : nil)
         Templator.new(subject).edit_yaml(EDIT_TEMPLATE)
-      end
-
-      def create_data(node, fields)
-        templator = Templator.new(node)
-        if fields
-          templator.yaml(CREATE_TEMPLATE)
-                   .merge(YAML.safe_load(fields, symbolize_names: true))
-        else
-          templator.edit_yaml(CREATE_TEMPLATE)
-        end
       end
 
       def trim_data(node, data, whitelist)

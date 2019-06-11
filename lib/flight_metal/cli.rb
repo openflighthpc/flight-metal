@@ -95,17 +95,23 @@ module FlightMetal
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
       c.description = <<~DESC
-        Opens up the the NODE configuration in your system edittor. The
+        Opens up the NODE configuration in your system editor. The
         `pxelinux_file` and `kickstart_file` fields are required and must
         specify the paths to the corresponding files.
 
         All other fields are optional on create, but maybe required for the
-        advanced features to work. See the edittor notes for further details.
+        advanced features to work. See the editor notes for further details.
 
         To create a node in a non-interactive shell, use the --fields flag
         with JSON syntax.
       DESC
       action(c, FlightMetal::Commands::Node, method: :create)
+    end
+
+    command 'delete' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'Remove the node and associated configurations'
+      action(c, FlightMetal::Commands::Node, method: :delete)
     end
 
     command 'edit' do |c|
@@ -117,7 +123,7 @@ module FlightMetal
         built state and address information for a single or multiple nodes.
 
         By default the command will open the editable fields in your system
-        edittor. Refer to this document for a full list of fields that can
+        editor. Refer to this document for a full list of fields that can
         be edited.
 
         Alternatively, the update values can be given using json syntax with
@@ -126,6 +132,19 @@ module FlightMetal
       DESC
       c.option '--fields JSON', 'The updated fields to be saved'
       action(c, FlightMetal::Commands::Node, method: :edit)
+    end
+
+    command 'edit-cluster' do |c|
+      syntax(c)
+      c.summary = 'Update the current cluster configuration'
+      c.description = <<~DESC
+        Opens the current cluster configuration in and editor to be updated.
+        See the editor comments for a description of the edittable fields.
+
+        The editor can be bypassed by using the --fields flag instead.
+      DESC
+      c.option '--fields JSON', 'The updated fields to be saved'
+      action(c, FlightMetal::Commands::Cluster, method: :edit)
     end
 
     command 'hunt' do |c|
@@ -139,7 +158,17 @@ module FlightMetal
       c.summary = 'Add node configuration profiles'
       c.description = <<~DESC
         Add node configuration profiles from a flight-architect output zip.
+        The --force flag can be used to update the cluster configuration or
+        existing nodes.
+
+        The --init flag will create and switch to a new cluster before
+        preforming a full import. By default the command will error if the
+        cluster already exists. However the exists check will be ignored
+        if used with the --force flag.
       DESC
+      c.option '-i', '--init CLUSTER', String,
+               'Create and import into a new CLUSTER'
+      c.option '-f', '--force', 'Force replace existing configuration'
       action(c, FlightMetal::Commands::Import)
     end
 
@@ -168,12 +197,14 @@ module FlightMetal
     end
 
     command 'init-cluster' do |c|
-      syntax(c, 'IDENTIFIER BMC_USERNAME BMC_PASSWORD')
+      syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
       c.description = <<~DESC
-        Create and switch to the new cluster IDENTIFIER. The BMC_USERNAME and
-        BMC_PASSWORD become the defaults for the entire cluster
+        Create and switch to the new cluster IDENTIFIER. The fields form will
+        be opened in the system editor. The form can be bypassed by using the
+        --fields input.
       DESC
+      c.option '--fields JSON', 'The cluster fields to be saved'
       action(c, FlightMetal::Commands::Cluster, method: :init)
     end
 

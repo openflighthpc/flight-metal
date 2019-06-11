@@ -58,6 +58,15 @@ module FlightMetal
       data_writer :bmc_user
       data_writer :bmc_password
 
+      data_reader :gateway_ip
+      data_writer :gateway_ip
+
+      def set_from_manifest(man)
+        self.bmc_user = man.bmc_username unless man.bmc_username.nil?
+        self.bmc_password = man.bmc_password unless man.bmc_password.nil?
+        self.gateway_ip = man.gateway_ip unless man.gateway_ip.nil?
+      end
+
       def template_dir
         File.join(Config.content_dir, 'clusters', identifier, 'var/templates')
       end

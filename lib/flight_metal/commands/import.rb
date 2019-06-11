@@ -27,53 +27,69 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-
 module FlightMetal
   module Commands
     class Import
       MANIFEST_PATH = 'kickstart/manifest.yaml'
 
       def initialize
-        require 'zip'
         require 'pathname'
 
+        require 'flight_metal/models/cluster'
         require 'flight_metal/models/node'
         require 'flight_metal/errors'
         require 'flight_metal/commands/node'
-
-        require 'tempfile'
+        require 'flight_metal/manifest'
       end
 
-      def run(path)
-        zip_path = Pathname.new(path).expand_path.sub_ext('.zip').to_s
-        Zip::File.open(zip_path) { |z| run_zip(z) }
+      def run(path, force: nil, init: nil)
+        manifest = Manifests.load(path)
+        # Update the cluster configuration
+        if init || force
+          identifier = init || current_cluster
+          method = force ? :create_or_update : :create
+          if force
+            Log.warn_puts "Force updating cluster: #{identifier}"
+          else
+            Log.info_puts "Creating cluster: #{identifier}"
+          end
+          cluster = Models::Cluster.send(method, identifier) do |c|
+            c.set_from_manifest(manifest.domain)
+          end
+          if init
+            Log.info_puts "Switched to cluster: #{identifier}"
+            Config.update { |c| c.cluster = cluster.identifier }
+            Config.reset
+          end
+        end
+        manifest.nodes.each do |node|
+          if Models::Node.exists?(current_cluster, node.name) && force
+            Log.warn_puts "Removing old configuration for: #{node.name}"
+            Models::Node.delete!(current_cluster, node.name)
+          end
+          add_node(manifest.base, node)
+        end
       end
 
       private
 
-      def run_zip(zip)
-        yaml = zip.read(zip.get_entry(MANIFEST_PATH))
-        data = YAML.safe_load(yaml)
-        data.each { |*a| add_node(zip, *a.first) }
+      def current_cluster(new_cluster = nil)
+        @current_cluster = new_cluster if new_cluster
+        @current_cluster ||= Config.cluster
       end
 
-      def add_node(zip, node, data)
-        tmp_ks = Tempfile.new(File.join(node.to_s, 'kickstart'))
-        tmp_pxe = Tempfile.new(File.join(node.to_s, 'pxelinux'))
-        tmp_ks.write zip.read(data['kickstart_file'])
-        tmp_ks.flush
-        data['kickstart_file'] = tmp_ks.path
-        tmp_pxe.write zip.read(data['pxelinux_file'])
-        tmp_pxe.flush
-        data['pxelinux_file'] = tmp_pxe.path
-        Commands::Node.new.create(node.to_s, fields: YAML.dump(data))
-        Log.info_puts "Imported: #{node.to_s}"
+      def registry
+        @registry ||= Registry.new
+      end
+
+      def add_node(base, manifest)
+        inputs = manifest.symbolize_keys
+                         .merge(cluster: current_cluster, base: base, registry: registry)
+        Models::Node::Builder.new(**inputs).create
+        Log.info_puts "Imported: #{manifest.name}"
       rescue => e
-        Log.error_puts "Failed to import node: #{node.to_s}"
+        Log.error_puts "Failed to import node_manifest: #{manifest.name}"
         Log.error_puts e
-      ensure
-        tmp_ks.tap(&:close).tap(&:unlink)
-        tmp_pxe.tap(&:close).tap(&:unlink)
       end
     end
   end
