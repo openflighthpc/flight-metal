@@ -95,12 +95,12 @@ module FlightMetal
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
       c.description = <<~DESC
-        Opens up the the NODE configuration in your system edittor. The
+        Opens up the NODE configuration in your system editor. The
         `pxelinux_file` and `kickstart_file` fields are required and must
         specify the paths to the corresponding files.
 
         All other fields are optional on create, but maybe required for the
-        advanced features to work. See the edittor notes for further details.
+        advanced features to work. See the editor notes for further details.
 
         To create a node in a non-interactive shell, use the --fields flag
         with JSON syntax.
@@ -123,7 +123,7 @@ module FlightMetal
         built state and address information for a single or multiple nodes.
 
         By default the command will open the editable fields in your system
-        edittor. Refer to this document for a full list of fields that can
+        editor. Refer to this document for a full list of fields that can
         be edited.
 
         Alternatively, the update values can be given using json syntax with
@@ -138,10 +138,10 @@ module FlightMetal
       syntax(c)
       c.summary = 'Update the current cluster configuration'
       c.description = <<~DESC
-        Opens the current cluster configuration in and edittor to be updated.
-        See the edittor comments for a description of the edittable fields.
+        Opens the current cluster configuration in and editor to be updated.
+        See the editor comments for a description of the edittable fields.
 
-        The edittor can be bypassed by using the --fields flag instead.
+        The editor can be bypassed by using the --fields flag instead.
       DESC
       c.option '--fields JSON', 'The updated fields to be saved'
       action(c, FlightMetal::Commands::Cluster, method: :edit)
@@ -201,7 +201,7 @@ module FlightMetal
       c.summary = 'Create a new cluster profile'
       c.description = <<~DESC
         Create and switch to the new cluster IDENTIFIER. The fields form will
-        be opened in the system edittor. The form can be bypassed by using the
+        be opened in the system editor. The form can be bypassed by using the
         --fields input.
       DESC
       c.option '--fields JSON', 'The cluster fields to be saved'
