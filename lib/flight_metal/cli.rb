@@ -158,6 +158,13 @@ module FlightMetal
       c.summary = 'Add node configuration profiles'
       c.description = <<~DESC
         Add node configuration profiles from a flight-architect output zip.
+        The --force flag can be used to update the cluster configuration or
+        existing nodes.
+
+        The --init flag will create and switch to a new cluster before
+        preforming a full import. By default the command will error if the
+        cluster already exists. However the exists check will be ignored
+        if used with the --force flag.
       DESC
       c.option '-i', '--init CLUSTER', String,
                'Create and import into a new CLUSTER'

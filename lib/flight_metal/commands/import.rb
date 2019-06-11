@@ -44,18 +44,22 @@ module FlightMetal
 
       def run(path, force: nil, init: nil)
         manifest = Manifests.load(path)
-        if init
-        # Update the cluster configuration if force update
-          cluster = Models::Cluster.create(init) do |c|
+        # Update the cluster configuration
+        if init || force
+          identifier = init || current_cluster
+          method = force ? :create_or_update : :create
+          if force
+            Log.warn_puts "Force updating cluster: #{identifier}"
+          else
+            Log.info_puts "Creating cluster: #{identifier}"
+          end
+          cluster = Models::Cluster.send(method, identifier) do |c|
             c.set_from_manifest(manifest.domain)
           end
-          Log.info_puts "Created and switched to cluster: #{cluster.identifier}"
-          Config.create_or_update { |c| c.cluster = cluster.identifier }
-          Config.reset
-        elsif force
-          Log.warn_puts 'Force updating cluster configuration'
-          Models::Cluster.update(current_cluster) do |c|
-            c.set_from_manifest(manifest.domain)
+          if init
+            Log.info_puts "Switched to cluster: #{identifier}"
+            Config.update { |c| c.cluster = cluster.identifier }
+            Config.reset
           end
         end
         manifest.nodes.each do |node|
