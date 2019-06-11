@@ -42,6 +42,10 @@ module FlightMetal
         @cache ||= self.read
       end
 
+      def reset
+        @cache = nil
+      end
+
       delegate_missing_to :cache
     end
 

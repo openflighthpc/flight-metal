@@ -42,21 +42,25 @@ module FlightMetal
         require 'flight_metal/manifest'
       end
 
-      def run(path, force: nil)
+      def run(path, force: nil, init: nil)
         manifest = Manifests.load(path)
+        if init
         # Update the cluster configuration if force update
-        if force
+          cluster = Models::Cluster.create(init) do |c|
+            c.set_from_manifest(manifest.domain)
+          end
+          Log.info_puts "Created and switched to cluster: #{cluster.identifier}"
+          Config.create_or_update { |c| c.cluster = cluster.identifier }
+          Config.reset
+        elsif force
           Log.warn_puts 'Force updating cluster configuration'
-          Models::Cluster.update(current_cluster) do |cluster|
-            man = manifest.domain
-            cluster.gateway_ip = man.gateway_ip if man.gateway_ip
-            cluster.bmc_username = man.bmc_username if man.bmc_username
-            cluster.bmc_password = man.bmc_password if man.bmc_password
+          Models::Cluster.update(current_cluster) do |c|
+            c.set_from_manifest(manifest.domain)
           end
         end
         manifest.nodes.each do |node|
           if Models::Node.exists?(current_cluster, node.name) && force
-            Log.warn_puts "Removing old configuration for node: #{node.name}"
+            Log.warn_puts "Removing old configuration for: #{node.name}"
             Models::Node.delete!(current_cluster, node.name)
           end
           add_node(manifest.base, node)

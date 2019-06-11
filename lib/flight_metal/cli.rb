@@ -146,6 +146,8 @@ module FlightMetal
       c.description = <<~DESC
         Add node configuration profiles from a flight-architect output zip.
       DESC
+      c.option '-i', '--init CLUSTER', String,
+               'Create and import into a new CLUSTER'
       c.option '-f', '--force', 'Force replace existing configuration'
       action(c, FlightMetal::Commands::Import)
     end
