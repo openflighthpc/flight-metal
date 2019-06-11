@@ -30,19 +30,39 @@
 module FlightMetal
   module Commands
     class Cluster
+      TEMPLATE = <<~ERB
+        # NOTE: Editing this file will set the state information of the cluster
+        # The following conventions are used when editing:
+        #  > Fields will skip updating if:
+        #    1. The field is deleted
+        #    2. The value is set to null
+        #  > Fields can be unset by passing an empty string (*when supported)
+        #  > Use the --fields flag to edit in a non-interactive shell
+        #  > Only the listed fields can be edited
+
+        # NOTE: When using the --fields flag, the attributes will not be
+        # pre-populated. All attributes need to manually set.
+
+        # Set the default bmc username/password and gateway ip. For the cluster
+        # All the nodes in the cluster will default to this value unless overridden
+        bmc_username: <%= nil_to_null bmc_user %>
+        bmc_password: <%= nil_to_null bmc_password %>
+        gateway_ip: <%= nil_to_null gateway_ip %>
+      ERB
+
       def initialize
         require 'flight_metal/models/cluster'
         require 'flight_metal/templator'
         require 'flight_metal/manifest'
       end
 
-      def init(identifier, bmc_user, bmc_password)
+      def init(identifier, fields: nil)
         cluster = Models::Cluster.create(identifier) do |c|
-          c.bmc_user = bmc_user
-          c.bmc_password = bmc_password
+          update_cluster_fields(c, fields)
         end
 
         Config.create_or_update { |c| c.cluster = cluster.identifier }
+        Config.reset
         puts "Created cluster: #{cluster.identifier}"
       end
 
@@ -62,33 +82,22 @@ module FlightMetal
         puts "Switched cluster: #{cluster.identifier}"
       end
 
-      HEADER_COMMENT = <<~DOC
-        # NOTE: Editing this file will set the state information of the cluster
-        # The following conventions are used when editing:
-        #  > Fields will skip updating if:
-        #    1. The field is deleted
-        #    2. The value is set to null
-        #  > Fields can be unset by passing an empty string (*when supported)
-        #  > Use the --fields flag to edit in a non-interactive shell
-        #  > Only the listed fields can be edited
-
-        # Set the default bmc username/password and gateway ip. For the cluster
-        # All the nodes in the cluster will default to this value unless overridden
-        bmc_username: <%= nil_to_null bmc_user %>
-        bmc_password: <%= nil_to_null bmc_password %>
-        gateway_ip: <%= nil_to_null gateway_ip %>
-      DOC
-
-      EDIT_TEMPLATE = <<~ERB
-        #{HEADER_COMMENT}
-      ERB
-
       def edit(fields: nil)
         Models::Cluster.create_or_update(Config.cluster) do |cluster|
-          yaml = Templator.new(cluster).edit_yaml(EDIT_TEMPLATE)
-          manifest = Manifests::Domain.new(**yaml)
-          cluster.set_from_manifest(manifest)
+          update_cluster_fields(cluster, fields)
         end
+      end
+
+      private
+
+      def update_cluster_fields(cluster, fields)
+        yaml = if fields
+                 YAML.safe_load(fields, symbolize_names: true)
+               else
+                 Templator.new(cluster).edit_yaml(TEMPLATE)
+               end
+        manifest = Manifests::Domain.new(**yaml)
+        cluster.set_from_manifest(manifest)
       end
     end
   end

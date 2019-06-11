@@ -197,12 +197,14 @@ module FlightMetal
     end
 
     command 'init-cluster' do |c|
-      syntax(c, 'IDENTIFIER BMC_USERNAME BMC_PASSWORD')
+      syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
       c.description = <<~DESC
-        Create and switch to the new cluster IDENTIFIER. The BMC_USERNAME and
-        BMC_PASSWORD become the defaults for the entire cluster
+        Create and switch to the new cluster IDENTIFIER. The fields form will
+        be opened in the system edittor. The form can be bypassed by using the
+        --fields input.
       DESC
+      c.option '--fields JSON', 'The cluster fields to be saved'
       action(c, FlightMetal::Commands::Cluster, method: :init)
     end
 
