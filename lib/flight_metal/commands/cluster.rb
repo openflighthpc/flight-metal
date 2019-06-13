@@ -53,7 +53,7 @@ module FlightMetal
       def initialize
         require 'flight_metal/models/cluster'
         require 'flight_metal/templator'
-        require 'flight_metal/manifest'
+        require 'flight_manifest'
       end
 
       def init(identifier, fields: nil)
@@ -96,7 +96,7 @@ module FlightMetal
                else
                  Templator.new(cluster).edit_yaml(TEMPLATE)
                end
-        manifest = Manifests::Domain.new(**yaml)
+        manifest = FlightManifest::Domain.new(**yaml)
         cluster.set_from_manifest(manifest)
       end
     end

@@ -39,11 +39,11 @@ module FlightMetal
         require 'flight_metal/models/node'
         require 'flight_metal/errors'
         require 'flight_metal/commands/node'
-        require 'flight_metal/manifest'
+        require 'flight_manifest'
       end
 
       def run(path, force: nil, init: nil)
-        manifest = Manifests.load(path)
+        manifest = FlightManifest.load(path)
         # Update the cluster configuration
         if init || force
           identifier = init || current_cluster

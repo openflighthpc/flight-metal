@@ -46,6 +46,8 @@ gem 'tty-markdown'
 gem 'tty-editor'
 gem 'nodeattr_utils'
 
+gem 'flight_manifest', github: 'openflighthpc/flight_manifest'
+
 group :development do
   gem 'pp'
   gem 'pry'

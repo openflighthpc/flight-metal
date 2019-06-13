@@ -4,6 +4,13 @@ GIT
   specs:
     pcap (0.7.8)
 
+GIT
+  remote: https://github.com/openflighthpc/flight_manifest
+  revision: 7a0791eaace29a7ef4de13a2f2960eb47c2227de
+  specs:
+    flight_manifest (0.1.0)
+      hashie
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -88,6 +95,7 @@ DEPENDENCIES
   activesupport
   commander-openflighthpc
   flight_config (= 0.1.0)
+  flight_manifest!
   hashie
   highline
   net-dhcp

@@ -33,7 +33,7 @@ require 'flight_metal/models/cluster'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
-require 'flight_metal/manifest'
+require 'flight_manifest'
 
 module FlightMetal
   module Models
@@ -41,9 +41,7 @@ module FlightMetal
       include FlightConfig::Deleter
 
       # The Builder class adds the additional fields
-      class Builder < Manifests::Node
-        include Hashie::Extensions::IgnoreUndeclared
-
+      class Builder < FlightManifest::Node
         property :registry, default: -> { Registry.new }
         property :base, default: -> { Dir.pwd }
         property :rebuild, default: true
@@ -51,10 +49,13 @@ module FlightMetal
         property :cluster
         property :ip, from: :build_ip
 
-        # The following redefine methods on Manifests::Node, your usage may vary
+        # The following redefine methods on FlightManifest::Node, your usage may vary
         property :name, default: ''
-        property :kickstart, default: -> { Pathname.new('') }, coerce: Pathname
-        property :pxelinux, default: -> { Pathname.new('') }, coerce: Pathname
+
+        # TODO: This maintains compatibility with the old syntax
+        # Consider refactoring
+        property :pxelinux, from: :pxelinux_file
+        property :kickstart, from: :kickstart_file
 
         def initialize(*a)
           super
