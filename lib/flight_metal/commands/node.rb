@@ -97,8 +97,8 @@ module FlightMetal
         # required for the build and must be given on create. The files will
         # be internally cached, so future changes to the source files will not
         # affect the build
-        pxelinux: <%= pxelinux if pxelinux %>
-        kickstart: <%= kickstart if kickstart %>
+        pxelinux_file: <%= pxelinux_file if pxelinux_file %>
+        kickstart_file: <%= kickstart_file if kickstart_file %>
 
         # Set the primary network ip and fully qualified domain name. The
         # pre-set values (if present) have been retrieved using `gethostip`.

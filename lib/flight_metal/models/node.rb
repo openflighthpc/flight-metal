@@ -33,7 +33,7 @@ require 'flight_metal/models/cluster'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
-require 'flight_metal/manifest'
+require 'flight_manifest'
 
 module FlightMetal
   module Models
@@ -41,9 +41,7 @@ module FlightMetal
       include FlightConfig::Deleter
 
       # The Builder class adds the additional fields
-      class Builder < Manifests::Node
-        include Hashie::Extensions::IgnoreUndeclared
-
+      class Builder < FlightManifest::Node
         property :registry, default: -> { Registry.new }
         property :base, default: -> { Dir.pwd }
         property :rebuild, default: true
@@ -51,10 +49,8 @@ module FlightMetal
         property :cluster
         property :ip, from: :build_ip
 
-        # The following redefine methods on Manifests::Node, your usage may vary
+        # The following redefine methods on FlightManifest::Node, your usage may vary
         property :name, default: ''
-        property :kickstart, default: -> { Pathname.new('') }, coerce: Pathname
-        property :pxelinux, default: -> { Pathname.new('') }, coerce: Pathname
 
         def initialize(*a)
           super
@@ -90,8 +86,8 @@ module FlightMetal
         end
 
         def store_model_templates(node)
-          pxelinux_src = pxelinux.expand_path(base)
-          kickstart_src = kickstart.expand_path(base)
+          pxelinux_src = pxelinux_file.expand_path(base)
+          kickstart_src = kickstart_file.expand_path(base)
           raise_unless_file('pxelinux', pxelinux_src)
           raise_unless_file('kickstart', kickstart_src)
           FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
