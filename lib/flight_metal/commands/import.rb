@@ -88,7 +88,7 @@ module FlightMetal
         Models::Node::Builder.new(**inputs).create
         Log.info_puts "Imported: #{manifest.name}"
       rescue => e
-        Log.error_puts "Failed to import node_manifest: #{manifest.name}"
+        Log.error_puts "Failed to import node: #{manifest.name}"
         Log.error_puts e
       end
     end
