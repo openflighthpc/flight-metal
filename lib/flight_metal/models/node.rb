@@ -86,8 +86,8 @@ module FlightMetal
         end
 
         def store_model_templates(node)
-          pxelinux_src = pxelinux.expand_path(base)
-          kickstart_src = kickstart.expand_path(base)
+          pxelinux_src = pxelinux_file.expand_path(base)
+          kickstart_src = kickstart_file.expand_path(base)
           raise_unless_file('pxelinux', pxelinux_src)
           raise_unless_file('kickstart', kickstart_src)
           FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
