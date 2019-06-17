@@ -52,11 +52,6 @@ module FlightMetal
         # The following redefine methods on FlightManifest::Node, your usage may vary
         property :name, default: ''
 
-        # TODO: This maintains compatibility with the old syntax
-        # Consider refactoring
-        property :pxelinux, from: :pxelinux_file
-        property :kickstart, from: :kickstart_file
-
         def initialize(*a)
           super
           # NOTE: SystemCommand is meant to take a Models::Node NOT a Manifest/Builder
