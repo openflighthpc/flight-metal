@@ -178,6 +178,11 @@ module FlightMetal
     command 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'
+      c.description = <<~DESC
+        Listens for DHCP DISCOVER packets containing PXEClient as its vendor
+        class ID. The MAC address will be extracted from the discover and can
+        be assigned to a node.
+      DESC
       action(c, FlightMetal::Commands::Hunt)
     end
 
@@ -271,6 +276,17 @@ module FlightMetal
     command 'update-dhcp' do |c|
       syntax(c)
       c.summary = 'Update the DHCP server with the nodes mac addresses'
+      c.description = <<~DESC.chomp
+        Renders a partial DHCP configuration file with the nodes that have
+        static ips and MAC addresses. The configuration is rendered to the
+        dedicated file: #{Config.dhcpd_path}
+
+        This file will not be automatically included by the main dhcpd.conf.
+        Please confirm it has been updated if the nodes are being skipped.
+
+        The dhcpd server will be automatically restarted once the config file
+        has been updated.
+      DESC
       action(c, FlightMetal::Commands::DHCP, method: :update)
     end
 
