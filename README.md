@@ -184,6 +184,9 @@ Finally their are the `ipmi` and `power` commands. `ipmi` wraps the underling `i
 > bin/metal ipmi help
 ```
 
+The `power` commands wrap the `ipmitool chassis <power,identify>` utilities to give a unified interface for querying/managing the state of the nodes. Please refer to the help text for
+the command mapping. `power` works with single and multiple nodes similarly to `ipmi`
+
 # License
 Eclipse Public License 2.0, see LICENSE.txt for details.
 
