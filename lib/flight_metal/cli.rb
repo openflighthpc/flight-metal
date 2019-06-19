@@ -187,11 +187,12 @@ module FlightMetal
     end
 
     command 'import' do |c|
-      syntax(c)
+      syntax(c, 'MANIFEST_PATH')
       c.summary = 'Add node configuration profiles'
       c.description = <<~DESC
-        Add node configuration profiles from a flight-architect output zip.
-        The --force flag can be used to update the cluster configuration or
+        Add node configuration profiles from a Flight manifest. The MANIFEST_PATH
+        should give the directory the "manifest.yaml" lives in or the file itself.
+        The --force flag can be used to update the cluster configuration and
         existing nodes.
 
         The --init flag will create and switch to a new cluster before
