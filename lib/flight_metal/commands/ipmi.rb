@@ -78,12 +78,10 @@ module FlightMetal
       end
 
       def run(names_str, *args)
-        if names_str == 'help'
-          puts ipmi_help
-        elsif args.empty?
+        if args.empty?
           raise SystemCommandError, <<~ERROR
             No command provided to ipmitool. Please select one from the list below
-            #{ipmi_cmds}
+            #{Config.ipmi_commands_help}
           ERROR
         else
           nodes = nodeattr_parser(names_str)
@@ -93,17 +91,6 @@ module FlightMetal
       end
 
       private
-
-      def ipmi_cmds
-        lines = ipmi_help.split("\n")
-        loop until /\ACommands:/.match?(lines.shift)
-        lines.join("\n")
-      end
-
-      def ipmi_help
-        _, help_text = Open3.capture3('ipmitool -h')
-        help_text
-      end
 
       def run_cmd(nodes, args)
         SystemCommand.new(nodes).ipmi(args) do |output|
