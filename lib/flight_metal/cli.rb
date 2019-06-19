@@ -87,7 +87,35 @@ module FlightMetal
 
     command 'build' do |c|
       syntax(c)
-      c.summary = 'Setup the pxelinux file for the build'
+      c.summary = 'Run the pxelinux build server'
+      c.description = <<~DESC
+        Moves the kickstart file and pxelinux files into places before starting
+        the build server. The build server listens for UDP packets on port #{Config.build_port}.
+
+        Only nodes with a MAC address, pxelinux and kickstart files will be built
+        There is no need to specify which nodes need to be built. Built nodes are
+        flagged internally and will not appear in the build process again. To force
+        a rebuild, please use the `#{Config.app_name} edit` command and set the `rebuild`
+        flag to true.
+
+        This command will write the kickstart and pxelinux files into the system
+        location when the build commences. Existing files are not overridden by build
+        as they could be in use; instead a warning will be issued.
+
+        The build server listens for JSON messages that specifies the `node` name
+        and `built` flag. This triggers the build files to be removed from their
+        system location and the server stops listening for the node.
+
+        It is possible to send status updates to the server by specifing the `node`
+        name and `message` in the JSON. The `message` will be printed to the display
+        for inspection. Nodes can not send status messages once they have finished
+        building.
+
+        The command will end once all the nodes have reported back. Using interrupt
+        with build is not recommended as it can cause built messages to be skipped.
+        However as the build files are not removed on interrupt, the process can be
+        recommenced by calling build again.
+      DESC
       action(c, FlightMetal::Commands::Build)
     end
 
