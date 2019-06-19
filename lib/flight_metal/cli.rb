@@ -177,8 +177,7 @@ module FlightMetal
       c.summary = 'Run commands with ipmitool'
       c.description = <<~DESC
         The ipmi command wraps the underlining ipmitool utility. Please
-        refer to ipmitool man page for full list of subcommands or run:
-        `#{Config.app_name} ipmi help`.
+        refer to commands list below or ipmitool man page for full details.
 
         This tool communicates using BMC over Ethernet and as such the
         following ipmitool options will be set:
@@ -192,6 +191,9 @@ module FlightMetal
         them after the optional double hypen: `--`. Without the hypen, the
         flags will be interpreted by `#{Config.app_name}` and likely cause an
         eror.
+
+        IPMI Commands:
+        #{Config.ipmi_commands_help}
       DESC
       action(c, FlightMetal::Commands::Ipmi)
     end

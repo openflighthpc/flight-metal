@@ -114,5 +114,26 @@ module FlightMetal
     def restart_dhcpd_command
       __data__.fetch(:restart_dhcpd_command) { 'systemctl restart dhcpd' }
     end
+
+    # Cache the list of ipmi commands so it can be included as part of the CLI
+    # help. This prevents the need to run a `ipmi` system command every time the CLI
+    # is executed
+    def ipmi_commands_help
+      __data__.fetch(:ipmi_commands_help) do
+        config = self.class.create_or_update do |conf|
+          require 'open3'
+          _, help_text, status = Open3.capture3('ipmitool -h')
+          raise InternalError, <<~ERROR.squish.chomp unless status.success?
+            Failed to parse `ipmitool` command output, please ensure it is
+            installed correctly.
+          ERROR
+          lines = help_text.split("\n")
+          loop until /\ACommands:/.match?(lines.shift)
+          lines.join("\n")
+          conf.__data__.set(:ipmi_commands_help, value: lines.join("\n"))
+        end
+        config.ipmi_commands_help
+      end
+    end
   end
 end

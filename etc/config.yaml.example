@@ -89,3 +89,13 @@
 # =============================================================================
 # content_dir: var
 
+# =============================================================================
+# IPMI Command Help
+# A cache of the ipmitool command help output. This reduces the number of times
+# ipmitool needs to be called. It will be automatically cached the first time
+# metal is ran. Delete the key in order to force a refresh. Setting this value
+# manually is not recommended. Removing commands from this list will not
+# prevent them from being ran
+# =============================================================================
+# ipmi_commands_help: <value set automatically>
+
