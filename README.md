@@ -169,6 +169,21 @@ After setting up the build files, `metal` will listen on UDP port 24680 (configu
 
 The build process will automatically exit once it has received complete messages from all the nodes it is currently building.
 
+### IPMI and Power Commands
+
+Finally their are the `ipmi` and `power` commands. `ipmi` wraps the underling `ipmitool` utility and passes through the hostname, bmc credentials, and interface parameter. It that is required is the node name (or range) and the bmc command:
+
+```
+# Runs the ipmi command on node01
+> bin/metal ipmi node01 <command>
+
+# Runs teh ipmi command on node01 to node10
+> bin/metal ipmi node[01-10] <command>
+
+# List the avaliable ipmi commands
+> bin/metal ipmi help
+```
+
 # License
 Eclipse Public License 2.0, see LICENSE.txt for details.
 
