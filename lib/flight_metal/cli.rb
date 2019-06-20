@@ -79,9 +79,9 @@ module FlightMetal
       end
     end
 
-    def self.syntax(command, args_str = '', opts: true)
+    def self.syntax(command, args_str = '')
       command.syntax = <<~SYNTAX.squish
-        #{program(:name)} #{command.name} #{args_str} #{'[options]' if opts}
+        #{program(:name)} #{command.name} #{args_str}
       SYNTAX
     end
 
@@ -207,7 +207,7 @@ module FlightMetal
     end
 
     command 'ipmi' do |c|
-      syntax(c, 'NODE [...] [options] [--] [ipmi-options]', opts: false)
+      syntax(c, 'NODE [...] [--] [ipmi-options]')
       c.summary = 'Run commands with ipmitool'
       c.description = <<~DESC
         The ipmi command wraps the underlining ipmitool utility. Please
