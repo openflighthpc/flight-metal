@@ -58,7 +58,7 @@ module FlightMetal
           end
           if init
             Log.info_puts "Switched to cluster: #{identifier}"
-            Config.update { |c| c.cluster = cluster.identifier }
+            Config.create_or_update { |c| c.cluster = cluster.identifier }
             Config.reset
           end
         end

@@ -79,15 +79,43 @@ module FlightMetal
       end
     end
 
-    def self.syntax(command, args_str = '', opts: true)
+    def self.syntax(command, args_str = '')
       command.syntax = <<~SYNTAX.squish
-        #{program(:name)} #{command.name} #{args_str} #{'[options]' if opts}
+        #{program(:name)} #{command.name} #{args_str}
       SYNTAX
     end
 
     command 'build' do |c|
       syntax(c)
-      c.summary = 'Setup the pxelinux file for the build'
+      c.summary = 'Run the pxelinux build server'
+      c.description = <<~DESC
+        Moves the kickstart file and pxelinux files into places before starting
+        the build server. The build server listens for UDP packets on port #{Config.build_port}.
+
+        Only nodes with a MAC address, pxelinux and kickstart files will be built
+        There is no need to specify which nodes need to be built. Built nodes are
+        flagged internally and will not appear in the build process again. To force
+        a rebuild, please use the `#{Config.app_name} edit` command and set the `rebuild`
+        flag to true.
+
+        This command will write the kickstart and pxelinux files into the system
+        location when the build commences. Existing files are not overridden by build
+        as they could be in use; instead a warning will be issued.
+
+        The build server listens for JSON messages that specifies the `node` name
+        and `built` flag. This triggers the build files to be removed from their
+        system location and the server stops listening for the node.
+
+        It is possible to send status updates to the server by specifing the `node`
+        name and `message` in the JSON. The `message` will be printed to the display
+        for inspection. Nodes can not send status messages once they have finished
+        building.
+
+        The command will end once all the nodes have reported back. Using interrupt
+        with build is not recommended as it can cause built messages to be skipped.
+        However as the build files are not removed on interrupt, the process can be
+        recommenced by calling build again.
+      DESC
       action(c, FlightMetal::Commands::Build)
     end
 
@@ -150,15 +178,21 @@ module FlightMetal
     command 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'
+      c.description = <<~DESC
+        Listens for DHCP DISCOVER packets containing PXEClient as its vendor
+        class ID. The MAC address will be extracted from the discover and can
+        be assigned to a node.
+      DESC
       action(c, FlightMetal::Commands::Hunt)
     end
 
     command 'import' do |c|
-      syntax(c)
+      syntax(c, 'MANIFEST_PATH')
       c.summary = 'Add node configuration profiles'
       c.description = <<~DESC
-        Add node configuration profiles from a flight-architect output zip.
-        The --force flag can be used to update the cluster configuration or
+        Add node configuration profiles from a Flight manifest. The MANIFEST_PATH
+        should give the directory the "manifest.yaml" lives in or the file itself.
+        The --force flag can be used to update the cluster configuration and
         existing nodes.
 
         The --init flag will create and switch to a new cluster before
@@ -173,7 +207,7 @@ module FlightMetal
     end
 
     command 'ipmi' do |c|
-      syntax(c, 'NODE [...] [options] [--] [ipmi-options]', opts: false)
+      syntax(c, 'NODE [...] [--] [ipmi-options]')
       c.summary = 'Run commands with ipmitool'
       c.description = <<~DESC
         The ipmi command wraps the underlining ipmitool utility. Please
@@ -243,6 +277,17 @@ module FlightMetal
     command 'update-dhcp' do |c|
       syntax(c)
       c.summary = 'Update the DHCP server with the nodes mac addresses'
+      c.description = <<~DESC.chomp
+        Renders a partial DHCP configuration file with the nodes that have
+        static ips and MAC addresses. The configuration is rendered to the
+        dedicated file: #{Config.dhcpd_path}
+
+        This file will not be automatically included by the main dhcpd.conf.
+        Please confirm it has been updated if the nodes are being skipped.
+
+        The dhcpd server will be automatically restarted once the config file
+        has been updated.
+      DESC
       action(c, FlightMetal::Commands::DHCP, method: :update)
     end
 
