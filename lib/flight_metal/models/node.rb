@@ -42,7 +42,6 @@ module FlightMetal
 
       # The Builder class adds the additional fields
       class Builder < FlightManifest::Node
-        property :registry, default: -> { Registry.new }
         property :base, default: -> { Dir.pwd }
         property :rebuild, default: true
         property :built, default:  false
@@ -174,6 +173,14 @@ module FlightMetal
         @cluster ||= cluster
         @name ||= name
         super
+      end
+
+      # TODO: Look how this integrates into FlightConfig
+      # NOTE: This method does not share a registry and will cause all files to
+      # reload. Consider refactoring?
+      def update(&b)
+        new_node = self.class.update(*__inputs__, &b)
+        self.instance_variable_set(:@__data__, new_node.__data__)
       end
 
       def links

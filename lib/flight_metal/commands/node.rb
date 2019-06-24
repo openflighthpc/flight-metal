@@ -196,9 +196,8 @@ module FlightMetal
       end
 
       def list
-        nodes = Registry.new
-                        .glob_read(Models::Node, Config.cluster, '*')
-                        .sort_by { |n| n.name }
+        nodes = Models::Node.glob_read(Config.cluster, '*')
+                            .sort_by { |n| n.name }
         outputs = SystemCommand.new(*nodes).fqdn_and_ip
         sys_nodes = nodes.each_with_index
                          .map do |node, idx|

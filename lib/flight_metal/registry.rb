@@ -75,50 +75,6 @@ module FlightMetal
     def self.included(base)
       base.extend(ClassMethods)
     end
-
-    def update
-      arity = self.method(:initialize).arity
-      args = FlightConfig::Globber::Matcher.new(self.class, arity).args(path)
-      self.class.update(*args) do |obj|
-        self.instance_variable_set(:@__data__, obj.__data__)
-        obj.__registry__ = self.__registry__
-        yield obj if block_given?
-      end
-      self
-    end
-
-    def __registry__=(reg)
-      raise InternalError, <<~ERROR unless reg.is_a?(Registry)
-        The model __registry__ must be a FlightMetal::Registry
-      ERROR
-      @__registry__ = reg
-    end
-
-    def __registry__
-      @__registry__ ||= Registry.new
-    end
-  end
-
-  class Registry
-    def read(klass, *args)
-      class_hash = (cache[klass] ||= {})
-      arity_hash = (class_hash[args.length] ||= {})
-      last_arg = args.pop
-      last_hash = args.reduce(arity_hash) { |hash, arg| hash[arg] ||= {} }
-      last_hash[last_arg] ||= first_read(klass, *args, last_arg)
-    end
-
-    private
-
-    def cache
-      @cache ||= {}
-    end
-
-    def first_read(klass, *args)
-      klass.read(*args).tap do |model|
-        model.__registry__ = self if model.respond_to?(:"__registry__=")
-      end
-    end
   end
 end
 

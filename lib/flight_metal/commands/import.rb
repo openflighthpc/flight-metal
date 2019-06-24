@@ -79,7 +79,7 @@ module FlightMetal
       end
 
       def registry
-        @registry ||= Registry.new
+        @registry ||= FlightConfig::Registry.new
       end
 
       def add_node(base, manifest)

@@ -151,7 +151,7 @@ module FlightMetal
       end
 
       def registry
-        @registry ||= Registry.new
+        @registry ||= FlightConfig::Registry.new
       end
     end
   end
