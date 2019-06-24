@@ -19,7 +19,7 @@ GEM
       paint (~> 2.1.0)
     concurrent-ruby (1.1.5)
     equatable (0.5.0)
-    flight_config (0.1.1)
+    flight_config (0.2.0)
       tty-config
     flight_manifest (0.1.2)
       hashie
@@ -89,7 +89,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport
   commander-openflighthpc
-  flight_config (= 0.1.1)
+  flight_config (= 0.2.0)
   flight_manifest (= 0.1.2)
   hashie
   highline

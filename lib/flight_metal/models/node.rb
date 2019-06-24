@@ -170,9 +170,10 @@ module FlightMetal
       data_reader(:gateway_ip) { links.cluster.gateway_ip }
       data_writer :gateway_ip
 
-      def initialize(cluster, name)
+      def initialize(cluster, name, **_h)
         @cluster ||= cluster
         @name ||= name
+        super
       end
 
       def links

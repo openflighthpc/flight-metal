@@ -99,31 +99,6 @@ module FlightMetal
     end
   end
 
-  # Override the default FlilghtConfig `glob_read` to use the registry
-  # This is useful when loading lots of files
-  # TODO: Port this into FlightConfig
-  module FlightConfigPatches
-    module Matcher
-      def initialize(k, a, registry: nil)
-        @registry ||= registry
-        super(k, a)
-      end
-
-      def registry
-        @registry ||= Registry.new
-      end
-
-      def args(path)
-        data = regex.match(path)
-        keys.map { |k| data[k] }
-      end
-
-      def read(path)
-        registry.read(klass, *args(path))
-      end
-    end
-  end
-
   class Registry
     def read(klass, *args)
       class_hash = (cache[klass] ||= {})
@@ -131,15 +106,6 @@ module FlightMetal
       last_arg = args.pop
       last_hash = args.reduce(arity_hash) { |hash, arg| hash[arg] ||= {} }
       last_hash[last_arg] ||= first_read(klass, *args, last_arg)
-    end
-
-    # TODO: Merge this into the actual glob_read
-    # Duplicated!
-    def glob_read(klass, *a)
-      matcher = FlightConfig::Globber::Matcher.new(klass, a.length, registry: self)
-      glob_regex = klass.new(*a).path
-      Dir.glob(glob_regex)
-        .map { |path| matcher.read(path) }
     end
 
     private
@@ -155,6 +121,4 @@ module FlightMetal
     end
   end
 end
-
-FlightConfig::Globber::Matcher.prepend FlightMetal::FlightConfigPatches::Matcher
 

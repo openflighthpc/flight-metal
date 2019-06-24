@@ -42,8 +42,9 @@ module FlightMetal
 
       attr_reader :identifier
 
-      def initialize(identifier)
+      def initialize(identifier, **_h)
         @identifier = identifier
+        super
       end
 
       def path
