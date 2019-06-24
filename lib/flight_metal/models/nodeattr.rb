@@ -1,9 +1,7 @@
-# frozen_string_literal: true
-
 #==============================================================================
 # Copyright (C) 2019-present Alces Flight Ltd.
 #
-# This file is part of flight-metal.
+# This file is part of NodeattrUtils.
 #
 # This program and the accompanying materials are made available under
 # the terms of the Eclipse Public License 2.0 which is available at
@@ -11,7 +9,7 @@
 # terms made available by Alces Flight Ltd - please direct inquiries
 # about licensing to licensing@alces-flight.com.
 #
-# This project is distributed in the hope that it will be useful, but
+# NodeattrUtils is distributed in the hope that it will be useful, but
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR
 # IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS
 # OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A
@@ -19,37 +17,25 @@
 # details.
 #
 # You should have received a copy of the Eclipse Public License 2.0
-# along with this project. If not, see:
+# along with NodeattrUtils. If not, see:
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
-# https://github.com/alces-software/flight-metal
-#===============================================================================
+# For more information on NodeattrUtils, please visit:
+# https://github.com/openflighthpc/nodeattr_utils
+#==============================================================================
 
-source "https://rubygems.org"
+require 'nodeattr_utils/config'
+require 'flight_metal/models/cluster'
 
-git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
+module FlightMetal
+  module Models
+    class Nodeattr < NodeattrUtils::Config
+      allow_missing_read
 
-gem 'activesupport'
-gem 'commander-openflighthpc'
-
-gem 'flight_config', '0.2.0'
-gem 'nodeattr_utils', '~>1.1.0'
-
-gem 'flight_manifest', '0.1.2'
-gem 'rubyzip'
-gem 'pcap', github: 'alces-software/ruby-pcap'
-gem 'net-dhcp'
-gem 'highline'
-gem 'hashie'
-gem 'parallel'
-gem 'tty-markdown'
-gem 'tty-editor'
-
-group :development do
-  gem 'pp'
-  gem 'pry'
-  gem 'pry-byebug'
+      def self.path(cluster)
+        Models::Cluster.join(cluster, 'etc/nodeattr.yaml')
+      end
+    end
+  end
 end
-

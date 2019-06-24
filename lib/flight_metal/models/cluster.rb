@@ -41,8 +41,12 @@ module FlightMetal
 
       include FlightMetal::FlightConfigUtils
 
+      def self.join(identifier, *rest)
+        File.join(Config.content_dir, 'clusters', identifier, *rest)
+      end
+
       def self.path(identifier)
-        File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
+        join(identifier, 'etc/config.yaml')
       end
       define_input_methods_from_path_parameters
 
