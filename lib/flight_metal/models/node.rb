@@ -39,6 +39,7 @@ module FlightMetal
   module Models
     class Node
       include FlightConfig::Deleter
+      include FlightConfig::Accessor
 
       # The Builder class adds the additional fields
       class Builder < FlightManifest::Node
@@ -115,6 +116,14 @@ module FlightMetal
         end
       end
 
+      def self.path(cluster, name)
+        File.join(
+          Config.content_dir, 'clusters', cluster, 'var/nodes',
+          name, 'etc/config.yaml'
+        )
+      end
+      define_input_methods_from_path_parameters
+
       def self.exists?(*a)
         Pathname.new(new(*a).path).file?
       end
@@ -131,8 +140,6 @@ module FlightMetal
       include FlightConfig::Globber
 
       include FlightMetal::FlightConfigUtils
-
-      attr_reader :cluster, :name
 
       flag :built
       flag :rebuild
@@ -169,9 +176,7 @@ module FlightMetal
       data_reader(:gateway_ip) { links.cluster.gateway_ip }
       data_writer :gateway_ip
 
-      def initialize(cluster, name, **_h)
-        @cluster ||= cluster
-        @name ||= name
+      def initialize(*a, **h)
         super
       end
 
@@ -187,12 +192,8 @@ module FlightMetal
         @models ||= NodeLinks.new(self)
       end
 
-      def path
-        File.join(base_dir, 'etc/config.yaml')
-      end
-
       def base_dir
-        File.join(Config.content_dir, 'clusters', cluster, 'var/nodes', name)
+        File.dirname(File.dirname(path))
       end
 
       def template_dir

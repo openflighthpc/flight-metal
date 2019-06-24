@@ -42,6 +42,16 @@ module FlightMetal
         @cache ||= self.read
       end
 
+      def root_dir
+        File.expand_path('../..', __dir__)
+      end
+
+      # TODO: Investigate why an array is being passed, it is likely due to the
+      # delegation within FlightConfig
+      def path(*_a)
+        File.join(root_dir, 'etc/config.yaml')
+      end
+
       def reset
         @cache = nil
       end
@@ -49,13 +59,7 @@ module FlightMetal
       delegate_missing_to :cache
     end
 
-    def root_dir
-      File.expand_path('../..', __dir__)
-    end
-
-    def path
-      File.join(root_dir, 'etc/config.yaml')
-    end
+    delegate :root_dir, :path, to: Config
 
     def app_name
       'metal'
