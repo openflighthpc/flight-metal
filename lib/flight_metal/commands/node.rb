@@ -85,7 +85,9 @@ module FlightMetal
         #  > Only the listed fields can be edited
       DOC
 
-      MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password, :gateway_ip]
+      MULTI_EDITABLE = [
+        :rebuild, :built, :bmc_username, :bmc_password, :gateway_ip, :groups
+      ]
       SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
 
       # NOTE: This template is rendered against the Models::Node::Builder so
@@ -99,6 +101,15 @@ module FlightMetal
         # affect the build
         pxelinux_file: <%= pxelinux_file if pxelinux_file %>
         kickstart_file: <%= kickstart_file if kickstart_file %>
+
+        # Set the primary and secondary groups
+        primary_group: <%= nil_to_null(primary_group) %>
+        secondary_groups: <%=
+          "# Add secondary groups as an array" if secondary_groups.empty?
+        %>
+        <% if secondary_groups; secondary_groups.each do |group| -%>
+          - <%= group %>
+        <% end; end -%>
 
         # Set the primary network ip and fully qualified domain name. The
         # pre-set values (if present) have been retrieved using `gethostip`.
@@ -139,6 +150,13 @@ module FlightMetal
         bmc_username: <%= nil_to_null(bmc_user) %>
         bmc_password: <%= nil_to_null(bmc_password) %>
         gateway_ip: <%= nil_to_null(gateway_ip) %>
+
+        # Set the groups the node is part of. The first group is always the
+        # primary group
+        groups:
+        <% groups.each do |group| -%>
+          - <%= group %>
+        <% end -%>
 
         <%# DEV NOTE: A NilStruct is used when editing multiple nodes
             This works fine with the above properties as is renders to null,
@@ -230,8 +248,14 @@ module FlightMetal
 
       def update(node, data)
         return if data.empty?
-        Models::Node.update(Config.cluster, node.name) do |n|
+        groups = data.delete(:groups)&.reject { |g| g.nil? || g.empty? }
+        node_model = Models::Node.update(Config.cluster, node.name) do |n|
           data.each { |k, v| n.send("#{k}=", v) }
+        end
+        if groups && node_model.groups != groups
+          Models::Nodeattr.create_or_update(Config.cluster) do |attr|
+            attr.add_nodes(node.name, groups: groups)
+          end
         end
       end
     end

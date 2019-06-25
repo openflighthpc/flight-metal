@@ -173,6 +173,18 @@ module FlightMetal
         super
       end
 
+      def groups
+        links.nodeattr.groups_for_node(name)
+      end
+
+      def primary_group
+        groups.first
+      end
+
+      def secondary_groups
+        groups[1..-1]
+      end
+
       # TODO: Look how this integrates into FlightConfig
       # NOTE: This method does not share a registry and will cause all files to
       # reload. Consider refactoring?
