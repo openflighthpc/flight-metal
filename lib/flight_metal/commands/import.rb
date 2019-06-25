@@ -37,6 +37,7 @@ module FlightMetal
 
         require 'flight_metal/models/cluster'
         require 'flight_metal/models/node'
+        require 'flight_metal/models/nodeattr'
         require 'flight_metal/errors'
         require 'flight_metal/commands/node'
         require 'flight_manifest'
@@ -62,12 +63,19 @@ module FlightMetal
             Config.reset
           end
         end
-        manifest.nodes.each do |node|
+        imported_manifests = manifest.nodes.each_with_object([]) do |node, memo|
           if Models::Node.exists?(current_cluster, node.name) && force
             Log.warn_puts "Removing old configuration for: #{node.name}"
             Models::Node.delete!(current_cluster, node.name)
           end
-          add_node(manifest.base, node)
+          memo << node if add_node(manifest.base, node)
+        end
+        Log.info_puts 'Importing groups'
+        Models::Nodeattr.create_or_update(current_cluster) do |attr|
+          imported_manifests.each do |node|
+            groups = [node.primary_group, *node.secondary_groups].reject(&:nil?)
+            attr.add_nodes(node.name, groups: groups)
+          end
         end
       end
 
@@ -87,9 +95,11 @@ module FlightMetal
                          .merge(cluster: current_cluster, base: base, registry: registry)
         Models::Node::Builder.new(**inputs).create
         Log.info_puts "Imported: #{manifest.name}"
+        true
       rescue => e
         Log.error_puts "Failed to import node: #{manifest.name}"
         Log.error_puts e
+        return false
       end
     end
   end

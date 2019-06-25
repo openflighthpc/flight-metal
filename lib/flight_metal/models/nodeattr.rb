@@ -25,6 +25,7 @@
 # https://github.com/openflighthpc/nodeattr_utils
 #==============================================================================
 
+require 'nodeattr_utils'
 require 'nodeattr_utils/config'
 require 'flight_metal/models/cluster'
 
