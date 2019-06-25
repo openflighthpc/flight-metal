@@ -30,6 +30,7 @@
 require 'flight_config'
 require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
+require 'flight_metal/models/nodeattr'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
@@ -40,6 +41,7 @@ module FlightMetal
     class Node
       include FlightConfig::Deleter
       include FlightConfig::Accessor
+      include FlightConfig::Links
 
       # The Builder class adds the additional fields
       class Builder < FlightManifest::Node
@@ -104,18 +106,6 @@ module FlightMetal
         end
       end
 
-      NodeLinks = Struct.new(:node) do
-        def cluster
-          read(Models::Cluster, node.cluster)
-        end
-
-        private
-
-        def read(klass, *a)
-          node.__registry__.read(klass, *a)
-        end
-      end
-
       def self.path(cluster, name)
         File.join(
           Config.content_dir, 'clusters', cluster, 'var/nodes',
@@ -176,6 +166,9 @@ module FlightMetal
       data_reader(:gateway_ip) { links.cluster.gateway_ip }
       data_writer :gateway_ip
 
+      define_link(:cluster, Models::Cluster) { [cluster] }
+      define_link(:nodeattr, Models::Nodeattr) { [cluster] }
+
       def initialize(*a, **h)
         super
       end
@@ -186,10 +179,6 @@ module FlightMetal
       def update(&b)
         new_node = self.class.update(*__inputs__, &b)
         self.instance_variable_set(:@__data__, new_node.__data__)
-      end
-
-      def links
-        @models ||= NodeLinks.new(self)
       end
 
       def base_dir
