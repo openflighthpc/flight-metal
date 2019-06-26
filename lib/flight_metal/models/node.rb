@@ -147,6 +147,9 @@ module FlightMetal
         delete(*a) do |node|
           FileUtils.rm_f node.pxelinux_template_path
           FileUtils.rm_f node.kickstart_template_path
+          Models::Nodeattr.create_or_update do |attr|
+            attr.remove_nodes(node.name)
+          end
           true
         end
       end
