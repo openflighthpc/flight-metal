@@ -197,10 +197,6 @@ module FlightMetal
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
 
-      def initialize(*a, **h)
-        super
-      end
-
       def groups
         links.nodeattr.groups_for_node(name)
       end
