@@ -53,6 +53,10 @@ module FlightMetal
         *Build*: <%= rebuild? ? 'Scheduled' : 'Skipping' %>
         <% end -%>
 
+        *Primary Group*: <%= primary_group || 'n/a' %>
+        <% sg = secondary_groups -%>
+        *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
+
         *IP*: <%= ip %>
         <% if ip && sys_ip.nil? -%>
         __Warning__: The node IP does not appear in the hosts list
