@@ -133,6 +133,7 @@ module FlightMetal
         To create a node in a non-interactive shell, use the --fields flag
         with JSON syntax.
       DESC
+      c.option '--fields JSON', 'The fields to be saved'
       action(c, FlightMetal::Commands::Node, method: :create)
     end
 

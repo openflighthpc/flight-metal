@@ -102,14 +102,12 @@ module FlightMetal
         pxelinux_file: <%= pxelinux_file if pxelinux_file %>
         kickstart_file: <%= kickstart_file if kickstart_file %>
 
-        # Set the primary and secondary groups
-        primary_group: <%= nil_to_null(primary_group) %>
-        secondary_groups: <%=
-          "# Add secondary groups as an array" if secondary_groups.empty?
-        %>
-        <% if secondary_groups; secondary_groups.each do |group| -%>
+        # Set the groups the node is part of. The first group is always the
+        # primary group
+        groups: # Add the groups using YAML array notation
+        <% groups.each do |group| -%>
           - <%= group %>
-        <% end; end -%>
+        <% end -%>
 
         # Set the primary network ip and fully qualified domain name. The
         # pre-set values (if present) have been retrieved using `gethostip`.
@@ -124,7 +122,7 @@ module FlightMetal
         # command later
         # mac: null
 
-        <% cluster_model = registry.read(FlightMetal::Models::Cluster, cluster) -%>
+        <% cluster_model = FlightMetal::Models::Cluster.read(cluster) -%>
         # Override the default bmc username/ password and gateway ip.
         # Uncomment the fields to hard set the values:
         # bmc_username: <%= nil_to_null cluster_model.bmc_user %>

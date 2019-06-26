@@ -71,10 +71,35 @@ module FlightMetal
           end
         end
 
+        # HACK: Make `groups` appear as a property even through it wraps primary_group
+        # and secondary_groups. This is because `Hashie::Trash` doesn't have the ability
+        # to transform values based on multiple keys
+        self.properties << :groups
+
+        def [](attr)
+          attr == :groups ? self.groups : super
+        end
+
+        def []=(attr, value)
+          attr == :groups ? self.groups = value : super
+        end
+
+        def groups
+          [primary_group, *secondary_groups]
+        end
+
+        def groups=(grps)
+          self.primary_group = grps.first
+          self.secondary_groups = grps[1..-1]
+        end
+
         def create
           Models::Node.create(cluster, name) do |node|
             store_model_templates(node)
             update_model_attributes(node)
+          end
+          Models::Nodeattr.create_or_update(cluster) do |attr|
+            attr.add_nodes(name, groups: groups)
           end
         end
 
