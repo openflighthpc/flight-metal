@@ -139,5 +139,9 @@ module FlightMetal
         config.ipmi_commands_help
       end
     end
+
+    def debug
+      __data__.fetch(:debug) { false }
+    end
   end
 end

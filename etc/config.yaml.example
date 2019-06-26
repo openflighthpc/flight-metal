@@ -99,3 +99,8 @@
 # =============================================================================
 # ipmi_commands_help: <value set automatically>
 
+# =============================================================================
+# Debugging Mode
+# Turns the development tools on for debugging purposes. It is off by default
+# =============================================================================
+# debug: false

@@ -43,6 +43,8 @@ require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/node'
 
+require 'pry' if FlightMetal::Config.debug
+
 module FlightMetal
   class CLI
     extend Commander::UI
