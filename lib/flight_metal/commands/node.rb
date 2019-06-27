@@ -156,7 +156,7 @@ module FlightMetal
         # Set the groups the node is part of. The first group is always the
         # primary group
         groups:
-        <% groups.each do |group| -%>
+        <% groups&.each do |group| -%>
           - <%= group %>
         <% end -%>
 
