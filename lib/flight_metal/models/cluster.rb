@@ -37,18 +37,18 @@ module FlightMetal
     class Cluster
       include FlightConfig::Updater
       include FlightConfig::Globber
+      include FlightConfig::Accessor
 
       include FlightMetal::FlightConfigUtils
 
-      attr_reader :identifier
-
-      def initialize(identifier)
-        @identifier = identifier
+      def self.join(identifier, *rest)
+        File.join(Config.content_dir, 'clusters', identifier, *rest)
       end
 
-      def path
-        File.join(Config.content_dir, 'clusters', identifier, 'etc/config.yaml')
+      def self.path(identifier)
+        join(identifier, 'etc/config.yaml')
       end
+      define_input_methods_from_path_parameters
 
       flag :imported
 

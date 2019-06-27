@@ -68,23 +68,23 @@ module FlightMetal
         }
       }
 
-      def power(names_str, cmd)
+      def power(names_str, cmd, group: false)
         power_cmd = POWER_COMMANDS[cmd]
         raise InvalidInput, <<~ERROR.chomp unless power_cmd
           '#{cmd}' is not a valid power command. Please select one of the following:
           #{POWER_COMMANDS.keys.join(',')}
         ERROR
-        run(names_str, *power_cmd[:cmd])
+        run(names_str, *power_cmd[:cmd], group: group)
       end
 
-      def run(names_str, *args)
+      def run(names_str, *args, group: false)
         if args.empty?
           raise SystemCommandError, <<~ERROR
             No command provided to ipmitool. Please select one from the list below
             #{Config.ipmi_commands_help}
           ERROR
         else
-          nodes = nodeattr_parser(names_str)
+          nodes = nodeattr_parser(names_str, group: group)
           nodes.raise_if_missing
           run_cmd(nodes, args)
         end

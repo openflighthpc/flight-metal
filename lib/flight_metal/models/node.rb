@@ -30,6 +30,7 @@
 require 'flight_config'
 require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
+require 'flight_metal/models/nodeattr'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
@@ -39,10 +40,11 @@ module FlightMetal
   module Models
     class Node
       include FlightConfig::Deleter
+      include FlightConfig::Accessor
+      include FlightConfig::Links
 
       # The Builder class adds the additional fields
       class Builder < FlightManifest::Node
-        property :registry, default: -> { Registry.new }
         property :base, default: -> { Dir.pwd }
         property :rebuild, default: true
         property :built, default:  false
@@ -69,10 +71,35 @@ module FlightMetal
           end
         end
 
+        # HACK: Make `groups` appear as a property even through it wraps primary_group
+        # and secondary_groups. This is because `Hashie::Trash` doesn't have the ability
+        # to transform values based on multiple keys
+        self.properties << :groups
+
+        def [](attr)
+          attr == :groups ? self.groups : super
+        end
+
+        def []=(attr, value)
+          attr == :groups ? self.groups = value : super
+        end
+
+        def groups
+          [primary_group, *secondary_groups]
+        end
+
+        def groups=(grps)
+          self.primary_group = grps.first
+          self.secondary_groups = grps[1..-1]
+        end
+
         def create
           Models::Node.create(cluster, name) do |node|
             store_model_templates(node)
             update_model_attributes(node)
+          end
+          Models::Nodeattr.create_or_update(cluster) do |attr|
+            attr.add_nodes(name, groups: groups)
           end
         end
 
@@ -104,17 +131,13 @@ module FlightMetal
         end
       end
 
-      NodeLinks = Struct.new(:node) do
-        def cluster
-          read(Models::Cluster, node.cluster)
-        end
-
-        private
-
-        def read(klass, *a)
-          node.__registry__.read(klass, *a)
-        end
+      def self.path(cluster, name)
+        File.join(
+          Config.content_dir, 'clusters', cluster, 'var/nodes',
+          name, 'etc/config.yaml'
+        )
       end
+      define_input_methods_from_path_parameters
 
       def self.exists?(*a)
         Pathname.new(new(*a).path).file?
@@ -124,6 +147,9 @@ module FlightMetal
         delete(*a) do |node|
           FileUtils.rm_f node.pxelinux_template_path
           FileUtils.rm_f node.kickstart_template_path
+          Models::Nodeattr.create_or_update do |attr|
+            attr.remove_nodes(node.name)
+          end
           true
         end
       end
@@ -132,8 +158,6 @@ module FlightMetal
       include FlightConfig::Globber
 
       include FlightMetal::FlightConfigUtils
-
-      attr_reader :cluster, :name
 
       flag :built
       flag :rebuild
@@ -170,21 +194,31 @@ module FlightMetal
       data_reader(:gateway_ip) { links.cluster.gateway_ip }
       data_writer :gateway_ip
 
-      def initialize(cluster, name)
-        @cluster ||= cluster
-        @name ||= name
+      define_link(:cluster, Models::Cluster) { [cluster] }
+      define_link(:nodeattr, Models::Nodeattr) { [cluster] }
+
+      def groups
+        links.nodeattr.groups_for_node(name)
       end
 
-      def links
-        @models ||= NodeLinks.new(self)
+      def primary_group
+        groups.first
       end
 
-      def path
-        File.join(base_dir, 'etc/config.yaml')
+      def secondary_groups
+        groups[1..-1]
+      end
+
+      # TODO: Look how this integrates into FlightConfig
+      # NOTE: This method does not share a registry and will cause all files to
+      # reload. Consider refactoring?
+      def update(&b)
+        new_node = self.class.update(*__inputs__, &b)
+        self.instance_variable_set(:@__data__, new_node.__data__)
       end
 
       def base_dir
-        File.join(Config.content_dir, 'clusters', cluster, 'var/nodes', name)
+        File.dirname(File.dirname(path))
       end
 
       def template_dir

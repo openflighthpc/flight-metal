@@ -33,7 +33,7 @@ require 'flight_metal/registry'
 module FlightMetal
   Macs = Struct.new(:registry) do
     def initialize(registry = nil)
-      super(registry || Registry.new)
+      super(registry || FlightConfig::Registry.new)
     end
 
     def find(mac)
@@ -41,7 +41,7 @@ module FlightMetal
     end
 
     def nodes
-      registry.glob_read(Models::Node, '*', '*')
+      Models::Node.glob_read('*', '*', registry: registry)
     end
 
     def macs

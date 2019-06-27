@@ -53,6 +53,10 @@ module FlightMetal
         *Build*: <%= rebuild? ? 'Scheduled' : 'Skipping' %>
         <% end -%>
 
+        *Primary Group*: <%= primary_group || 'n/a' %>
+        <% sg = secondary_groups -%>
+        *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
+
         *IP*: <%= ip %>
         <% if ip && sys_ip.nil? -%>
         __Warning__: The node IP does not appear in the hosts list
@@ -85,7 +89,9 @@ module FlightMetal
         #  > Only the listed fields can be edited
       DOC
 
-      MULTI_EDITABLE = [:rebuild, :built, :bmc_username, :bmc_password, :gateway_ip]
+      MULTI_EDITABLE = [
+        :rebuild, :built, :bmc_username, :bmc_password, :gateway_ip, :groups
+      ]
       SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
 
       # NOTE: This template is rendered against the Models::Node::Builder so
@@ -100,6 +106,13 @@ module FlightMetal
         pxelinux_file: <%= pxelinux_file if pxelinux_file %>
         kickstart_file: <%= kickstart_file if kickstart_file %>
 
+        # Set the groups the node is part of. The first group is always the
+        # primary group
+        groups: # Add the groups using YAML array notation
+        <% groups.each do |group| -%>
+          - <%= group %>
+        <% end -%>
+
         # Set the primary network ip and fully qualified domain name. The
         # pre-set values (if present) have been retrieved using `gethostip`.
         # Only the cached values will be used to render the DHCP config
@@ -113,7 +126,7 @@ module FlightMetal
         # command later
         # mac: null
 
-        <% cluster_model = registry.read(FlightMetal::Models::Cluster, cluster) -%>
+        <% cluster_model = FlightMetal::Models::Cluster.read(cluster) -%>
         # Override the default bmc username/ password and gateway ip.
         # Uncomment the fields to hard set the values:
         # bmc_username: <%= nil_to_null cluster_model.bmc_user %>
@@ -139,6 +152,13 @@ module FlightMetal
         bmc_username: <%= nil_to_null(bmc_user) %>
         bmc_password: <%= nil_to_null(bmc_password) %>
         gateway_ip: <%= nil_to_null(gateway_ip) %>
+
+        # Set the groups the node is part of. The first group is always the
+        # primary group
+        groups:
+        <% groups&.each do |group| -%>
+          - <%= group %>
+        <% end -%>
 
         <%# DEV NOTE: A NilStruct is used when editing multiple nodes
             This works fine with the above properties as is renders to null,
@@ -180,8 +200,8 @@ module FlightMetal
         builder.merge!(new_data).create
       end
 
-      def edit(nodes_str, fields: nil)
-        nodes = nodeattr_parser(nodes_str)
+      def edit(nodes_str, fields: nil, group: false)
+        nodes = nodeattr_parser(nodes_str, group: group)
         nodes.raise_if_missing
         data = edit_data(nodes, fields)
         if nodes.length == 1
@@ -196,9 +216,8 @@ module FlightMetal
       end
 
       def list
-        nodes = Registry.new
-                        .glob_read(Models::Node, Config.cluster, '*')
-                        .sort_by { |n| n.name }
+        nodes = Models::Node.glob_read(Config.cluster, '*')
+                            .sort_by { |n| n.name }
         outputs = SystemCommand.new(*nodes).fqdn_and_ip
         sys_nodes = nodes.each_with_index
                          .map do |node, idx|
@@ -231,8 +250,14 @@ module FlightMetal
 
       def update(node, data)
         return if data.empty?
-        Models::Node.update(Config.cluster, node.name) do |n|
+        groups = data.delete(:groups)&.reject { |g| g.nil? || g.empty? }
+        node_model = Models::Node.update(Config.cluster, node.name) do |n|
           data.each { |k, v| n.send("#{k}=", v) }
+        end
+        if groups && node_model.groups != groups
+          Models::Nodeattr.create_or_update(Config.cluster) do |attr|
+            attr.add_nodes(node.name, groups: groups)
+          end
         end
       end
     end

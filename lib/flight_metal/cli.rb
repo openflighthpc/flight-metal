@@ -43,6 +43,8 @@ require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/node'
 
+require 'pry' if FlightMetal::Config.debug
+
 module FlightMetal
   class CLI
     extend Commander::UI
@@ -133,6 +135,7 @@ module FlightMetal
         To create a node in a non-interactive shell, use the --fields flag
         with JSON syntax.
       DESC
+      c.option '--fields JSON', 'The fields to be saved'
       action(c, FlightMetal::Commands::Node, method: :create)
     end
 
@@ -143,12 +146,14 @@ module FlightMetal
     end
 
     command 'edit' do |c|
-      syntax(c, 'NODE_RANGE')
+      syntax(c, 'NODE_IDENTIFIER')
       c.summary = 'Edit the properties of the node(s)'
       c.description = <<~DESC
-        Edits the nodes given by NODE_RANGE. The range is expanded using
-        standard nodeattr syntax. This command can be used to edit the
+        Edits the nodes given by NODE_IDENTIFIER. The identifier is expanded
+        using standard nodeattr syntax. This command can be used to edit the
         built state and address information for a single or multiple nodes.
+        Alternatively, the NODE_IDENTIFIER can be used to specify a group of
+        nodes when used with the --group flag.
 
         By default the command will open the editable fields in your system
         editor. Refer to this document for a full list of fields that can
@@ -159,6 +164,7 @@ module FlightMetal
         fields directly.
       DESC
       c.option '--fields JSON', 'The updated fields to be saved'
+      c.option '-g', '--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
       action(c, FlightMetal::Commands::Node, method: :edit)
     end
 
@@ -207,7 +213,7 @@ module FlightMetal
     end
 
     command 'ipmi' do |c|
-      syntax(c, 'NODE [...] [--] [ipmi-options]')
+      syntax(c, 'NODE_IDENTIFIER [...] [--] [ipmi-options]')
       c.summary = 'Run commands with ipmitool'
       c.description = <<~DESC
         The ipmi command wraps the underlining ipmitool utility. Please
@@ -217,7 +223,7 @@ module FlightMetal
         following ipmitool options will be set:
 
         * The interface will always be set with: `-I lanplus`,
-        * The remote server is set to: `-H <NODE>.bmc`
+        * The remote server is set to: `-H <NODE_IDENTIFIER>.bmc`
         * And the username/password will be resolved from the configs and
           set with: `-U <username>` and `-P <password>`
 
@@ -226,9 +232,15 @@ module FlightMetal
         flags will be interpreted by `#{Config.app_name}` and likely cause an
         eror.
 
+        The ipmi command can be ran over multiple nodes by specifying a range
+        as part of the NODE_IDENTIFIER (e.g. node[01-10] for node01 to node10).
+        Alternatively the --group flag toggle the command to ran over all the
+        nodes within the group specified by NODE_IDENTIFIER.
+
         IPMI Commands:
         #{Config.ipmi_commands_help}
       DESC
+      c.option '-g', '--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
       action(c, FlightMetal::Commands::Ipmi)
     end
 
@@ -257,12 +269,17 @@ module FlightMetal
     end
 
     command 'power' do |c|
-      syntax(c, 'NODE COMMAND')
+      syntax(c, 'NODE_IDENTIFIER COMMAND')
       c.summary = 'Manage and check the power status of the nodes'
       c.description = <<~DESC.chomp
         Runs a power related command using ipmitool. The valid commands
-        are:
+        are given below. Similarly to the ipmi command, the NODE_IDENTIFIER
+        can specify a:
+        1. Single node,
+        2. A range of nodes (e.g. node[01-10] for node01 to node10), or
+        3. A group of nodes when used with the --group flag
 
+        Power Commands:
         #{
           cmds_hash = FlightMetal::Commands::Ipmi::POWER_COMMANDS
           max_len = cmds_hash.keys.max_by(&:length).length
@@ -271,6 +288,7 @@ module FlightMetal
           end.join("\n")
         }
       DESC
+      c.option '-g','--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
       action(c, FlightMetal::Commands::Ipmi, method: :power)
     end
 

@@ -55,10 +55,15 @@ module FlightMetal
                           'flight_metal/errors'
         end
 
-        def nodeattr_parser(string)
-          nodes = NodeattrUtils::NodeParser.expand(string).map do |name|
-            FlightMetal::Models::Node.read_or_new(Config.cluster, name)
-          end
+        def nodeattr_parser(string, group: false)
+          nodes = if group
+                    Models::Nodeattr.read_or_new(Config.cluster)
+                                    .nodes_in_group(string)
+                  else
+                    NodeattrUtils::NodeParser.expand(string)
+                  end.map do |name|
+                    Models::Node.read_or_new(Config.cluster, name)
+                  end
           NodeArray.new(nodes.sort_by(&:name))
         end
       end
