@@ -200,8 +200,8 @@ module FlightMetal
         builder.merge!(new_data).create
       end
 
-      def edit(nodes_str, fields: nil)
-        nodes = nodeattr_parser(nodes_str)
+      def edit(nodes_str, fields: nil, group: false)
+        nodes = nodeattr_parser(nodes_str, group: group)
         nodes.raise_if_missing
         data = edit_data(nodes, fields)
         if nodes.length == 1
