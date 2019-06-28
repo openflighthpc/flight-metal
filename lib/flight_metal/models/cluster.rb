@@ -52,10 +52,10 @@ module FlightMetal
 
       flag :imported
 
-      data_reader(:bmc_user) { 'default' }
+      data_reader(:bmc_username) { 'default' }
       data_reader(:bmc_password) { 'default' }
 
-      data_writer :bmc_user
+      data_writer :bmc_username
       data_writer :bmc_password
 
       data_reader :gateway_ip

@@ -174,15 +174,12 @@ module FlightMetal
         end
       end
 
-      data_writer(:bmc_user)
+      data_writer(:bmc_username)
       data_writer(:bmc_password)
       data_writer(:bmc_ip)
 
-      data_reader(:bmc_user) { links.cluster.bmc_user }
+      data_reader(:bmc_username) { links.cluster.bmc_username }
       data_reader(:bmc_password) { links.cluster.bmc_password }
-
-      alias_method :bmc_username, :bmc_user
-      alias_method :bmc_username=, :bmc_user=
 
       data_reader :bmc_ip
 
@@ -269,7 +266,7 @@ module FlightMetal
       end
 
       def ipmi_opts
-        "-H #{name}.bmc -U #{bmc_user} -P #{bmc_password}"
+        "-H #{name}.bmc -U #{bmc_username} -P #{bmc_password}"
       end
     end
   end
