@@ -1,0 +1,1 @@
+ipmitool -I lanplus -H $node.bmc -U $bmc_user -P $bmc_password chassis power reset

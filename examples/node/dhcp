@@ -1,0 +1,4 @@
+host $node {
+  hardware ethernet $mac;
+  fixed-address $ip;
+}
