@@ -34,11 +34,13 @@ require 'flight_metal/version'
 
 require 'active_support/core_ext/string'
 
+require 'flight_metal/constants'
 require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/dhcp'
 require 'flight_metal/commands/import'
+require 'flight_metal/commands/init'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/node'
@@ -247,13 +249,11 @@ module FlightMetal
     command 'init-cluster' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
-      c.description = <<~DESC
-        Create and switch to the new cluster IDENTIFIER. The fields form will
-        be opened in the system editor. The form can be bypassed by using the
-        --fields input.
-      DESC
       c.option '--fields JSON', 'The cluster fields to be saved'
-      action(c, FlightMetal::Commands::Cluster, method: :init)
+      CLI_TEMPLATE_MAP.each do |flag, name|
+        c.option "--#{flag} TEMPLATE", "Path to the #{name} template"
+      end
+      action(c, FlightMetal::Commands::Init)
     end
 
     command 'list' do |c|

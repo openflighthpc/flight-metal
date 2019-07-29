@@ -56,16 +56,6 @@ module FlightMetal
         require 'flight_manifest'
       end
 
-      def init(identifier, fields: nil)
-        cluster = Models::Cluster.create(identifier) do |c|
-          update_cluster_fields(c, fields)
-        end
-
-        Config.create_or_update { |c| c.cluster = cluster.identifier }
-        Config.reset
-        puts "Created cluster: #{cluster.identifier}"
-      end
-
       def list
         Config.cluster # Ensures that at least the default cluster exists
         id_strs = Models::Cluster.glob_read('*')
