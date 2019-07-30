@@ -35,14 +35,11 @@ require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
 require 'flight_manifest'
+require 'flight_metal/template_map'
 
 module FlightMetal
   module Models
     class Node
-      include FlightConfig::Deleter
-      include FlightConfig::Accessor
-      include FlightConfig::Links
-
       # The Builder class adds the additional fields
       class Builder < FlightManifest::Node
         property :base, default: -> { Dir.pwd }
@@ -131,11 +128,27 @@ module FlightMetal
         end
       end
 
+      include FlightConfig::Deleter
+      include FlightConfig::Accessor
+      include FlightConfig::Links
+
+      include TemplateMap::HasTemplatePath
+      include TemplateMap::HasRenderedPath
+
+      TemplateMap.template_path_hash.each do |method, _|
+        define_method(method) { links.cluster.public_send(method) }
+      end
+
+      TemplateMap.rendered_path_hash.each do |method, name|
+        define_method(method) { join(name) }
+      end
+
+      def self.join(cluster, name, *a)
+        Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
+      end
+
       def self.path(cluster, name)
-        File.join(
-          Config.content_dir, 'clusters', cluster, 'var/nodes',
-          name, 'etc/config.yaml'
-        )
+        join(cluster, name, 'etc', 'config.yaml')
       end
       define_input_methods_from_path_parameters
 
@@ -194,6 +207,10 @@ module FlightMetal
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
 
+      def join(*a)
+        self.class.join(*__inputs__, *a)
+      end
+
       def groups
         links.nodeattr.groups_for_node(name)
       end
@@ -220,49 +237,6 @@ module FlightMetal
 
       def template_dir
         File.join(base_dir, 'var/templates')
-      end
-
-      def pxelinux_cfg?
-        File.exists?(pxelinux_cfg_path)
-      end
-
-      def pxelinux_cfg_path
-        File.join(Config.tftpboot_dir,
-                  'pxelinux.cfg',
-                  '01-' + mac.downcase.gsub(':', '-')
-                 )
-      end
-
-      def pxelinux_template?
-        File.exists? pxelinux_template_path
-      end
-
-      def pxelinux_template_path
-        File.join(template_dir, 'pxelinux.cfg', 'pxe_bios')
-      end
-
-      def pxelinux?
-        pxelinux_template? || pxelinux_cfg?
-      end
-
-      def kickstart?
-        kickstart_template? || kickstart_www?
-      end
-
-      def kickstart_www_path
-        File.join(Config.kickstart_dir, cluster, "#{name}.ks")
-      end
-
-      def kickstart_www?
-        File.exists? kickstart_www_path
-      end
-
-      def kickstart_template_path
-        File.join(template_dir, "#{name}.ks")
-      end
-
-      def kickstart_template?
-        File.exists? kickstart_template_path
       end
 
       def ipmi_opts

@@ -34,7 +34,7 @@ require 'flight_metal/version'
 
 require 'active_support/core_ext/string'
 
-require 'flight_metal/constants'
+require 'flight_metal/template_map'
 require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
@@ -250,8 +250,8 @@ module FlightMetal
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
       c.option '--fields JSON', 'The cluster fields to be saved'
-      CLI_TEMPLATE_MAP.each do |flag, name|
-        c.option "--#{flag} TEMPLATE", "Path to the #{name} template"
+      TemplateMap.flag_hash.each do |_, flag|
+        c.option "--#{flag} TEMPLATE", "Path to the '#{flag.gsub('-', ' ')}' template"
       end
       action(c, FlightMetal::Commands::Init)
     end

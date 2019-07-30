@@ -29,6 +29,9 @@
 
 require 'flight_config'
 
+require 'pathname'
+
+require 'flight_metal/template_map'
 require 'flight_metal/config'
 require 'flight_metal/registry'
 
@@ -40,9 +43,10 @@ module FlightMetal
       include FlightConfig::Accessor
 
       include FlightMetal::FlightConfigUtils
+      include TemplateMap::HasTemplatePath
 
       def self.join(identifier, *rest)
-        File.join(Config.content_dir, 'clusters', identifier, *rest)
+        Pathname.new(Config.content_dir).join('clusters', identifier, *rest)
       end
 
       def self.path(identifier)
@@ -61,14 +65,18 @@ module FlightMetal
       data_reader :gateway_ip
       data_writer :gateway_ip
 
+      TemplateMap.template_path_hash.each do |method, name|
+        define_method(method) { join('templates', name) }
+      end
+
+      def join(*a)
+        self.class.join(*__inputs__, *a)
+      end
+
       def set_from_manifest(man)
         self.bmc_user = man.bmc_username unless man.bmc_username.nil?
         self.bmc_password = man.bmc_password unless man.bmc_password.nil?
         self.gateway_ip = man.gateway_ip unless man.gateway_ip.nil?
-      end
-
-      def template_dir
-        File.join(Config.content_dir, 'clusters', identifier, 'var/templates')
       end
 
       def post_hunt_script_path

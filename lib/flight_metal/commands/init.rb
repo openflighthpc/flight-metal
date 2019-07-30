@@ -33,7 +33,6 @@ module FlightMetal
       command_require 'flight_metal/models/cluster'
 
       def run(identifier, **kwargs)
-        puts kwargs
       end
     end
   end
