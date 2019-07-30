@@ -89,7 +89,10 @@ module FlightMetal
       SYNTAX
     end
 
-    command 'build' do |c|
+    # TODO: Remove me when refactoring is done
+    def self.xcommand(*_a); end
+
+    xcommand 'build' do |c|
       syntax(c)
       c.summary = 'Run the pxelinux build server'
       c.description = <<~DESC
@@ -123,7 +126,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Build)
     end
 
-    command 'create' do |c|
+    xcommand 'create' do |c|
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
       c.description = <<~DESC
@@ -141,13 +144,13 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :create)
     end
 
-    command 'delete' do |c|
+    xcommand 'delete' do |c|
       syntax(c, 'NODE')
       c.summary = 'Remove the node and associated configurations'
       action(c, FlightMetal::Commands::Node, method: :delete)
     end
 
-    command 'edit' do |c|
+    xcommand 'edit' do |c|
       syntax(c, 'NODE_IDENTIFIER')
       c.summary = 'Edit the properties of the node(s)'
       c.description = <<~DESC
@@ -170,7 +173,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :edit)
     end
 
-    command 'edit-cluster' do |c|
+    xcommand 'edit-cluster' do |c|
       syntax(c)
       c.summary = 'Update the current cluster configuration'
       c.description = <<~DESC
@@ -183,7 +186,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :edit)
     end
 
-    command 'hunt' do |c|
+    xcommand 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'
       c.description = <<~DESC
@@ -194,7 +197,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Hunt)
     end
 
-    command 'import' do |c|
+    xcommand 'import' do |c|
       syntax(c, 'MANIFEST_PATH')
       c.summary = 'Add node configuration profiles'
       c.description = <<~DESC
@@ -214,7 +217,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
-    command 'ipmi' do |c|
+    xcommand 'ipmi' do |c|
       syntax(c, 'NODE_IDENTIFIER [...] [--] [ipmi-options]')
       c.summary = 'Run commands with ipmitool'
       c.description = <<~DESC
@@ -256,19 +259,19 @@ module FlightMetal
       action(c, FlightMetal::Commands::Init)
     end
 
-    command 'list' do |c|
+    xcommand 'list' do |c|
       syntax(c)
       c.summary = 'Display the state of all the nodes'
       action(c, FlightMetal::Commands::Node, method: :list)
     end
 
-    command 'list-clusters' do |c|
+    xcommand 'list-clusters' do |c|
       syntax(c)
       c.summary = 'Display the list of clusters'
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
-    command 'power' do |c|
+    xcommand 'power' do |c|
       syntax(c, 'NODE_IDENTIFIER COMMAND')
       c.summary = 'Manage and check the power status of the nodes'
       c.description = <<~DESC.chomp
@@ -292,7 +295,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Ipmi, method: :power)
     end
 
-    command 'update-dhcp' do |c|
+    xcommand 'update-dhcp' do |c|
       syntax(c)
       c.summary = 'Update the DHCP server with the nodes mac addresses'
       c.description = <<~DESC.chomp
@@ -309,7 +312,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::DHCP, method: :update)
     end
 
-    command 'switch-cluster' do |c|
+    xcommand 'switch-cluster' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Change the current cluster profile'
       action(c, FlightMetal::Commands::Cluster, method: :switch)
