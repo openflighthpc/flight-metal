@@ -33,8 +33,11 @@ module FlightMetal
       command_require 'flight_metal/models/cluster', 'flight_metal/template_map'
 
       def run(identifier, **kwargs)
-        Models::Cluster.create(identifier) do |cluster|
+        new_cluster = Models::Cluster.create(identifier) do |cluster|
           save_templates(cluster, **kwargs)
+        end
+        Config.create_or_update do |config|
+          config.cluster = new_cluster.identifier
         end
       end
 
