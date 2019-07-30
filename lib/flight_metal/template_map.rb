@@ -42,6 +42,11 @@ module FlightMetal
       HASH.keys
     end
 
+    def self.lookup_key(string)
+      ifnone = -> { raise InvalidInput, "'#{string}' is not a valid type" }
+      HASH.find(ifnone) { |_, v| string == v[:flag] }.first
+    end
+
     def self.template_path_method(key)
       :"#{key}_template_path"
     end

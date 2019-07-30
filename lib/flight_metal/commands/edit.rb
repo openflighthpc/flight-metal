@@ -28,30 +28,52 @@
 #===============================================================================
 
 module FlightMetal
-  class FlightMetalError < StandardError; end
+  module Commands
+    class Edit < Command
+      command_require 'flight_metal/models/cluster',
+                      'flight_metal/models/node',
+                      'flight_metal/template_map',
+                      'tty-editor'
 
-  class ImportError < FlightMetalError
-    def self.raise(name, type: 'Node')
-      Kernel.raise self, <<~ERROR
-        #{type} '#{name}' has already been imported
-      ERROR
+      def run(type, identifier)
+        @type = type
+        @identifier = identifier
+        if File.exists? path
+          TTY::Editor.open(path)
+        else
+          raise MissingFile, <<~DESC.chomp
+            Can not edit the file as it does not exist: #{path}
+          DESC
+        end
+      end
+
+      private
+
+      attr_reader :identifier, :type
+
+      def key
+        TemplateMap.lookup_key(@type)
+      end
+
+      def model
+        @model ||= if identifier == 'domain'
+          Models::Cluster.read(Config.cluster)
+        else
+          raise NotImplementedError
+        end
+      end
+
+      def path_method
+        if model.is_a?(Models::Node)
+          raise NotImplementedError
+        else
+          TemplateMap.template_path_method(key)
+        end
+      end
+
+      def path
+        model.public_send(path_method)
+      end
     end
   end
-
-  class BadMessageError < FlightMetalError
-    MESSAGE = 'Cannot parse message body, ensure it is JSON and not truncated'
-
-    def initialize(msg = MESSAGE)
-      super
-    end
-  end
-
-  class SystemCommandError < FlightMetalError; end
-  class InternalError < FlightMetalError; end
-  class InvalidInput < FlightMetalError; end
-
-  class InvalidModel < FlightMetalError; end
-  class MissingFile < FlightMetalError; end
 end
-
-
