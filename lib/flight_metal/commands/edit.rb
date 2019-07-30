@@ -35,9 +35,10 @@ module FlightMetal
                       'flight_metal/template_map',
                       'tty-editor'
 
-      def run(type, identifier)
+      def run(type, identifier, touch: false)
         @type = type
         @identifier = identifier
+        FileUtils.touch path if touch
         if File.exists? path
           TTY::Editor.open(path)
         else
@@ -72,7 +73,9 @@ module FlightMetal
       end
 
       def path
-        model.public_send(path_method)
+        @path ||= Pathname.new(model.public_send(path_method)).tap do |p|
+          FileUtils.mkdir_p p.dirname
+        end
       end
     end
   end

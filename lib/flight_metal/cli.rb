@@ -154,6 +154,7 @@ module FlightMetal
     command 'edit' do |c|
       syntax(c, 'TYPE IDENTIFIER')
       c.summary = 'Edit the associated files'
+      c.option '--touch', 'Create an empty file if it does not already exist'
       action(c, FlightMetal::Commands::Edit)
     end
 
