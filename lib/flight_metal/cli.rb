@@ -237,7 +237,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Init)
     end
 
-    xcommand 'list' do |c|
+    command 'list' do |c|
       syntax(c)
       c.summary = 'Display the state of all the nodes'
       action(c, FlightMetal::Commands::Node, method: :list)
