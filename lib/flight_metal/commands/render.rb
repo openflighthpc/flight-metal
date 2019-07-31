@@ -29,57 +29,40 @@
 
 module FlightMetal
   module Commands
-    class Edit < Command
+    class Render < Command
       command_require 'flight_metal/models/cluster',
                       'flight_metal/models/node',
-                      'flight_metal/template_map',
-                      'tty-editor'
+                      'flight_metal/template_map'
 
-      def run(type, identifier, touch: nil, replace: nil)
+      def run(type, identifier)
         @type = type
         @identifier = identifier
-        FileUtils.touch path if touch
-        if replace
-          raise MissingFile, <<~DESC.chomp unless File.exists?(replace)
-            Can not replace the file as the sources does not exist: #{replace}
-          DESC
-          FileUtils.cp replace, path
-        elsif File.exists? path
-          TTY::Editor.open(path)
-        else
-          raise MissingFile, <<~DESC.chomp
-            Can not edit the file as it does not exist: #{path}
-          DESC
-        end
+        FileUtils.cp template_path, rendered_path
       end
 
       private
 
-      attr_reader :identifier, :type
+      attr_reader :type, :identifier
 
       def key
         TemplateMap.lookup_key(type)
       end
 
-      def model
-        @model ||= if identifier == 'domain'
-          Models::Cluster.read(Config.cluster)
-        else
-          raise NotImplementedError
+      def node
+        @node ||= Models::Node.read(Config.cluster, identifier)
+      end
+
+      def template_path
+        node.public_send(TemplateMap.template_path_method(key)).tap do |path|
+          raise MissingFile, <<~ERROR.chomp unless File.exists?(path)
+            Can not render the file as the source does not exist: #{path}
+          ERROR
         end
       end
 
-      def path_method
-        if model.is_a?(Models::Node)
-          raise NotImplementedError
-        else
-          TemplateMap.template_path_method(key)
-        end
-      end
-
-      def path
-        @path ||= Pathname.new(model.public_send(path_method)).tap do |p|
-          FileUtils.mkdir_p p.dirname
+      def rendered_path
+        node.public_send(TemplateMap.rendered_path_method(key)).tap do |path|
+          FileUtils.mkdir_p(File.dirname(path))
         end
       end
     end

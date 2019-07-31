@@ -40,11 +40,12 @@ require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/dhcp'
 require 'flight_metal/commands/edit'
+require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/init'
 require 'flight_metal/commands/ipmi'
-require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/node'
+require 'flight_metal/commands/render'
 
 require 'pry' if FlightMetal::Config.debug
 
@@ -279,6 +280,12 @@ module FlightMetal
       DESC
       c.option '-g','--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
       action(c, FlightMetal::Commands::Ipmi, method: :power)
+    end
+
+    command 'render' do |c|
+      syntax(c, 'TYPE IDENTIFIER')
+      c.summary = 'TODO: Make this command render instead of a simple copy'
+      action(c, FlightMetal::Commands::Render)
     end
 
     xcommand 'update-dhcp' do |c|
