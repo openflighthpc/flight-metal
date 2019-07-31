@@ -137,7 +137,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Init, method: :node)
     end
 
-    xcommand 'delete' do |c|
+    command 'delete' do |c|
       syntax(c, 'NODE')
       c.summary = 'Remove the node and associated configurations'
       action(c, FlightMetal::Commands::Node, method: :delete)

@@ -158,9 +158,8 @@ module FlightMetal
 
       def self.delete!(*a)
         delete(*a) do |node|
-          FileUtils.rm_f node.pxelinux_template_path
-          FileUtils.rm_f node.kickstart_template_path
-          Models::Nodeattr.create_or_update do |attr|
+          FileUtils.rm_rf node.join('lib')
+          Models::Nodeattr.create_or_update(node.cluster) do |attr|
             attr.remove_nodes(node.name)
           end
           true
