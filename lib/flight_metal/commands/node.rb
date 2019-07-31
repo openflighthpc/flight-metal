@@ -78,83 +78,23 @@ module FlightMetal
 
       ERB
 
-      HEADER_COMMENT = <<~DOC
-        # NOTE: Editing this file will set the state information of the node(s).
-        # The following conventions are used when editing:
-        #  > Fields will skip updating if:
-        #    1. The field is deleted
-        #    2. The value is set to null
-        #  > Fields can be unset by passing an empty string (*when supported)
-        #  > Use the --fields flag to edit in a non-interactive shell
-        #  > Only the listed fields can be edited
-      DOC
-
-      MULTI_EDITABLE = [
-        :rebuild, :built, :bmc_username, :bmc_password, :gateway_ip, :groups
-      ]
-      SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
-
-      EDIT_TEMPLATE = <<~ERB
-        #{HEADER_COMMENT}
-
-        # Trigger the node to rebuild next build:
-        # > #{Config.app_name} build
-        rebuild: <%= nil_to_null(rebuild?) %>
-
-        # Flags the built state of the node
-        built: <%= nil_to_null(built?) %>
-
-        # Set the bmc username/ password and gateway ip
-        bmc_username: <%= nil_to_null(bmc_user) %>
-        bmc_password: <%= nil_to_null(bmc_password) %>
-        gateway_ip: <%= nil_to_null(gateway_ip) %>
-
-        # Set the groups the node is part of. The first group is always the
-        # primary group
-        groups:
-        <% groups&.each do |group| -%>
-          - <%= group %>
-        <% end -%>
-
-        <%# DEV NOTE: A NilStruct is used when editing multiple nodes
-            This works fine with the above properties as is renders to null,
-            and thus skips being set unless changed. However, the properties
-            below are unsettable in a bulk edit as they need to unique
-        -%>
-        <% if __getobj__.is_a? FlightMetal::Templator::NilStruct -%>
-        # The addresses can not be set using a bulk edit
-        # ip: IGNORED
-        # fqdn: IGNORED
-        # mac: IGNORED
-        # bmc_ip: IGNORED
-        <% else -%>
-        # NOTE: The following can be unset with an empty string
-        # Set the hardware address (mac) and the bmc ip address (bmc_ip)
-        ip: <%= nil_to_null(ip) %>
-        fqdn: <%= nil_to_null(fqdn) %>
-        mac: <%= nil_to_null(mac) %>
-        bmc_ip: <%= nil_to_null(bmc_ip) %>
-        <% end -%>
-      ERB
-
       command_require 'flight_metal/models/node',
                       'flight_metal/templator',
                       'flight_metal/system_command'
 
       include Concerns::NodeattrParser
 
-      def edit(nodes_str, fields: nil, group: false)
-        nodes = nodeattr_parser(nodes_str, group: group)
-        nodes.raise_if_missing
-        data = edit_data(nodes, fields)
-        if nodes.length == 1
-          trim = trim_data(nodes.first, data, SINGLE_EDITABLE)
-          update(nodes.first, trim)
-        else
-          nodes.each do |node|
-            trim = trim_data(node, data, MULTI_EDITABLE)
-            update(node, trim)
-          end
+      def update(name, *params)
+        update_hash = params.select { |p| /\w+=.*/.match?(p) }
+                            .map { |p| p.split('=', 2) }
+                            .to_h
+                            .symbolize_keys
+        delete_keys = params.select { |p| /\w+!/.match?(p) }
+                            .map { |p| p[0..-2].to_sym }
+        Models::Node.update(Config.cluster, name) do |node|
+          new = node.params.merge(update_hash)
+          delete_keys.each { |k| new.delete(k) }
+          node.params = new
         end
       end
 
@@ -173,35 +113,6 @@ module FlightMetal
 
       def delete(name)
         Models::Node.delete!(Config.cluster, name)
-      end
-
-      private
-
-      def edit_data(nodes, fields)
-        return YAML.safe_load(fields, symbolize_names: true) if fields
-        subject = (nodes.length == 1 ? nodes.first : nil)
-        Templator.new(subject).edit_yaml(EDIT_TEMPLATE)
-      end
-
-      def trim_data(node, data, whitelist)
-        data.reject do |key, value|
-          next true unless whitelist.include?(key)
-          next true if value.nil?
-          next true if node.send(key) == value
-        end
-      end
-
-      def update(node, data)
-        return if data.empty?
-        groups = data.delete(:groups)&.reject { |g| g.nil? || g.empty? }
-        node_model = Models::Node.update(Config.cluster, node.name) do |n|
-          data.each { |k, v| n.send("#{k}=", v) }
-        end
-        if groups && node_model.groups != groups
-          Models::Nodeattr.create_or_update(Config.cluster) do |attr|
-            attr.add_nodes(node.name, groups: groups)
-          end
-        end
       end
     end
   end

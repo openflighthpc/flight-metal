@@ -151,6 +151,20 @@ module FlightMetal
       action(c, FlightMetal::Commands::Edit)
     end
 
+    command 'update' do |c|
+      syntax(c, 'NODE PARAMS...')
+      c.summary = "Modify the node's parameters"
+      c.description = <<~DESC
+        Set, modify, and delete parameters assigned to the NODE. The parameter
+        keys must be an alphanumeric string which may contain underscores.
+
+        PARAMS can set or modify keys by using `key=value` notation. The key can
+        be hard set to an empty string by omitting the value: `key=`. Keys are
+        permanently deleted when suffixed with a exclamation: `key!`.
+      DESC
+      action(c, FlightMetal::Commands::Node, method: :update)
+    end
+
     xcommand 'edit-cluster' do |c|
       syntax(c)
       c.summary = 'Update the current cluster configuration'

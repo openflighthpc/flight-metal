@@ -168,6 +168,7 @@ module FlightMetal
 
       include FlightConfig::Updater
       include FlightConfig::Globber
+      include FlightConfig::Accessor
 
       include FlightMetal::FlightConfigUtils
 
@@ -186,22 +187,8 @@ module FlightMetal
         end
       end
 
-      data_writer(:bmc_username)
-      data_writer(:bmc_password)
-      data_writer(:bmc_ip)
-
-      data_reader(:bmc_username) { links.cluster.bmc_username }
-      data_reader(:bmc_password) { links.cluster.bmc_password }
-
-      data_reader :bmc_ip
-
-      data_reader(:ip)
-      data_reader(:fqdn)
-      data_writer(:ip)
-      data_writer(:fqdn)
-
-      data_reader(:gateway_ip) { links.cluster.gateway_ip }
-      data_writer :gateway_ip
+      data_reader(:params) { |v| (v || {}).symbolize_keys }
+      data_writer(:params) { |v| v.to_h }
 
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }

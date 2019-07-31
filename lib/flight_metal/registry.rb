@@ -56,20 +56,6 @@ module FlightMetal
           Time.at(__data__.fetch("__#{name}_time__") || 0)
         end
       end
-
-      def data_writer(key)
-        define_method("#{key}=") do |value|
-          if value.nil? || value == ''
-            __data__.delete(key)
-          else
-            __data__.set(key, value: value)
-          end
-        end
-      end
-
-      def data_reader(key, &b)
-        define_method(key) { __data__.fetch(key) { instance_exec(&b) if b } }
-      end
     end
 
     def self.included(base)
