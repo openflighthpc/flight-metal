@@ -155,6 +155,7 @@ module FlightMetal
       syntax(c, 'TYPE IDENTIFIER')
       c.summary = 'Edit the associated files'
       c.option '--touch', 'Create an empty file if it does not already exist'
+      c.option '--replace FILE', 'Copy the given FILE content instead of editing'
       action(c, FlightMetal::Commands::Edit)
     end
 

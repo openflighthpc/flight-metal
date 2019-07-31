@@ -35,11 +35,16 @@ module FlightMetal
                       'flight_metal/template_map',
                       'tty-editor'
 
-      def run(type, identifier, touch: false)
+      def run(type, identifier, touch: nil, replace: nil)
         @type = type
         @identifier = identifier
         FileUtils.touch path if touch
-        if File.exists? path
+        if replace
+          raise MissingFile, <<~DESC.chomp unless File.exists?(replace)
+            Can not replace the file as the sources does not exist: #{replace}
+          DESC
+          FileUtils.cp replace, path
+        elsif File.exists? path
           TTY::Editor.open(path)
         else
           raise MissingFile, <<~DESC.chomp
