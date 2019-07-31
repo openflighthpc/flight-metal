@@ -49,7 +49,7 @@ module FlightMetal
       end
 
       def node
-        @node ||= Models::Node.read(Config.cluster, identifier)
+        @node ||= Models::Node.read(Config.cluster, identifier).tap(&:__data__)
       end
 
       def template_path

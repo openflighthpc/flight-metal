@@ -66,7 +66,7 @@ module FlightMetal
           Models::Cluster.read(Config.cluster)
         else
           Models::Node.read(Config.cluster, identifier)
-        end
+        end.tap(&:__data__)
       end
 
       def path_method
