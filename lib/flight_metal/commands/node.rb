@@ -94,50 +94,6 @@ module FlightMetal
       ]
       SINGLE_EDITABLE = [*MULTI_EDITABLE, :mac, :bmc_ip, :ip, :fqdn]
 
-      # NOTE: This template is rendered against the Models::Node::Builder so
-      # the syntax will vary slightly
-      CREATE_TEMPLATE = <<~ERB
-        #{HEADER_COMMENT}
-
-        # Give the paths to the pxelinux and kickstart files. These files are
-        # required for the build and must be given on create. The files will
-        # be internally cached, so future changes to the source files will not
-        # affect the build
-        pxelinux_file: <%= pxelinux_file if pxelinux_file %>
-        kickstart_file: <%= kickstart_file if kickstart_file %>
-
-        # Set the groups the node is part of. The first group is always the
-        # primary group
-        groups: # Add the groups using YAML array notation
-        <% groups.each do |group| -%>
-          - <%= group %>
-        <% end -%>
-
-        # Set the primary network ip and fully qualified domain name. The
-        # pre-set values (if present) have been retrieved using `gethostip`.
-        # Only the cached values will be used to render the DHCP config
-        ip: <%= nil_to_null ip %>
-        fqdn: <%= nil_to_null fqdn %>
-
-        # Set the management ip address to preform ipmi/power commands
-        bmc_ip: <%= nil_to_null bmc_ip %>
-
-        # The hardware address can optional be set now or with the 'hunt'
-        # command later
-        # mac: null
-
-        <% cluster_model = FlightMetal::Models::Cluster.read(cluster) -%>
-        # Override the default bmc username/ password and gateway ip.
-        # Uncomment the fields to hard set the values:
-        # bmc_username: <%= nil_to_null cluster_model.bmc_user %>
-        # bmc_password: <%= nil_to_null cluster_model.bmc_password %>
-        # gateway_ip: <%= nil_to_null cluster_model.gateway_ip %>
-
-        # Sets the node to build when the mac address is set, edit with caution
-        rebuild: <%= rebuild %>
-        built: <%= built %>
-      ERB
-
       EDIT_TEMPLATE = <<~ERB
         #{HEADER_COMMENT}
 
@@ -186,19 +142,6 @@ module FlightMetal
                       'flight_metal/system_command'
 
       include Concerns::NodeattrParser
-
-      def create(name, fields: nil)
-        builder = Models::Node::Builder.new(cluster: Config.cluster, name: name)
-        new_data = if fields
-          YAML.safe_load(fields, symbolize_names: true)
-        else
-          Templator.new(builder).edit_yaml(CREATE_TEMPLATE)
-        end
-        new_data.reject! do |key, value|
-          builder[key] == value || value.nil?
-        end
-        builder.merge!(new_data).create
-      end
 
       def edit(nodes_str, fields: nil, group: false)
         nodes = nodeattr_parser(nodes_str, group: group)

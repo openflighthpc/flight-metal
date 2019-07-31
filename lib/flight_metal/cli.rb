@@ -128,22 +128,13 @@ module FlightMetal
       action(c, FlightMetal::Commands::Build)
     end
 
-    xcommand 'create' do |c|
+    command 'create' do |c|
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
-      c.description = <<~DESC
-        Opens up the NODE configuration in your system editor. The
-        `pxelinux_file` and `kickstart_file` fields are required and must
-        specify the paths to the corresponding files.
-
-        All other fields are optional on create, but maybe required for the
-        advanced features to work. See the editor notes for further details.
-
-        To create a node in a non-interactive shell, use the --fields flag
-        with JSON syntax.
-      DESC
-      c.option '--fields JSON', 'The fields to be saved'
-      action(c, FlightMetal::Commands::Node, method: :create)
+      TemplateMap.flag_hash.each do |_, flag|
+        c.option "--#{flag} FILE", "Path to the '#{flag.gsub('-', ' ')}' file"
+      end
+      action(c, FlightMetal::Commands::Init, method: :node)
     end
 
     xcommand 'delete' do |c|

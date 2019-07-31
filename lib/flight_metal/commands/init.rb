@@ -30,25 +30,35 @@
 module FlightMetal
   module Commands
     class Init < Command
-      command_require 'flight_metal/models/cluster', 'flight_metal/template_map'
+      command_require 'flight_metal/models/cluster', 'flight_metal/template_map', 'flight_metal/models/node'
 
       def run(identifier, **kwargs)
         new_cluster = Models::Cluster.create(identifier) do |cluster|
-          save_templates(cluster, **kwargs)
+          save_files(cluster, **kwargs)
         end
         Config.create_or_update do |config|
           config.cluster = new_cluster.identifier
         end
       end
 
+      def node(identifier, **kwargs)
+        Models::Node.create(Config.cluster, identifier) do |node|
+          save_files(node, **kwargs)
+        end
+      end
+
       private
 
-      def save_templates(cluster, **kwargs)
+      def save_files(model, **kwargs)
         saved = []
         TemplateMap.keys.each do |key|
           next unless src = kwargs[key]
-          method = TemplateMap.template_path_method(key)
-          path = cluster.public_send(method)
+          method = if model.is_a? Models::Node
+                     TemplateMap.rendered_path_method(key)
+                   else
+                     TemplateMap.template_path_method(key)
+                   end
+          path = model.public_send(method)
           path.dirname.mkdir unless path.dirname.directory?
           FileUtils.cp src, path
           saved << path
