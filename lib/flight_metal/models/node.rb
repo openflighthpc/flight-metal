@@ -140,7 +140,7 @@ module FlightMetal
       end
 
       TemplateMap.rendered_path_hash.each do |method, name|
-        define_method(method) { join(name) }
+        define_method(method) { join('lib', name) }
       end
 
       def self.join(cluster, name, *a)

@@ -65,13 +65,13 @@ module FlightMetal
         @model ||= if identifier == 'domain'
           Models::Cluster.read(Config.cluster)
         else
-          raise NotImplementedError
+          Models::Node.read(Config.cluster, identifier)
         end
       end
 
       def path_method
         if model.is_a?(Models::Node)
-          raise NotImplementedError
+          TemplateMap.rendered_path_method(key)
         else
           TemplateMap.template_path_method(key)
         end
