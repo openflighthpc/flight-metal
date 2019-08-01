@@ -294,8 +294,15 @@ module FlightMetal
     end
 
     command 'render' do |c|
-      syntax(c, 'TYPE IDENTIFIER')
-      c.summary = 'TODO: Make this command render instead of a simple copy'
+      syntax(c, 'TYPE NODE')
+      c.summary = 'Render the template against the node parameters'
+      c.description = <<~DESC.chomp
+        Render the domain or group template for a node. All occurrences of
+        `%param%` will be replaced with the node's parameter values. By default,
+        the command will error if a tag has not been replaced. This can be overridden
+        using the --force flag.
+      DESC
+      c.option '--force', 'Allow missing tags when writing the file'
       action(c, FlightMetal::Commands::Render)
     end
 

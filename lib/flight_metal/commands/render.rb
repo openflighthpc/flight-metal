@@ -34,14 +34,23 @@ module FlightMetal
                       'flight_metal/models/node',
                       'flight_metal/template_map'
 
-      def run(type, identifier)
+      def run(type, identifier, force: false)
         @type = type
         @identifier = identifier
         initial = File.read(template_path)
-        rendered = node.params.reduce(initial) do |memo, (key, value)|
+        rendered = node.render_params.reduce(initial) do |memo, (key, value)|
           memo.gsub("%#{key}%", value)
         end
-        puts rendered
+        if !force && /%\w+%/.match?(rendered)
+          matches = rendered.scan(/%\w+%/).uniq.sort
+                            .map { |s| /\w+/.match(s).to_s }
+          raise MissingParams, <<~ERROR.squish
+            The following parameters have not bee replaced. Use the --force to
+            override this error. Missing: #{matches.join(',')}
+          ERROR
+        else
+          File.write(rendered_path, rendered)
+        end
       end
 
       private

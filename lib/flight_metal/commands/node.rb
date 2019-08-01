@@ -78,11 +78,11 @@ module FlightMetal
       include Concerns::NodeattrParser
 
       def update(name, *params)
-        update_hash = params.select { |p| /\w+=.*/.match?(p) }
+        update_hash = params.select { |p| /\A\w+=.*/.match?(p) }
                             .map { |p| p.split('=', 2) }
                             .to_h
                             .symbolize_keys
-        delete_keys = params.select { |p| /\w+!/.match?(p) }
+        delete_keys = params.select { |p| /\A\w+!/.match?(p) }
                             .map { |p| p[0..-2].to_sym }
         Models::Node.update(Config.cluster, name) do |node|
           new = node.params.merge(update_hash)
