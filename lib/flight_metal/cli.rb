@@ -254,6 +254,12 @@ module FlightMetal
     command 'list' do |c|
       syntax(c)
       c.summary = 'Display the state of all the nodes'
+      c.description = <<~DESC
+        Shows the current state, grouping and parameter's of a node.
+
+        The parameters used to populate the templates during `render`. Use the `update`
+        command to modify the parameters.
+      DESC
       action(c, FlightMetal::Commands::Node, method: :list)
     end
 

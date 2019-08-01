@@ -37,7 +37,11 @@ module FlightMetal
       def run(type, identifier)
         @type = type
         @identifier = identifier
-        FileUtils.cp template_path, rendered_path
+        initial = File.read(template_path)
+        rendered = node.params.reduce(initial) do |memo, (key, value)|
+          memo.gsub("%#{key}%", value)
+        end
+        puts rendered
       end
 
       private

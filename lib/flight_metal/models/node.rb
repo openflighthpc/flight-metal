@@ -188,10 +188,28 @@ module FlightMetal
       end
 
       data_reader(:params) { |v| (v || {}).symbolize_keys }
-      data_writer(:params) { |v| v.to_h }
+      data_writer(:params) do |value|
+        value.to_h
+             .symbolize_keys
+             .delete_if do |k, _v|
+          reserved_params.keys.include?(k).tap do |bool|
+            Log.warn_puts <<~MSG.chomp if bool
+              Cowardly refusing to overwrite '#{name}' reserved parameter key: #{k}
+            MSG
+          end
+        end
+      end
 
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
+
+      def render_params
+        params.merge(reserved_params)
+      end
+
+      def reserved_params
+        { name: name, cluster: cluster }
+      end
 
       def join(*a)
         self.class.join(*__inputs__, *a)

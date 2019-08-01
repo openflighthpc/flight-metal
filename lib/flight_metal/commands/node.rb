@@ -57,10 +57,13 @@ module FlightMetal
         <% sg = secondary_groups -%>
         *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
 
-        ## Parameters
-        <% if params.empty? -%>
-        No parameters have been set
-        <% else -%>
+        ## Reserved Parameters
+        <% reserved_params.each do |key, value| -%>
+        - _<%= key %>_: <%= value %>
+        <% end -%>
+
+        <% unless params.empty? -%>
+        ## Other Parameters
         <%   params.each do |key, value| -%>
         - *<%= key %>*: <%= value %>
         <%   end -%>
