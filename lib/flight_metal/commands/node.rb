@@ -57,24 +57,14 @@ module FlightMetal
         <% sg = secondary_groups -%>
         *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
 
-        *IP*: <%= ip %>
-        <% if ip && sys_ip.nil? -%>
-        __Warning__: The node IP does not appear in the hosts list
-        <% elsif ip != sys_ip -%>
-        __Warning__: The node IP is different in the hosts list: <%= sys_ip %>
+        ## Parameters
+        <% if params.empty? -%>
+        No parameters have been set
+        <% else -%>
+        <%   params.each do |key, value| -%>
+        - *<%= key %>*: <%= value %>
+        <%   end -%>
         <% end -%>
-        *Domain Name*: <%= fqdn %>
-        <% if fqdn && sys_fqdn.nil? -%>
-        __Warning__: The domain name does not appear in the hosts list
-        <% elsif fqdn != sys_fqdn -%>
-        __Warning__: The domain name is different in the hosts list: <%= sys_fqdn %>
-        <% end -%>
-        *Gateway*: <%= gateway_ip %>
-
-        <% if mac? %>*MAC*: <%= mac %><% end %>
-        <% if bmc_username %>*BMC Username*: <%= bmc_username %><% end %>
-        <% if bmc_password %>*BMC Password*: <%= bmc_password %><% end %>
-        <% if bmc_ip %>*BMC fqdn*: <%= bmc_ip %><% end %>
 
       ERB
 
