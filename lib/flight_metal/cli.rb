@@ -263,7 +263,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :list)
     end
 
-    xcommand 'list-clusters' do |c|
+    command 'list-clusters' do |c|
       syntax(c)
       c.summary = 'Display the list of clusters'
       action(c, FlightMetal::Commands::Cluster, method: :list)
@@ -323,7 +323,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::DHCP, method: :update)
     end
 
-    xcommand 'switch-cluster' do |c|
+    command 'switch-cluster' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Change the current cluster profile'
       action(c, FlightMetal::Commands::Cluster, method: :switch)
