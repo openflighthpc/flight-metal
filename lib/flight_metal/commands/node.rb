@@ -57,6 +57,11 @@ module FlightMetal
         <% sg = secondary_groups -%>
         *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
 
+        ## File Status
+        <% ['kickstart', 'pxelinux', 'dhcp'].each do |type| -%>
+        - *<%= type %>*: <%= public_send(type + '_status', error: false) %>
+        <% end -%>
+
         ## Reserved Parameters
         <% reserved_params.each do |key, value| -%>
         - _<%= key %>_: <%= value %>

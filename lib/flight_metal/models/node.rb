@@ -226,7 +226,31 @@ module FlightMetal
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
 
-      define_path?(*[:kickstart, :pxelinux, :dhcp].map { |m| "#{m}_system" })
+      [:kickstart, :pxelinux, :dhcp].each do |type|
+        define_path?("#{type}_system")
+        define_method("#{type}_status") do |error: true|
+          return :missing unless public_send("#{type}_rendered_path?")
+          return :pending unless public_send("#{type}_system_path?")
+          rendered = Pathname.new(public_send("#{type}_rendered_path"))
+          system = Pathname.new(public_send("#{type}_system_path"))
+          if system.symlink? && File.idenitical?(system.readlink, rendered)
+            :installed
+          elsif error && system.symlink?
+            raise InvalidModel, <<~ERROR.chomp
+              '#{name}' system file is linked incorrectly. Fix the link and try again
+              Link Source: #{system}
+              Correct:     #{system.readlink}
+              Incorrect:   #{rendered}
+            ERROR
+          elsif error
+            raise InvalidModel, <<~ERROR.chomp
+              '#{name}' already exists, please remove it and try again
+            ERROR
+          else
+            :invalid
+          end
+        end
+      end
 
       def pxelinux_system_path
         if mac
