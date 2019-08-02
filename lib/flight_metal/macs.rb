@@ -42,6 +42,7 @@ module FlightMetal
 
     def nodes
       Models::Node.glob_read('*', '*', registry: registry)
+                  .reject { |n| n.mac.nil? }
     end
 
     def macs

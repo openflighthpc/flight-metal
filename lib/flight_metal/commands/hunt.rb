@@ -114,30 +114,41 @@ module FlightMetal
         end
 
         # Reform the mac hash every loop
-        macs = Macs.new(registry)
-        other_node = macs.find(hwaddr)
+        other_node = Macs.new(registry).find(hwaddr)
 
-        question = <<~QUESTION.squish
-          Detected a machine on the network (#{hwaddr}).
-          Please enter the hostname:
-        QUESTION
-        name = HighLine.new.ask(question) do |q|
-          q.default = other_node&.name || sequenced_name
+        if other_node.nil? || other_node.cluster == Config.cluster
+          name = HighLine.new.ask(<<~QUESTION.squish) do |q|
+            Detected a machine on the network (#{hwaddr}).
+            Please enter the hostname:
+          QUESTION
+            q.default = other_node&.name || sequenced_name
+          end
+
+          if other_node && (name == other_node.name)
+            # noop
+          else
+            if other_node
+              Log.warn_puts <<~WARN.chomp
+                Unassigning address from existing node: #{other_node.name}
+              WARN
+              other_node.update { |node| node.mac = nil }
+            end
+            if Models::Node.exists?(Config.cluster, name)
+              Models::Node.read(Config.cluster, name, registry: registry).update { |n| n.mac = hwaddr }
+            else
+              Models::Node.create(Config.cluster, name) { |n| n.mac = hwaddr }
+            end
+          end
+
+          Log.info_puts "Saved #{name} : #{hwaddr}"
+        else
+          Log.warn_puts <<~WARN.chomp
+            Skipping: Detected hardware address from different cluster
+            mac: #{hwaddr}
+            cluster: #{other_node.cluster}
+            node: #{other_node.name}
+          WARN
         end
-
-        current_node = macs.nodes.find do |n|
-          n.name == name && n.cluster == Config.cluster
-        end
-        current_node ||= Models::Node.create_or_update(Config.cluster, name)
-
-        if other_node && (other_node != current_node)
-          Log.warn_puts "Unassigning address #{hwaddr} from: #{other_node.name}"
-          other_node.update { |n| n.mac = nil }
-        end
-
-        current_node.update { |n| n.mac = hwaddr }
-
-        Log.info_puts "Saved #{name} : #{hwaddr}"
 
         detected_macs << hwaddr
       rescue StandardError => e

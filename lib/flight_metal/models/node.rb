@@ -187,11 +187,16 @@ module FlightMetal
         end
       end
 
-      data_reader(:params) { |v| (v || {}).symbolize_keys }
-      data_writer(:params) do |value|
-        value.to_h
-             .symbolize_keys
-             .delete_if do |k, _v|
+      data_reader(:params) do |hash|
+        hash = (hash || {}).symbolize_keys
+        mac ? hash.merge(mac: mac) : hash
+      end
+      data_writer(:params) do |raw_value|
+        value = raw_value.to_h.dup.symbolize_keys
+        if value.key?(:mac)
+          self.mac = value.delete(:mac)
+        end
+        value.delete_if do |k, _v|
           reserved_params.keys.include?(k).tap do |bool|
             Log.warn_puts <<~MSG.chomp if bool
               Cowardly refusing to overwrite '#{name}' reserved parameter key: #{k}
@@ -200,20 +205,24 @@ module FlightMetal
         end
       end
 
+      data_reader(:mac)
+      data_writer(:mac) do |hwaddr|
+        if hwaddr.nil? || hwaddr.empty?
+          nil
+        elsif other = Macs.new(__registry__).find(hwaddr)
+          raise InvalidModel, <<~ERROR.chomp
+            Could not update mac address as it is currently being used in:
+              - cluster: #{other.cluster}
+              - name: #{other.name}
+          ERROR
+        else
+          hwaddr.to_s
+        end
+      end
+
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
 
-      def mac
-        params[:mac]
-      end
-
-      def mac=(value)
-        self.params = if value.nil? || value.empty?
-          params.tap { |p| p.delete(:mac) }
-        else
-          params.merge(mac: value)
-        end
-      end
 
       def render_params
         params.merge(reserved_params)
