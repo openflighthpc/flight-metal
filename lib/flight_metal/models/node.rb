@@ -128,19 +128,28 @@ module FlightMetal
         end
       end
 
+      include FlightConfig::Updater
+      include FlightConfig::Globber
       include FlightConfig::Deleter
       include FlightConfig::Accessor
       include FlightConfig::Links
 
-      include TemplateMap::HasTemplatePath
-      include TemplateMap::HasRenderedPath
+      include TemplateMap::PathAccessors
 
-      TemplateMap.template_path_hash.each do |method, _|
-        define_method(method) { links.cluster.public_send(method) }
-      end
+      include FlightMetal::FlightConfigUtils
 
-      TemplateMap.rendered_path_hash.each do |method, name|
-        define_method(method) { join('lib', name) }
+      TemplateMap.keys.each do |type|
+        template_method = TemplateMap.template_path_method(type)
+        define_method(template_method) do
+          links.cluster.public_send(template_method)
+        end
+
+        rendered_method = TemplateMap.rendered_path_method(type)
+        define_method(rendered_method) do
+          join('lib', TemplateMap.find_filename(type))
+        end
+
+        define_path?(rendered_method, template_method)
       end
 
       def self.join(cluster, name, *a)
@@ -165,12 +174,6 @@ module FlightMetal
           true
         end
       end
-
-      include FlightConfig::Updater
-      include FlightConfig::Globber
-      include FlightConfig::Accessor
-
-      include FlightMetal::FlightConfigUtils
 
       flag :built
       flag :rebuild
@@ -223,6 +226,25 @@ module FlightMetal
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
 
+      define_path?(*[:kickstart, :pxelinux, :dhcp].map { |m| "#{m}_system" })
+
+      def pxelinux_system_path
+        if mac
+          File.join(Cofnig.tftpboot_dir,
+                    'pxelinux.cfg',
+                    '01-' + mac.downcase.gsub(':', '-'))
+        else
+          nil
+        end
+      end
+
+      def kickstart_system_path
+        File.join(Config.kickstart_dir, cluster, name + '.ks')
+      end
+
+      def dhcp_system_path
+        File.join(Config.dhcpd_dir, name + '-dhcpd.conf')
+      end
 
       def render_params
         params.merge(reserved_params)

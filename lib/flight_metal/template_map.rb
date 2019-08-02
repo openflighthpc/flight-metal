@@ -63,12 +63,37 @@ module FlightMetal
       filename_hash.map { |k, v| [template_path_method(k), v] }.to_h
     end
 
+    def self.find_filename(type)
+      HASH[type][:filename]
+    end
+
     def self.filename_hash
       HASH.map { |k, v| [k, v[:filename]] }
     end
 
     def self.flag_hash
       HASH.map { |k, v| [k, v[:flag]] }.to_h
+    end
+
+    module PathAccessors
+      def self.included(base)
+        base.extend(ClassMethods)
+      end
+
+      module ClassMethods
+        def define_path?(*methods)
+          methods.map { |m| /_path\Z/.match?(m.to_s) ? m : "#{m}_path" }
+                 .each do |method|
+            define_method("#{method}?") do
+              if path = self.public_send(method)
+                File.exists?(path)
+              else
+                nil
+              end
+            end
+          end
+        end
+      end
     end
 
     module HasTemplatePath
