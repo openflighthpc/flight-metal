@@ -178,7 +178,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :edit)
     end
 
-    xcommand 'hunt' do |c|
+    command 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'
       c.description = <<~DESC

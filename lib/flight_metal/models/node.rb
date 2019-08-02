@@ -203,6 +203,18 @@ module FlightMetal
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
 
+      def mac
+        params[:mac]
+      end
+
+      def mac=(value)
+        self.params = if value.nil? || value.empty?
+          params.tap { |p| p.delete(:mac) }
+        else
+          params.merge(mac: value)
+        end
+      end
+
       def render_params
         params.merge(reserved_params)
       end
