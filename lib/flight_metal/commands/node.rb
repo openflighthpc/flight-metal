@@ -58,8 +58,8 @@ module FlightMetal
         *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
 
         ## File Status
-        <% ['kickstart', 'pxelinux', 'dhcp'].each do |type| -%>
-        - *<%= type %>*: <%= public_send(type + '_status', error: false) %>
+        <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
+        - *<%= flag %>*: <%= public_send(type.to_s + '_status', error: false).capitalize %>
         <% end -%>
 
         ## Reserved Parameters

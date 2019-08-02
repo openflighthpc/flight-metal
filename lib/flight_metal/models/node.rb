@@ -252,6 +252,12 @@ module FlightMetal
         end
       end
 
+      [:power_on, :power_off, :power_status].each do |type|
+        define_method("#{type}_status") do |error: true|
+          public_send("#{type}_rendered_path?") ? :installed : :missing
+        end
+      end
+
       def pxelinux_system_path
         if mac
           File.join(Cofnig.tftpboot_dir,
