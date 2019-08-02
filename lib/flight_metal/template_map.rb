@@ -33,6 +33,7 @@ module FlightMetal
       kickstart: { flag: 'kickstart', filename: 'kickstart.ks' },
       pxelinux: { flag: 'pxelinux', filename: 'pxelinux.cfg' },
       dhcp: { flag: 'dhcp', filename: 'dhcp.conf' },
+      ipmi: { flag: 'ipmi', filename: 'ipmi.sh' },
       power_on: { flag: 'power-on', filename: 'power/on.sh' },
       power_off: { flag: 'power-off', filename: 'power/off.sh' },
       power_status: { flag: 'power-status', filename: 'power/status.sh' }

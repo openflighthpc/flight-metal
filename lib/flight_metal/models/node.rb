@@ -252,7 +252,7 @@ module FlightMetal
         end
       end
 
-      [:power_on, :power_off, :power_status].each do |type|
+      [:ipmi, :power_on, :power_off, :power_status].each do |type|
         define_method("#{type}_status") do |error: true|
           public_send("#{type}_rendered_path?") ? :installed : :missing
         end
