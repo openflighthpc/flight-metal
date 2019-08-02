@@ -258,6 +258,12 @@ module FlightMetal
         end
       end
 
+      def buildable?
+        [:pxelinux, :kickstart, :dhcp].map do |type|
+          [:pending, :installed].include?(public_send("#{type}_status"))
+        end.reduce(true) { |memo, bool| memo && bool }
+      end
+
       def pxelinux_system_path
         if mac
           File.join(Cofnig.tftpboot_dir,

@@ -48,9 +48,15 @@ module FlightMetal
         *Hunted*: <%= mac? ? mac_time : 'n/a' %>
         <% if built? -%>
         *Built*: <%= built_time %>
-        *Rebuild*: <%= rebuild? ? 'Scheduled': 'n/a' %>
+        *Rebuild*: <%= if buildable? && rebuild?
+                         'Scheduled'
+                       elsif rebuild?
+                         'Skipping'
+                       else
+                         'No'
+                       end %>
         <% else  -%>
-        *Build*: <%= rebuild? ? 'Scheduled' : 'Skipping' %>
+        *Build*: <%= buildable? ? 'Scheduled' : 'Skipping' %>
         <% end -%>
 
         *Primary Group*: <%= primary_group || 'n/a' %>
