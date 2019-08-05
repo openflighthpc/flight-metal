@@ -64,7 +64,7 @@ module FlightMetal
       end
 
       def buildable_nodes
-        @buildable_nodes ||= BuildableNodes.new('foo')
+        @buildable_nodes ||= BuildableNodes.new(Config.cluster)
       end
     end
   end
