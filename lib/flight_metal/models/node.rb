@@ -266,7 +266,8 @@ module FlightMetal
       end
 
       def type_system_path?(type)
-        File.exists?(type_system_path(type))
+        path = type_system_path(type)
+        path.nil? ? false : File.exists?(path)
       end
 
       def type_status(type)
