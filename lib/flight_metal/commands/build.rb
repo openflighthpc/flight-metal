@@ -59,6 +59,7 @@ module FlightMetal
               being built
             WARN
           end
+          !buildable_nodes.empty?
         end
       end
 
