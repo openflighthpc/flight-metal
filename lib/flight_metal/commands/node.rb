@@ -47,16 +47,14 @@ module FlightMetal
         # Node: '<%= name %>'
         <% if built? -%>
         *Built*: <%= built_time %>
-        *Rebuild*: <%= if buildable?
-                         'Scheduled'
-                       elsif rebuild?
-                         'Skipping'
-                       else
-                         'No'
-                       end %>
-        <% else  -%>
-        *Build*: <%= buildable? ? 'Scheduled' : 'Skipping' %>
         <% end -%>
+        *<%= built? ? 'Reb' : 'B' %>uild*: <%= if buildable?
+                                                 'Scheduled'
+                                               elsif rebuild?
+                                                 'Skipping'
+                                               else
+                                                 'No'
+                                               end %>
 
         *Primary Group*: <%= primary_group || 'n/a' %>
         <% sg = secondary_groups -%>

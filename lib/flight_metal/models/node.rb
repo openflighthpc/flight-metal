@@ -262,7 +262,7 @@ module FlightMetal
       end
 
       def buildable?
-        rebuild? && all_types_buildable?
+        mac? && rebuild? && all_types_buildable?
       end
 
       def all_types_buildable?
