@@ -244,7 +244,8 @@ module FlightMetal
             ERROR
           elsif error
             raise InvalidModel, <<~ERROR.chomp
-              '#{name}' already exists, please remove it and try again
+              '#{name}' system file already exists, please remove it and try again
+              File: #{system}
             ERROR
           else
             :invalid
@@ -261,7 +262,8 @@ module FlightMetal
       def buildable?
         [:pxelinux, :kickstart, :dhcp].map do |type|
           [:pending, :installed].include?(public_send("#{type}_status"))
-        end.reduce(true) { |memo, bool| memo && bool }
+        end.push(mac?)
+           .reduce(true) { |memo, bool| memo && bool }
       end
 
       def pxelinux_system_path

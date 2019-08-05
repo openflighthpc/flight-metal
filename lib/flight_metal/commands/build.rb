@@ -39,7 +39,6 @@ module FlightMetal
 
       def run
         node_names = nodes.map(&:name)
-        build_files # Puts the build files into place
         if node_names.empty?
           Log.warn_puts 'Nothing to build'
           return
@@ -48,91 +47,7 @@ module FlightMetal
         Log.info_puts "Building: #{node_names.join(',')}"
 
         Server.new('0.0.0.0', Config.build_port, 256).loop do |message|
-          unless node_names.include?(message.node)
-            Log.warn "Ignoring message from node: #{message.node}"
-            next true
-          end
-          Log.info_puts "#{message.node}: #{message.message}"if message.message
-          if message.built?
-            register_built(message)
-            node_names.delete_if { |name| name == message.node }
-            !node_names.empty?
-          else
-            # Process the next message
-            true
-          end
         end
-      end
-
-      private
-
-      def nodes
-        @nodes ||= begin
-          Models::Node.glob_read(Config.cluster, '*')
-                      .select(&:rebuild?)
-                      .select do |node|
-            if node.mac? && node.pxelinux? && node.kickstart?
-              Models::Node.update(Config.cluster, node.name) do |n|
-                n.built = false
-                n.rebuild = true
-              end
-              true
-            elsif node.mac? && node.pxelinux?
-              Log.warn_puts <<~ERROR.squish
-                Skipping #{node.name}: Missing kickstart source -
-                #{node.kickstart_template_path}
-              ERROR
-              false
-            elsif node.mac?
-              Log.warn_puts <<~ERROR.squish
-                Skipping #{node.name}: Missing pxelinux source -
-                #{node.pxelinux_template_path}
-              ERROR
-              false
-            else
-              Log.warn_puts <<~ERROR.squish
-                Skipping #{node.name}: Missing hardware address
-              ERROR
-              false
-            end
-          end
-        end
-      end
-
-      def build_files
-        @build_files ||= nodes.each_with_object({}) do |node, memo|
-          if node.pxelinux_cfg?
-            Log.warn_puts <<~ERROR.squish
-              Warning #{node.name}: Building off an existing pxelinux file -
-              #{node.pxelinux_cfg_path}
-            ERROR
-          else
-            FileUtils.cp node.pxelinux_template_path,
-                         node.pxelinux_cfg_path
-            FileUtils.chmod 0644, node.pxelinux_cfg_path
-          end
-          memo[node.name] = [node.pxelinux_cfg_path]
-          if node.kickstart_www?
-            Log.warn_puts <<~WARN.squish
-              Warning #{node.name}: Building off an existing kickstart file -
-              #{node.kickstart_www_path}
-            WARN
-          else
-            FileUtils.mkdir_p File.dirname(node.kickstart_www_path)
-            FileUtils.cp node.kickstart_template_path,
-                         node.kickstart_www_path
-          end
-          memo[node.name] << node.kickstart_www_path
-        end
-      end
-
-      def register_built(message)
-        node = Models::Node.update(Config.cluster, message.node) do |n|
-          build_files[n.name].each { |f| FileUtils.rm(f) }
-          n.built = true
-          n.rebuild = false
-        end
-        Log.info_puts "Built: #{node.name}"
       end
     end
   end
