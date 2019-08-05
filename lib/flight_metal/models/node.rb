@@ -259,11 +259,33 @@ module FlightMetal
         end
       end
 
+      def type_system_path(type)
+        public_send("#{type}_system_path")
+      end
+
+      def type_status(type)
+        public_send("#{type}_status")
+      end
+
       def buildable?
-        [:pxelinux, :kickstart, :dhcp].map do |type|
-          [:pending, :installed].include?(public_send("#{type}_status"))
-        end.push(mac?)
-           .reduce(true) { |memo, bool| memo && bool }
+        rebuild? && all_types_buildable?
+      end
+
+      def all_types_buildable?
+        [:kickstart, :pxelinux, :dhcp].each do |type|
+          type_buildable?(type)
+        end
+      end
+
+      def type_buildable?(type)
+        case type_status(type)
+        when :installed
+          true
+        when :pending
+          true
+        else
+          false
+        end
       end
 
       def pxelinux_system_path

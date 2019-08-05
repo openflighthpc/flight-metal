@@ -33,7 +33,7 @@ require 'flight_metal/commands/concerns/nodeattr_parser'
 module FlightMetal
   module Commands
     class Node < Command
-      class SysIPDelegator < SimpleDelegator
+      class ListDelegator < SimpleDelegator
         attr_reader :sys_ip, :sys_fqdn
 
         def initialize(node, sys_fqdn = nil, sys_ip = nil)
@@ -48,7 +48,7 @@ module FlightMetal
         *Hunted*: <%= mac? ? mac_time : 'n/a' %>
         <% if built? -%>
         *Built*: <%= built_time %>
-        *Rebuild*: <%= if buildable? && rebuild?
+        *Rebuild*: <%= if buildable?
                          'Scheduled'
                        elsif rebuild?
                          'Skipping'
@@ -83,6 +83,7 @@ module FlightMetal
       ERB
 
       command_require 'flight_metal/models/node',
+                      'flight_metal/buildable_nodes',
                       'flight_metal/templator',
                       'flight_metal/system_command'
 
@@ -106,9 +107,12 @@ module FlightMetal
         nodes = Models::Node.glob_read(Config.cluster, '*')
                             .sort_by { |n| n.name }
         outputs = SystemCommand.new(*nodes).fqdn_and_ip
+        buildable_hash = BuildableNodes::Loader
+          .new(Config.cluster, nodes.first.__registry__, true)
+          .hash
         sys_nodes = nodes.each_with_index
                          .map do |node, idx|
-          SysIPDelegator.new(node, *outputs[idx].stdout.split)
+          ListDelegator.new(node, *outputs[idx].stdout.split, !!buildable_hash[node.name])
         end
         md = sys_nodes.map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
                       .join

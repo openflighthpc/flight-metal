@@ -31,49 +31,31 @@ require 'flight_metal/models/node'
 
 module FlightMetal
   class BuildableNodes < Array
-    Loader = Struct.new(:cluster, :registry) do
+    Loader = Struct.new(:cluster, :registry, :quiet) do
       def nodes
-        read_hash_nodes.reject do |hash|
-          [:pxelinux, :kicksart, :dhcp].each do |type|
-            node = hash[:node]
+        read_nodes.reject do |node|
+          [:pxelinux, :kickstart, :dhcp].each do |type|
             next true unless node.rebuild?
-            next true unless is_buildable?(type, **hash)
+            next true unless node.buildable?
+            if node.type_status(type) == :installed
+              Log.warn_puts <<~WARN.squish
+                #{node.name}: Using existing #{type} file:
+                #{node.type_system_path(type)}
+              WARN
+            end
+            false
           end
         end
+      end
+
+      def hash
+        nodes.map { |n| [n.name, n] }.to_h
       end
 
       private
 
       def read_nodes
         Models::Node.glob_read(cluster, '*', registry: registry)
-      end
-
-      def read_hash_nodes
-        read_nodes.map do |node|
-          {
-            node: node,
-            statuses: {
-              pxelinux: node.pxelinux_status,
-              kickstart: node.kickstart_status,
-              dhcp: node.dhcp_status
-            }
-          }
-        end
-      end
-
-      def is_buildable?(type, node:, statuses:)
-        case statuses[type]
-        when :installed
-          Log.warn_puts <<~MSG.squish
-            #{node.name}: Using existing #{type} file:
-            #{node.public_send("#{type}_system_path")}
-          MSG
-          true
-        when :pending
-          true
-        else
-          false
-        end
       end
     end
 
