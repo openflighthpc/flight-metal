@@ -45,7 +45,6 @@ module FlightMetal
 
       LIST_TEMPLATE = <<~ERB
         # Node: '<%= name %>'
-        *Hunted*: <%= mac? ? mac_time : 'n/a' %>
         <% if built? -%>
         *Built*: <%= built_time %>
         *Rebuild*: <%= if buildable?
@@ -89,7 +88,14 @@ module FlightMetal
 
       include Concerns::NodeattrParser
 
-      def update(name, *params)
+      def update(name, *params, rebuild: nil)
+        rebuild = if rebuild.nil?
+                    nil
+                  elsif [false, 'false'].include?(rebuild)
+                    false # Treat 'false' as false
+                  else
+                    true
+                  end
         update_hash = params.select { |p| /\A\w+=.*/.match?(p) }
                             .map { |p| p.split('=', 2) }
                             .to_h
@@ -100,6 +106,7 @@ module FlightMetal
           new = node.params.merge(update_hash)
           delete_keys.each { |k| new.delete(k) }
           node.params = new
+          node.rebuild = rebuild unless rebuild.nil?
         end
       end
 

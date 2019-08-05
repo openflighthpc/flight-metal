@@ -177,18 +177,6 @@ module FlightMetal
 
       flag :built
       flag :rebuild
-      flag :mac, set: ->(original_mac) do
-        original_mac.tap do |mac|
-          if mac.nil? || mac.empty?
-            next
-          elsif node = Macs.new(__registry__).find(mac)
-            raise InvalidModel, <<~ERROR.squish
-              Failed to update mac address '#{mac}' as it is already taken by:
-              node '#{node.name}' in cluster '#{node.cluster}'
-            ERROR
-          end
-        end
-      end
 
       data_reader(:params) do |hash|
         hash = (hash || {}).symbolize_keys
@@ -212,6 +200,8 @@ module FlightMetal
       data_writer(:mac) do |hwaddr|
         if hwaddr.nil? || hwaddr.empty?
           nil
+        elsif self.mac == hwaddr
+          mac
         elsif other = Macs.new(__registry__).find(hwaddr)
           raise InvalidModel, <<~ERROR.chomp
             Could not update mac address as it is currently being used in:
@@ -257,6 +247,10 @@ module FlightMetal
         define_method("#{type}_status") do |error: true|
           public_send("#{type}_rendered_path?") ? :installed : :missing
         end
+      end
+
+      def mac?
+        !mac.nil?
       end
 
       def type_system_path(type)

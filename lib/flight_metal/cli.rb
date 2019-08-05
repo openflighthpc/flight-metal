@@ -150,7 +150,7 @@ module FlightMetal
     end
 
     command 'update' do |c|
-      syntax(c, 'NODE PARAMS...')
+      syntax(c, 'NODE [PARAMS...]')
       c.summary = "Modify the node's parameters"
       c.description = <<~DESC
         Set, modify, and delete parameters assigned to the NODE. The parameter
@@ -160,6 +160,8 @@ module FlightMetal
         be hard set to an empty string by omitting the value: `key=`. Keys are
         permanently deleted when suffixed with a exclamation: `key!`.
       DESC
+      c.option '--rebuild [false]',
+               "Flag the node to be rebuilt. Unset by including 'false'"
       action(c, FlightMetal::Commands::Node, method: :update)
     end
 

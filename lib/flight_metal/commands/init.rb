@@ -44,6 +44,7 @@ module FlightMetal
       def node(identifier, **kwargs)
         Models::Node.create(Config.cluster, identifier) do |node|
           save_files(node, **kwargs)
+          node.rebuild = true
         end
       end
 
