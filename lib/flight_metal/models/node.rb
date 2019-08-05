@@ -219,38 +219,54 @@ module FlightMetal
       [:kickstart, :pxelinux, :dhcp].each do |type|
         define_path?("#{type}_system")
         define_method("#{type}_status") do |error: true|
-          return :missing unless type_rendered_path?(type)
-          return :pending unless type_system_path?(type)
-          rendered = Pathname.new(type_rendered_path(type))
-          system = Pathname.new(type_system_path(type))
-          if system.symlink? && File.identical?(system.readlink, rendered)
-            :installed
-          elsif error && system.symlink?
-            raise InvalidModel, <<~ERROR.chomp
-              '#{name}' system file is linked incorrectly. Fix the link and try again
-              Link Source: #{system}
-              Correct:     #{system.readlink}
-              Incorrect:   #{rendered}
-            ERROR
-          elsif error
-            raise InvalidModel, <<~ERROR.chomp
-              '#{name}' system file already exists, please remove it and try again
-              File: #{system}
-            ERROR
+          if type_rendered_path?(type) && type_system_path?(type)
+            rendered = Pathname.new(type_rendered_path(type))
+            system = Pathname.new(type_system_path(type))
+            if system.symlink? && File.identical?(system.readlink, rendered)
+              :installed
+            elsif error && system.symlink?
+              raise InvalidModel, <<~ERROR.chomp
+                '#{name}' system file is linked incorrectly. Fix the link and try again
+                Link Source: #{system}
+                Correct:     #{system.readlink}
+                Incorrect:   #{rendered}
+              ERROR
+            elsif error
+              raise InvalidModel, <<~ERROR.chomp
+                '#{name}' system file already exists, please remove it and try again
+                File: #{system}
+              ERROR
+            else
+              :invalid
+            end
+          elsif type_rendered_path?(type)
+            :pending
+          elsif type_template_path?(type)
+            :renderable
           else
-            :invalid
+            :missing
           end
         end
       end
 
       [:ipmi, :power_on, :power_off, :power_status].each do |type|
         define_method("#{type}_status") do |error: true|
-          type_rendered_path?(type) ? :installed : :missing
+          if type_rendered_path?(type)
+            :installed
+          elsif type_template_path?(type)
+            :renderable
+          else
+            :missing
+          end
         end
       end
 
       def mac?
         !mac.nil?
+      end
+
+      def type_template_path(type)
+        public_send("#{type}_template_path")
       end
 
       def type_rendered_path(type)
@@ -259,6 +275,10 @@ module FlightMetal
 
       def type_system_path(type)
         public_send("#{type}_system_path")
+      end
+
+      def type_template_path?(type)
+        File.exists?(type_template_path(type))
       end
 
       def type_rendered_path?(type)
