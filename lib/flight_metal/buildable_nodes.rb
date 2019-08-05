@@ -33,17 +33,14 @@ module FlightMetal
   class BuildableNodes < Array
     Loader = Struct.new(:cluster, :registry, :quiet) do
       def nodes
-        read_nodes.reject do |node|
+        read_nodes.select(&:buildable?).each do |node|
           [:pxelinux, :kickstart, :dhcp].each do |type|
-            next true unless node.rebuild?
-            next true unless node.buildable?
             if node.type_status(type) == :installed
               Log.warn_puts <<~WARN.squish
                 #{node.name}: Using existing #{type} file:
                 #{node.type_system_path(type)}
               WARN
             end
-            false
           end
         end
       end
@@ -70,8 +67,8 @@ module FlightMetal
     def process_built(name)
       node = find_name(name)
       Models::Node.update(*node.__inputs__) do |n|
-        FileUtils.rn n.pxelinux_system_path
-        FileUtils.rn n.kickstart_system_path
+        FileUtils.rm_f n.pxelinux_system_path
+        FileUtils.rm_f n.kickstart_system_path
         n.rebuild = false
         n.built = true
       end

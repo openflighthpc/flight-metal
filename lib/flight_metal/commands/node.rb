@@ -114,12 +114,9 @@ module FlightMetal
         nodes = Models::Node.glob_read(Config.cluster, '*')
                             .sort_by { |n| n.name }
         outputs = SystemCommand.new(*nodes).fqdn_and_ip
-        buildable_hash = BuildableNodes::Loader
-          .new(Config.cluster, nodes.first.__registry__, true)
-          .hash
         sys_nodes = nodes.each_with_index
                          .map do |node, idx|
-          ListDelegator.new(node, *outputs[idx].stdout.split, !!buildable_hash[node.name])
+          ListDelegator.new(node, *outputs[idx].stdout.split)
         end
         md = sys_nodes.map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
                       .join

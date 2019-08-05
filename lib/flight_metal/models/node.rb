@@ -266,9 +266,9 @@ module FlightMetal
       end
 
       def all_types_buildable?
-        [:kickstart, :pxelinux, :dhcp].each do |type|
+        [:kickstart, :pxelinux, :dhcp].map do |type|
           type_buildable?(type)
-        end
+        end.reduce { |memo, bool| memo && bool }
       end
 
       def type_buildable?(type)
