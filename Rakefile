@@ -46,6 +46,7 @@ end
 
 task console: :setup do
   require 'flight_metal/models/node'
+  require 'flight_metal/buildable_nodes'
   binding.pry
 end
 

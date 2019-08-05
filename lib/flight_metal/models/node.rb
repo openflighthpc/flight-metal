@@ -268,7 +268,7 @@ module FlightMetal
 
       def pxelinux_system_path
         if mac
-          File.join(Cofnig.tftpboot_dir,
+          File.join(Config.tftpboot_dir,
                     'pxelinux.cfg',
                     '01-' + mac.downcase.gsub(':', '-'))
         else

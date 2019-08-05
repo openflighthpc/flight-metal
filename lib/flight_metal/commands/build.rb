@@ -32,22 +32,37 @@ module FlightMetal
     class Build
       def initialize
         require 'flight_metal/server'
-        require 'flight_metal/models/node'
+        require 'flight_metal/buildable_nodes'
         require 'flight_metal/log'
         require 'flight_metal/errors'
       end
 
       def run
-        node_names = nodes.map(&:name)
-        if node_names.empty?
+        if buildable_nodes.empty?
           Log.warn_puts 'Nothing to build'
           return
         end
 
-        Log.info_puts "Building: #{node_names.join(',')}"
+        Log.info_puts "Building: #{buildable_nodes.map(:name).join(',')}"
 
         Server.new('0.0.0.0', Config.build_port, 256).loop do |message|
+          if buildable_nodes.buildable?(message.node)
+            Log.info_puts "#{message.node}: #{message.message}"
+            if message.built?
+              node = buildable_nodes.process_built(message.name)
+              Log.info_puts "Built: #{node.name}"
+            end
+          else
+            Log.warn_puts <<~WARN.squish
+              Skipping message from '#{message.name}' as it's not currently
+              being built
+            WARN
+          end
         end
+      end
+
+      def buildable_nodes
+        @buildable_nodes ||= BuildableNodes.new('foo')
       end
     end
   end
