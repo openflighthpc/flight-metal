@@ -44,10 +44,11 @@ module FlightMetal
         end
 
         Log.info_puts "Building: #{buildable_nodes.map(&:name).join(',')}"
+        buildable_nodes.install_build_files
 
         Server.new('0.0.0.0', Config.build_port, 256).loop do |message|
           if buildable_nodes.buildable?(message.node)
-            Log.info_puts "#{message.node}: #{message.message}"
+            Log.info_puts "#{message.node}: #{message.message}" if message.message
             if message.built?
               node = buildable_nodes.process_built(message.node)
               Log.info_puts "Built: #{node.name}"

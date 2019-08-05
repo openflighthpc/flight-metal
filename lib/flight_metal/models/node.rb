@@ -219,11 +219,11 @@ module FlightMetal
       [:kickstart, :pxelinux, :dhcp].each do |type|
         define_path?("#{type}_system")
         define_method("#{type}_status") do |error: true|
-          return :missing unless public_send("#{type}_rendered_path?")
-          return :pending unless public_send("#{type}_system_path?")
-          rendered = Pathname.new(public_send("#{type}_rendered_path"))
-          system = Pathname.new(public_send("#{type}_system_path"))
-          if system.symlink? && File.idenitical?(system.readlink, rendered)
+          return :missing unless type_rendered_path?(type)
+          return :pending unless type_system_path?(type)
+          rendered = Pathname.new(type_rendered_path(type))
+          system = Pathname.new(type_system_path(type))
+          if system.symlink? && File.identical?(system.readlink, rendered)
             :installed
           elsif error && system.symlink?
             raise InvalidModel, <<~ERROR.chomp
@@ -245,7 +245,7 @@ module FlightMetal
 
       [:ipmi, :power_on, :power_off, :power_status].each do |type|
         define_method("#{type}_status") do |error: true|
-          public_send("#{type}_rendered_path?") ? :installed : :missing
+          type_rendered_path(type) ? :installed : :missing
         end
       end
 
@@ -253,8 +253,20 @@ module FlightMetal
         !mac.nil?
       end
 
+      def type_rendered_path(type)
+        public_send("#{type}_rendered_path")
+      end
+
       def type_system_path(type)
         public_send("#{type}_system_path")
+      end
+
+      def type_rendered_path?(type)
+        File.exists?(type_rendered_path(type))
+      end
+
+      def type_system_path?(type)
+        File.exists?(type_system_path(type))
       end
 
       def type_status(type)
