@@ -43,8 +43,12 @@ module FlightMetal
       HASH.keys
     end
 
-    def self.path_methods
-      HASH.keys.map { |k| [:"#{k}_path", k] }
+    def self.path_method(key, sub: nil)
+      :"#{key}_#{sub + '_' if sub}path"
+    end
+
+    def self.path_methods(sub: nil)
+      HASH.keys.map { |k| [path_method(k, sub: sub), k] }
     end
 
     def self.lookup_key(raw)
@@ -55,22 +59,6 @@ module FlightMetal
 
     def self.flag(key)
       HASH[key][:flag]
-    end
-
-    def self.template_path_method(key)
-      :"#{key}_template_path"
-    end
-
-    def self.rendered_path_method(key)
-      :"#{key}_rendered_path"
-    end
-
-    def self.rendered_path_hash
-      filename_hash.map { |k, v| [rendered_path_method(k), v] }.to_h
-    end
-
-    def self.template_path_hash
-      filename_hash.map { |k, v| [template_path_method(k), v] }.to_h
     end
 
     def self.find_filename(type)
@@ -104,32 +92,18 @@ module FlightMetal
           end
         end
 
-        def define_type_path_shortcuts
-          define_method("type_path") do |type|
-            public_send("#{type}_path")
+        def define_type_path_shortcuts(sub: nil)
+          type_method = TemplateMap.path_method('type', sub: sub)
+
+          define_method(type_method) do |type|
+            method = TemplateMap.path_method(type, sub: sub)
+            public_send(method)
           end
 
-          define_method("type_path?") do |type|
-            public_send("#{type}_path?")
+          define_method(:"#{type_method}?") do |type|
+            method = TemplateMap.path_method(type, sub: sub)
+            public_send(:"#{method}?")
           end
-        end
-      end
-    end
-
-    module HasTemplatePath
-      TemplateMap.keys.each do |key, _|
-        path_method = TemplateMap.template_path_method(key)
-        define_method(:"#{key}_template?") do
-          File.exists?(public_send(path_method))
-        end
-      end
-    end
-
-    module HasRenderedPath
-      TemplateMap.keys.each do |key, _|
-        path_method = TemplateMap.rendered_path_method(key)
-        define_method(:"#{key}_rendered?") do
-          File.exists?(public_send(path_method))
         end
       end
     end

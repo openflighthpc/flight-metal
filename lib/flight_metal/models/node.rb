@@ -138,20 +138,6 @@ module FlightMetal
 
       include FlightMetal::FlightConfigUtils
 
-      TemplateMap.keys.each do |type|
-        template_method = TemplateMap.template_path_method(type)
-        define_method(template_method) do
-          links.cluster.public_send(template_method)
-        end
-
-        rendered_method = TemplateMap.rendered_path_method(type)
-        define_method(rendered_method) do
-          join('lib', TemplateMap.find_filename(type))
-        end
-
-        define_path?(rendered_method, template_method)
-      end
-
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
       end
@@ -216,11 +202,48 @@ module FlightMetal
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
 
+      TemplateMap.path_methods.each do |method, type|
+        define_method(method) do
+          join('libexec', TemplateMap.find_filename(type))
+        end
+        define_path?(method)
+      end
+      define_type_path_shortcuts
+
+      TemplateMap.path_methods(sub: 'template').each do |method, type|
+        define_method(method) do
+          links.cluster.type_path(type)
+        end
+        define_path?(method)
+      end
+      define_type_path_shortcuts(sub: 'template')
+
+      def pxelinux_system_path
+        if mac
+          File.join(Config.tftpboot_dir,
+                    'pxelinux.cfg',
+                    '01-' + mac.downcase.gsub(':', '-'))
+        else
+          nil
+        end
+      end
+
+      def kickstart_system_path
+        File.join(Config.kickstart_dir, cluster, name + '.ks')
+      end
+
+      def dhcp_system_path
+        File.join(Config.dhcpd_dir, name + '-dhcpd.conf')
+      end
+
+      define_type_path_shortcuts(sub: 'system')
+
       [:kickstart, :pxelinux, :dhcp].each do |type|
-        define_path?("#{type}_system")
+        define_path?(TemplateMap.path_method(type, sub: 'system'))
+
         define_method("#{type}_status") do |error: true|
-          if type_rendered_path?(type) && type_system_path?(type)
-            rendered = Pathname.new(type_rendered_path(type))
+          if type_path?(type) && type_system_path?(type)
+            rendered = Pathname.new(type_path(type))
             system = Pathname.new(type_system_path(type))
             if system.symlink? && File.identical?(system.readlink, rendered)
               :installed
@@ -239,7 +262,7 @@ module FlightMetal
             else
               :invalid
             end
-          elsif type_rendered_path?(type)
+          elsif type_path?(type)
             :pending
           elsif type_template_path?(type)
             :renderable
@@ -251,7 +274,7 @@ module FlightMetal
 
       [:ipmi, :power_on, :power_off, :power_status].each do |type|
         define_method("#{type}_status") do |error: true|
-          if type_rendered_path?(type)
+          if type_path?(type)
             :installed
           elsif type_template_path?(type)
             :renderable
@@ -261,37 +284,12 @@ module FlightMetal
         end
       end
 
-      def mac?
-        !mac.nil?
-      end
-
-      def type_template_path(type)
-        public_send("#{type}_template_path")
-      end
-
-      def type_rendered_path(type)
-        public_send("#{type}_rendered_path")
-      end
-
-      def type_system_path(type)
-        public_send("#{type}_system_path")
-      end
-
-      def type_template_path?(type)
-        File.exists?(type_template_path(type))
-      end
-
-      def type_rendered_path?(type)
-        File.exists?(type_rendered_path(type))
-      end
-
-      def type_system_path?(type)
-        path = type_system_path(type)
-        path.nil? ? false : File.exists?(path)
-      end
-
       def type_status(type, error: true)
         public_send("#{type}_status", error: error)
+      end
+
+      def mac?
+        !mac.nil?
       end
 
       def buildable?
@@ -313,24 +311,6 @@ module FlightMetal
         else
           false
         end
-      end
-
-      def pxelinux_system_path
-        if mac
-          File.join(Config.tftpboot_dir,
-                    'pxelinux.cfg',
-                    '01-' + mac.downcase.gsub(':', '-'))
-        else
-          nil
-        end
-      end
-
-      def kickstart_system_path
-        File.join(Config.kickstart_dir, cluster, name + '.ks')
-      end
-
-      def dhcp_system_path
-        File.join(Config.dhcpd_dir, name + '-dhcpd.conf')
       end
 
       def render_params

@@ -45,7 +45,6 @@ module FlightMetal
       include FlightMetal::FlightConfigUtils
 
       include TemplateMap::PathAccessors
-      include TemplateMap::HasTemplatePath
 
       def self.join(identifier, *rest)
         Pathname.new(Config.content_dir).join('clusters', identifier, *rest)

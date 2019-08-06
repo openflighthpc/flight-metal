@@ -69,16 +69,8 @@ module FlightMetal
         end.tap(&:__data__)
       end
 
-      def path_method
-        if model.is_a?(Models::Node)
-          TemplateMap.rendered_path_method(key)
-        else
-          :"#{key}_path"
-        end
-      end
-
       def path
-        @path ||= Pathname.new(model.public_send(path_method)).tap do |p|
+        @path ||= Pathname.new(model.type_path(key)).tap do |p|
           FileUtils.mkdir_p p.dirname
         end
       end
