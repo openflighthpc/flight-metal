@@ -45,9 +45,7 @@ module FlightMetal
 
       LIST_TEMPLATE = <<~ERB
         # Node: '<%= name %>'
-        <% if built? -%>
-        *Built*: <%= built_time %>
-        <% end -%>
+        *Built*: <%= built? ? built_time : 'Never' %>
         *<%= built? ? 'Reb' : 'B' %>uild*: <%= if buildable?
                                                  'Scheduled'
                                                elsif rebuild?
