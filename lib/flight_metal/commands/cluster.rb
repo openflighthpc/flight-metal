@@ -72,12 +72,6 @@ module FlightMetal
         puts "Switched cluster: #{cluster.identifier}"
       end
 
-      def edit(fields: nil)
-        Models::Cluster.create_or_update(Config.cluster) do |cluster|
-          update_cluster_fields(cluster, fields)
-        end
-      end
-
       private
 
       def update_cluster_fields(cluster, fields)
