@@ -61,7 +61,7 @@ module FlightMetal
           next unless node.type_status(type) == :pending
           sys = node.type_system_path(type)
           FileUtils.mkdir_p File.dirname(sys)
-          FileUtils.ln_s node.type_rendered_path(type), sys
+          FileUtils.ln_s node.type_path(type), sys
         end
       end
     end

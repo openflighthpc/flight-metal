@@ -242,7 +242,7 @@ module FlightMetal
         define_path?(TemplateMap.path_method(type, sub: 'system'))
 
         define_method("#{type}_status") do |error: true|
-          if type_path?(type) && type_system_path?(type)
+          if type_path?(type) && type_system_path?(type, symlink: true)
             rendered = Pathname.new(type_path(type))
             system = Pathname.new(type_system_path(type))
             if system.symlink? && File.identical?(system.readlink, rendered)
@@ -303,7 +303,7 @@ module FlightMetal
       end
 
       def type_buildable?(type)
-        case type_status(type)
+        case type_status(type, error: false)
         when :installed
           true
         when :pending

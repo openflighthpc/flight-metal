@@ -82,11 +82,16 @@ module FlightMetal
         def define_path?(*methods)
           methods.map { |m| /_path\Z/.match?(m.to_s) ? m : "#{m}_path" }
                  .each do |method|
-            define_method("#{method}?") do
-              if path = self.public_send(method)
-                File.exists?(path)
-              else
+            define_method("#{method}?") do |symlink: false|
+              path = self.public_send(method)
+              if path.nil?
                 nil
+              elsif File.exists?(path)
+                true
+              elsif symlink && File.symlink?(path)
+                true
+              else
+                false
               end
             end
           end
@@ -100,9 +105,9 @@ module FlightMetal
             public_send(method)
           end
 
-          define_method(:"#{type_method}?") do |type|
+          define_method(:"#{type_method}?") do |type, symlink: false|
             method = TemplateMap.path_method(type, sub: sub)
-            public_send(:"#{method}?")
+            public_send(:"#{method}?", symlink: symlink)
           end
         end
       end
