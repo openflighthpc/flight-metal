@@ -43,6 +43,8 @@ module FlightMetal
       include FlightConfig::Accessor
 
       include FlightMetal::FlightConfigUtils
+
+      include TemplateMap::PathAccessors
       include TemplateMap::HasTemplatePath
 
       def self.join(identifier, *rest)
@@ -65,9 +67,14 @@ module FlightMetal
       data_reader :gateway_ip
       data_writer :gateway_ip
 
-      TemplateMap.template_path_hash.each do |method, name|
-        define_method(method) { join('templates', name) }
+      TemplateMap.path_methods.each do |method, type|
+        define_method(method) do
+          join('libexec', TemplateMap.find_filename(type))
+        end
+
+        define_path?(method)
       end
+      define_type_path_shortcuts
 
       def join(*a)
         self.class.join(*__inputs__, *a)

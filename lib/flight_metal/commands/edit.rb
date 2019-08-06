@@ -73,7 +73,7 @@ module FlightMetal
         if model.is_a?(Models::Node)
           TemplateMap.rendered_path_method(key)
         else
-          TemplateMap.template_path_method(key)
+          :"#{key}_path"
         end
       end
 

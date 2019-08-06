@@ -43,6 +43,10 @@ module FlightMetal
       HASH.keys
     end
 
+    def self.path_methods
+      HASH.keys.map { |k| [:"#{k}_path", k] }
+    end
+
     def self.lookup_key(raw)
       string = raw.to_s
       ifnone = -> { raise InvalidInput, "'#{string}' is not a valid type" }
@@ -97,6 +101,16 @@ module FlightMetal
                 nil
               end
             end
+          end
+        end
+
+        def define_type_path_shortcuts
+          define_method("type_path") do |type|
+            public_send("#{type}_path")
+          end
+
+          define_method("type_path?") do |type|
+            public_send("#{type}_path?")
           end
         end
       end
