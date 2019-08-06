@@ -290,8 +290,8 @@ module FlightMetal
         path.nil? ? false : File.exists?(path)
       end
 
-      def type_status(type)
-        public_send("#{type}_status")
+      def type_status(type, error: true)
+        public_send("#{type}_status", error: error)
       end
 
       def buildable?

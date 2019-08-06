@@ -62,7 +62,16 @@ module FlightMetal
 
         ## File Status
         <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        - *<%= flag %>*: <%= public_send(type.to_s + '_status', error: false).capitalize %>
+          <%
+            status = type_status(type, error: false)
+            text = case status
+            when :invalid
+              'Invalid - check link: ' + type_system_path(type)
+            else
+              status.capitalize
+            end
+          -%>
+        - *<%= flag %>*: <%= text %>
         <% end -%>
 
         ## Reserved Parameters
