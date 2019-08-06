@@ -269,28 +269,28 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
-    xcommand 'power' do |c|
-      syntax(c, 'NODE_IDENTIFIER COMMAND')
-      c.summary = 'Manage and check the power status of the nodes'
-      c.description = <<~DESC.chomp
-        Runs a power related command using ipmitool. The valid commands
-        are given below. Similarly to the ipmi command, the NODE_IDENTIFIER
-        can specify a:
-        1. Single node,
-        2. A range of nodes (e.g. node[01-10] for node01 to node10), or
-        3. A group of nodes when used with the --group flag
+    command 'power-on' do |c|
+      syntax(c, 'NODE')
+      c.summary = "Run the #{c.name} script"
+      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
+    end
 
-        Power Commands:
-        #{
-          cmds_hash = FlightMetal::Commands::Ipmi::POWER_COMMANDS
-          max_len = cmds_hash.keys.max_by(&:length).length
-          cmds_hash.reduce([]) do |s, (k, v)|
-            s << "  * #{k}#{' ' * (max_len - k.length)} - #{v[:help]}"
-          end.join("\n")
-        }
-      DESC
-      c.option '-g','--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
-      action(c, FlightMetal::Commands::Ipmi, method: :power)
+    command 'power-off' do |c|
+      syntax(c, 'NODE')
+      c.summary = "Run the #{c.name} script"
+      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
+    end
+
+    command 'power-status' do |c|
+      syntax(c, 'NODE')
+      c.summary = "Run the #{c.name} script"
+      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
+    end
+
+    command 'ipmi' do |c|
+      syntax(c, 'NODE')
+      c.summary = "Run the #{c.name} script"
+      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
     end
 
     command 'render' do |c|

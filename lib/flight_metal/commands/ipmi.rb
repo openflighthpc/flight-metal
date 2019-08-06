@@ -33,71 +33,34 @@ module FlightMetal
   module Commands
     class Ipmi < Command
       command_require 'flight_metal/system_command',
+                      'flight_metal/template_map',
+                      'flight_metal/models/node',
                       'flight_metal/errors'
 
-      include Concerns::NodeattrParser
-
-      POWER_COMMANDS = {
-        'on' => {
-          cmd: ['chassis', 'power', 'on'],
-          help: 'Turns the node on'
-        },
-        'off' => {
-          cmd: ['chassis', 'power', 'off'],
-          help: 'Turns the node off'
-        },
-        'locate' => {
-          cmd: ['chassis', 'identify', 'force'],
-          help: 'Turns the node locater light on'
-        },
-        'locateoff' => {
-          cmd: ['chassis', 'identify', '0'],
-          help: 'Turns the node locater light off'
-        },
-        'status' => {
-          cmd: ['chassis', 'power', 'status'],
-          help: 'Display the power status'
-        },
-        'cycle' => {
-          cmd: ['chassis', 'power', 'cycle'],
-          help: 'Power cycle the node'
-        },
-        'reset' => {
-          cmd: ['chassis', 'power', 'reset'],
-          help: 'Warm reset the node'
-        }
-      }
-
-      def power(names_str, cmd, group: false)
-        power_cmd = POWER_COMMANDS[cmd]
-        raise InvalidInput, <<~ERROR.chomp unless power_cmd
-          '#{cmd}' is not a valid power command. Please select one of the following:
-          #{POWER_COMMANDS.keys.join(',')}
-        ERROR
-        run(names_str, *power_cmd[:cmd], group: group)
-      end
-
-      def run(names_str, *args, group: false)
-        if args.empty?
-          raise SystemCommandError, <<~ERROR
-            No command provided to ipmitool. Please select one from the list below
-            #{Config.ipmi_commands_help}
-          ERROR
-        else
-          nodes = nodeattr_parser(names_str, group: group)
-          nodes.raise_if_missing
-          run_cmd(nodes, args)
+      [:power_on, :power_off, :power_status, :ipmi].each do |type|
+        define_method(type) do |name|
+          node = Models::Node.read(Config.cluster, name)
+          run_cmd([node], type)
         end
       end
 
       private
 
-      def run_cmd(nodes, args)
-        SystemCommand.new(nodes).ipmi(args) do |output|
-          if output.code == 0
-            puts output.stdout
+      def run_cmd(nodes, type)
+        nodes.each do |node|
+          if node.type_rendered_path?(type)
+            cmd = "bash #{node.type_rendered_path(type)}"
+            out = SystemCommand::CommandOutput.run(cmd)
+            if out.exit_0?
+              puts out.stdout
+            else
+              puts out.verbose
+            end
           else
-            puts output.verbose
+            Log.warn_puts <<~WARN.squish
+              Skipping #{node.name}: The #{TemplateMap.flag(type)} file
+              can not be found: #{node.type_rendered_path(type)}
+            WARN
           end
         end
       end
