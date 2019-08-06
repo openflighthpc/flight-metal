@@ -66,17 +66,18 @@ module FlightMetal
       end
 
       def template_path
-        node.public_send(TemplateMap.template_path_method(key)).tap do |path|
-          raise MissingFile, <<~ERROR.chomp unless File.exists?(path)
+        path = node.type_template_path(key)
+        if node.type_template_path?(key)
+          path
+        else
+          raise MissingFile, <<~ERROR.chomp
             Can not render the file as the source does not exist: #{path}
           ERROR
         end
       end
 
       def rendered_path
-        node.public_send(TemplateMap.rendered_path_method(key)).tap do |path|
-          FileUtils.mkdir_p(File.dirname(path))
-        end
+        node.type_path(key).tap { |p| FileUtils.mkdir_p(File.dirname(p)) }
       end
     end
   end
