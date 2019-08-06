@@ -54,12 +54,7 @@ module FlightMetal
         saved = []
         TemplateMap.keys.each do |key|
           next unless src = kwargs[key]
-          method = if model.is_a? Models::Node
-                     TemplateMap.rendered_path_method(key)
-                   else
-                     TemplateMap.template_path_method(key)
-                   end
-          path = model.public_send(method)
+          path = model.type_path(key)
           path.dirname.mkdir unless path.dirname.directory?
           FileUtils.cp src, path
           saved << path

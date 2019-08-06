@@ -48,8 +48,8 @@ module FlightMetal
 
       def run_cmd(nodes, type)
         nodes.each do |node|
-          if node.type_rendered_path?(type)
-            cmd = "bash #{node.type_rendered_path(type)}"
+          if node.type_path?(type)
+            cmd = "bash #{node.type_path(type)}"
             out = SystemCommand::CommandOutput.run(cmd)
             if out.exit_0?
               puts out.stdout
@@ -59,7 +59,7 @@ module FlightMetal
           else
             Log.warn_puts <<~WARN.squish
               Skipping #{node.name}: The #{TemplateMap.flag(type)} file
-              can not be found: #{node.type_rendered_path(type)}
+              can not be found: #{node.type_path(type)}
             WARN
           end
         end
