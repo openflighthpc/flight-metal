@@ -56,18 +56,26 @@ module FlightMetal
         <% sg = secondary_groups -%>
         *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
 
-        ## File Status
+        <% first_status = true -%>
         <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-          <%
-            status = type_status(type, error: false)
-            text = case status
-            when :invalid
-              'Invalid - check link: ' + type_system_path(type)
-            else
-              status.capitalize
-            end
-          -%>
+        <%
+             status = type_status(type, error: false)
+             text = case status
+                    when :invalid
+                      'Invalid - check link: ' + type_system_path(type)
+                    else
+                      status.capitalize
+                    end
+        -%>
+        <%   if verbose || ![:pending, :installed].include?(status) -%>
+        <%=
+               if first_status
+                 first_status = false
+                 '## File Status'
+               end
+        %>
         - *<%= flag %>*: <%= text %>
+        <%   end -%>
         <% end -%>
 
         <% if verbose -%>
