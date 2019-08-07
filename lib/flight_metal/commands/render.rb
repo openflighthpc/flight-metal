@@ -39,7 +39,7 @@ module FlightMetal
         # Verify the type
         type = TemplateMap.lookup_key(cli_type)
 
-        # Load the nodes
+        # Load the models
         nodes = if nodes_in
           read_group(identifier).read_nodes
         elsif nodes_in_primary
@@ -68,13 +68,14 @@ module FlightMetal
             dst = node.type_path(type)
             FileUtils.mkdir_p File.dirname(dst)
             File.write(node.type_path(type), rendered)
+            Log.info_puts "Rendered '#{node.name}': #{dst}"
           end
         end
 
-        # Notify about the erros
+        # Notify about errors
         Log.info_puts <<~INFO.squish if errors
           Some templates have failed to render correctly. Use --force to skip
-          the error and save anyway
+          the error(s) and save anyway
         INFO
       end
 

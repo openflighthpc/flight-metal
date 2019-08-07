@@ -31,12 +31,13 @@ module FlightMetal
   module Commands
     class Node < Command
       class ListDelegator < SimpleDelegator
-        attr_reader :sys_ip, :sys_fqdn
+        attr_reader :sys_ip, :sys_fqdn, :verbose
 
-        def initialize(node, sys_fqdn = nil, sys_ip = nil)
+        def initialize(node, fqdn:, ip: nil, verbose: nil)
           super(node)
           @sys_ip = sys_ip
           @sys_fqdn = sys_fqdn
+          @verbose = verbose
         end
       end
 
@@ -68,6 +69,18 @@ module FlightMetal
           -%>
         - *<%= flag %>*: <%= text %>
         <% end -%>
+
+        <% if verbose -%>
+        ## File Template Source
+        <%   FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
+        <%
+               bool = type_template_model(type).is_a?(FlightMetal::Models::Cluster)
+               source = (bool ? 'Domain' : "Primary Group")
+        -%>
+        - *<%= flag %>*: <%= source %>
+        <%   end -%>
+        <% end -%>
+
 
         ## Reserved Parameters
         <% reserved_params.each do |key, value| -%>
@@ -110,13 +123,14 @@ module FlightMetal
         end
       end
 
-      def list
+      def list(verbose: nil)
         nodes = Models::Node.glob_read(Config.cluster, '*')
                             .sort_by { |n| n.name }
         outputs = SystemCommand.new(*nodes).fqdn_and_ip
         sys_nodes = nodes.each_with_index
                          .map do |node, idx|
-          ListDelegator.new(node, *outputs[idx].stdout.split)
+          fqdn, ip = outputs[idx].stdout.split
+          ListDelegator.new(node, fqdn: fqdn, ip: ip, verbose: verbose)
         end
         md = sys_nodes.map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
                       .join

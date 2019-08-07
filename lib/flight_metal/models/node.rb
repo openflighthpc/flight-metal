@@ -136,6 +136,10 @@ module FlightMetal
       end
       define_type_path_shortcuts(sub: 'template')
 
+      def type_template_model(type)
+        public_send("#{type}_template_model")
+      end
+
       def pxelinux_system_path
         if mac
           File.join(Config.tftpboot_dir,

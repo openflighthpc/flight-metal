@@ -60,7 +60,7 @@ module FlightMetal
       end
       define_type_path_shortcuts
 
-      TemplateMap.path_methods(sub: 'template') do |method, key|
+      TemplateMap.path_methods(sub: 'template').each do |method, key|
         define_method(method) { read_cluster.type_path(key) }
         define_path?(method)
       end

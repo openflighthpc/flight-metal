@@ -219,38 +219,6 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
-    xcommand 'ipmi' do |c|
-      syntax(c, 'NODE_IDENTIFIER [...] [--] [ipmi-options]')
-      c.summary = 'Run commands with ipmitool'
-      c.description = <<~DESC
-        The ipmi command wraps the underlining ipmitool utility. Please
-        refer to commands list below or ipmitool man page for full details.
-
-        This tool communicates using BMC over Ethernet and as such the
-        following ipmitool options will be set:
-
-        * The interface will always be set with: `-I lanplus`,
-        * The remote server is set to: `-H <NODE_IDENTIFIER>.bmc`
-        * And the username/password will be resolved from the configs and
-          set with: `-U <username>` and `-P <password>`
-
-        Additional options can be passed to directly to `ipmitool` by placing
-        them after the optional double hypen: `--`. Without the hypen, the
-        flags will be interpreted by `#{Config.app_name}` and likely cause an
-        eror.
-
-        The ipmi command can be ran over multiple nodes by specifying a range
-        as part of the NODE_IDENTIFIER (e.g. node[01-10] for node01 to node10).
-        Alternatively the --group flag toggle the command to ran over all the
-        nodes within the group specified by NODE_IDENTIFIER.
-
-        IPMI Commands:
-        #{Config.ipmi_commands_help}
-      DESC
-      c.option '-g', '--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
-      action(c, FlightMetal::Commands::Ipmi)
-    end
-
     command 'init-cluster' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
@@ -270,6 +238,7 @@ module FlightMetal
         The parameters used to populate the templates during `render`. Use the `update`
         command to modify the parameters.
       DESC
+      c.option '--verbose', 'Show greater details'
       action(c, FlightMetal::Commands::Node, method: :list)
     end
 
