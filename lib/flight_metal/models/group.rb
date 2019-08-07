@@ -55,6 +55,18 @@ module FlightMetal
       def join(*a)
         self.class.join(*__inputs__, *a)
       end
+
+      TemplateMap.path_methods.each do |method, key|
+        define_method(method) { join('libexec', TemplateMap.find_filename(key)) }
+        define_path?(method)
+      end
+      define_type_path_shortcuts
+
+      TemplateMap.path_methods(sub: 'template') do |method, key|
+        define_method(method) { links.cluster.type_path(key) }
+        define_path?(method)
+      end
+      define_type_path_shortcuts(sub: 'template')
     end
   end
 end

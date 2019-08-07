@@ -201,6 +201,7 @@ module FlightMetal
 
       define_link(:cluster, Models::Cluster) { [cluster] }
       define_link(:nodeattr, Models::Nodeattr) { [cluster] }
+      define_link(:group, Models::Group) { [cluster, primary_group] }
 
       TemplateMap.path_methods.each do |method, type|
         define_method(method) do
@@ -211,6 +212,10 @@ module FlightMetal
       define_type_path_shortcuts
 
       TemplateMap.path_methods(sub: 'template').each do |method, type|
+        define_method("#{type}_template_model") do
+          links.group.type_template_path?(type) ? links.group : links.cluster
+        end
+
         define_method(method) do
           links.cluster.type_path(type)
         end
