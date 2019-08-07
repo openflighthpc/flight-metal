@@ -30,6 +30,7 @@
 require 'flight_config'
 require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
+require 'flight_metal/models/group'
 require 'flight_metal/models/nodeattr'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
@@ -40,94 +41,6 @@ require 'flight_metal/template_map'
 module FlightMetal
   module Models
     class Node
-      # The Builder class adds the additional fields
-      class Builder < FlightManifest::Node
-        property :base, default: -> { Dir.pwd }
-        property :rebuild, default: true
-        property :built, default:  false
-        property :cluster
-        property :ip, from: :build_ip
-
-        # The following redefine methods on FlightManifest::Node, your usage may vary
-        property :name, default: ''
-
-        def initialize(*a)
-          super
-          # NOTE: SystemCommand is meant to take a Models::Node NOT a Manifest/Builder
-          # This is a bit of a hack, however as manifest responds to :name
-          # `fqdn_and_ip` still works. Consider refactoring
-          unless build_ip && fqdn
-            output = SystemCommand.new(self).fqdn_and_ip.first
-            fqdn, build_ip =  if output.exit_0?
-                                output.stdout.split
-                              else
-                                [nil, nil]
-                              end
-            self.fqdn ||= fqdn if fqdn
-            self.build_ip ||= build_ip if build_ip
-          end
-        end
-
-        # HACK: Make `groups` appear as a property even through it wraps primary_group
-        # and secondary_groups. This is because `Hashie::Trash` doesn't have the ability
-        # to transform values based on multiple keys
-        self.properties << :groups
-
-        def [](attr)
-          attr == :groups ? self.groups : super
-        end
-
-        def []=(attr, value)
-          attr == :groups ? self.groups = value : super
-        end
-
-        def groups
-          [primary_group, *secondary_groups]
-        end
-
-        def groups=(grps)
-          self.primary_group = grps.first
-          self.secondary_groups = grps[1..-1]
-        end
-
-        def create
-          Models::Node.create(cluster, name) do |node|
-            store_model_templates(node)
-            update_model_attributes(node)
-          end
-          Models::Nodeattr.create_or_update(cluster) do |attr|
-            attr.add_nodes(name, groups: groups)
-          end
-        end
-
-        private
-
-        def update_model_attributes(node)
-          [
-            :ip, :fqdn, :bmc_ip, :bmc_username, :bmc_password, :gateway_ip,
-            :rebuild, :built
-          ].each { |a| node.send("#{a}=", self.send(a)) }
-        end
-
-        def store_model_templates(node)
-          pxelinux_src = pxelinux_file.expand_path(base)
-          kickstart_src = kickstart_file.expand_path(base)
-          raise_unless_file('pxelinux', pxelinux_src)
-          raise_unless_file('kickstart', kickstart_src)
-          FileUtils.mkdir_p File.dirname(node.pxelinux_template_path)
-          FileUtils.mkdir_p File.dirname(node.kickstart_template_path)
-          FileUtils.cp  pxelinux_src, node.pxelinux_template_path
-          FileUtils.cp  kickstart_src, node.kickstart_template_path
-        end
-
-        def raise_unless_file(name, path)
-          return if path.file?
-          raise InvalidInput, <<~ERROR.chomp
-            The #{name} input is not a regular file: '#{path.to_s}'
-          ERROR
-        end
-      end
-
       include FlightConfig::Updater
       include FlightConfig::Globber
       include FlightConfig::Deleter

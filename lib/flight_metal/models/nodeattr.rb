@@ -34,8 +34,48 @@ module FlightMetal
     class Nodeattr < NodeattrUtils::Config
       allow_missing_read
 
+      def self.create_or_update!(*a, &b)
+        update(*a) do |attr|
+          attr.purge!
+          b.call(attr) if b
+          attr.purge!
+        end
+      end
+
       def self.path(cluster)
         Models::Cluster.join(cluster, 'etc/nodeattr.yaml')
+      end
+
+      # Remove all node entries that are missing, this is required in case a file
+      # gets deleted unceremoniously. Groups do not get the same treatment as they
+      # can read missing configs
+      def purge!
+        nodes_list.each do |node|
+          next if Models::Node.exists?(cluster, node)
+          Log.error_puts "Removing unknown node from nodeattr list: #{node}"
+          remove_nodes(node)
+        end
+      end
+
+      def safe_nodes_in_group(group, primary: false)
+        nodes = (primary ? nodes_in_primary_group(group) : nodes_in_group(group))
+        # Add all missing nodes to the orphan group
+        if group  == 'orphan'
+          binding.pry
+          all_nodes = Models::Node.glob_read(cluster, '*', registry: __registry__)
+                                  .map(&:name)
+          nodes = [*nodes, *(all_nodes - nodes_list)]
+        end
+        nodes.reject do |node|
+          unless Models::Node.exists?(cluster, node)
+            Log.warn "Skipping unknown node in nodeattr list: #{node}"
+            true
+          end
+        end
+      end
+
+      def safe_nodes_in_primary_group(group)
+        safe_nodes_in_group(group, primary: true)
       end
     end
   end

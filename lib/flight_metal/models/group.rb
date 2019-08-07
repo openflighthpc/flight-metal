@@ -35,13 +35,11 @@ module FlightMetal
     class Group
       include FlightConfig::Reader
       include FlightConfig::Updater
-      include FlightConfig::Links
+      include FlightConfig::Accessor
+
+      include TemplateMap::PathAccessors
 
       allow_missing_read
-
-      include TemplateMap::HasTemplatePath
-
-      define_link(:cluster, Models::Cluster) { [cluster] }
 
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'groups', name, *a)
@@ -63,10 +61,36 @@ module FlightMetal
       define_type_path_shortcuts
 
       TemplateMap.path_methods(sub: 'template') do |method, key|
-        define_method(method) { links.cluster.type_path(key) }
+        define_method(method) { read_cluster.type_path(key) }
         define_path?(method)
       end
       define_type_path_shortcuts(sub: 'template')
+
+      def load_cluster
+       Models::Cluster.read(cluster, registry: __registry__)
+      end
+
+      def load_nodeattr
+        Models::Nodeattr.read(cluster, registry: __registry__)
+      end
+
+      def load_nodes(primary: false)
+        (primary ? primary_nodes : nodes).map do |node|
+          Models::Node.read(cluster, name)
+        end
+      end
+
+      def load_primary_nodes
+        load_nodes(primary: true)
+      end
+
+      def nodes
+        load_nodeattr.safe_nodes_in_group(name)
+      end
+
+      def primary_nodes
+        load_nodeattr.safe_nodes_in_primary_group(name)
+      end
     end
   end
 end
