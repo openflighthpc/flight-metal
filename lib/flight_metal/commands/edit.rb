@@ -35,9 +35,10 @@ module FlightMetal
                       'flight_metal/template_map',
                       'tty-editor'
 
-      def run(type, identifier, touch: nil, replace: nil)
-        @type = type
+      def run(identifier, cli_type, group: false, touch: nil, replace: nil)
+        @type = TemplateMap.lookup_key(cli_type)
         @identifier = identifier
+        @group_bool = group
         FileUtils.touch path if touch
         if replace
           raise MissingFile, <<~DESC.chomp unless File.exists?(replace)
@@ -55,7 +56,7 @@ module FlightMetal
 
       private
 
-      attr_reader :identifier, :type
+      attr_reader :identifier, :type, :group_bool
 
       def key
         TemplateMap.lookup_key(type)
@@ -64,6 +65,8 @@ module FlightMetal
       def model
         @model ||= if identifier == 'domain'
           Models::Cluster.read(Config.cluster)
+        elsif group_bool
+          Models::Group.read(Config.cluster, identifier)
         else
           Models::Node.read(Config.cluster, identifier)
         end.tap(&:__data__)

@@ -142,8 +142,31 @@ module FlightMetal
     end
 
     command 'edit' do |c|
-      syntax(c, 'TYPE IDENTIFIER')
-      c.summary = 'Edit the associated files'
+      syntax(c, 'domain|[NODE|GROUP] TYPE')
+      c.summary = 'Edit a domain/group template or node file'
+      c.description = <<~DESC.chomp
+        Open a template/script/build file in the editor. This is used to manage
+        the build process and power commands. Specify which file is to be edited
+        with TYPE field. The supported types are listed below.
+
+        The command works in three distinct modes based on the target:
+        - domain
+          Edits the default template used by the `render` command. Activated when
+          called with the 'domain' keyword
+
+        - NODE
+          Edit the rendered file used by a particular node. Defaults to this mode
+          when called with a name
+
+        - --group GROUP
+          Edit the group level template to be used when rendering a node. See the
+          `render` for further details. Activated when called with the --group
+          option. Can not be used in combination with domain.
+
+        Valid TYPE arguments:
+          - #{TemplateMap.flag_hash.values.join("\n  - ")}
+      DESC
+      c.option '--group', 'Switch the input from NODE to GROUP mode'
       c.option '--touch', 'Create an empty file if it does not already exist'
       c.option '--replace FILE', 'Copy the given FILE content instead of editing'
       action(c, FlightMetal::Commands::Edit)

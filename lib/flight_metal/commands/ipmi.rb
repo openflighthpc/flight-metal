@@ -27,8 +27,6 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/commands/concerns/nodeattr_parser'
-
 module FlightMetal
   module Commands
     class Ipmi < Command

@@ -27,9 +27,6 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'ostruct'
-require 'flight_metal/commands/concerns/nodeattr_parser'
-
 module FlightMetal
   module Commands
     class Node < Command
@@ -90,8 +87,6 @@ module FlightMetal
                       'flight_metal/buildable_nodes',
                       'flight_metal/templator',
                       'flight_metal/system_command'
-
-      include Concerns::NodeattrParser
 
       def update(name, *params, rebuild: nil)
         rebuild = if rebuild.nil?

@@ -66,7 +66,7 @@ module FlightMetal
     end
 
     def self.filename_hash
-      HASH.map { |k, v| [k, v[:filename]] }
+      HASH.map { |k, v| [k, v[:filename]] }.to_h
     end
 
     def self.flag_hash
