@@ -58,10 +58,6 @@ module FlightMetal
 
       attr_reader :identifier, :type, :group_bool
 
-      def key
-        TemplateMap.lookup_key(type)
-      end
-
       def model
         @model ||= if identifier == 'domain'
           Models::Cluster.read(Config.cluster)
@@ -73,7 +69,7 @@ module FlightMetal
       end
 
       def path
-        @path ||= Pathname.new(model.type_path(key)).tap do |p|
+        @path ||= Pathname.new(model.type_path(type)).tap do |p|
           FileUtils.mkdir_p p.dirname
         end
       end

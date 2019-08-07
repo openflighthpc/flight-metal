@@ -166,7 +166,7 @@ module FlightMetal
         Valid TYPE arguments:
           - #{TemplateMap.flag_hash.values.join("\n  - ")}
       DESC
-      c.option '--group', 'Switch the input from NODE to GROUP mode'
+      c.option '-g', '--group', 'Switch the input from NODE to GROUP mode'
       c.option '--touch', 'Create an empty file if it does not already exist'
       c.option '--replace FILE', 'Copy the given FILE content instead of editing'
       action(c, FlightMetal::Commands::Edit)
@@ -304,15 +304,32 @@ module FlightMetal
     end
 
     command 'render' do |c|
-      syntax(c, 'TYPE NODE')
+      syntax(c, '[NODE|GROUP] TYPE')
       c.summary = 'Render the template against the node parameters'
       c.description = <<~DESC.chomp
-        Render the domain or group template for a node. All occurrences of
-        `%param%` will be replaced with the node's parameter values. By default,
-        the command will error if a tag has not been replaced. This can be overridden
-        using the --force flag.
+        Generate content files for a node based off a template. The valid TYPE
+        arguments are given below. The templates are rendered against the
+        node's paramters. The subtitution delimited by pairs of '%' around
+        the key (e.g. 'my %key%' would render to: 'my value').
+
+        The command works in the following modes:
+        - NODE
+          By default, render a template for a single node. The node's primary
+          group template is used preferentially with the domain template as a
+          fallback.
+
+        - --nodes-in GROUP
+          Renders the template(s) for all nodes within the GROUP
+          Note: The template selection is based on primary group only. This may
+          use multiple templates
+
+        - --nodes-in-primary GROUP
+          Renders the template for nodes who have GROUP as their primary.
       DESC
       c.option '--force', 'Allow missing tags when writing the file'
+      c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
+      c.option '-p', '--nodes-in-primary',
+               'Switch the input to nodes belonging to the primary group'
       action(c, FlightMetal::Commands::Render)
     end
 

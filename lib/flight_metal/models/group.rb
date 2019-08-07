@@ -66,30 +66,30 @@ module FlightMetal
       end
       define_type_path_shortcuts(sub: 'template')
 
-      def load_cluster
+      def read_cluster
        Models::Cluster.read(cluster, registry: __registry__)
       end
 
-      def load_nodeattr
+      def read_nodeattr
         Models::Nodeattr.read(cluster, registry: __registry__)
       end
 
-      def load_nodes(primary: false)
+      def read_nodes(primary: false)
         (primary ? primary_nodes : nodes).map do |node|
           Models::Node.read(cluster, name)
         end
       end
 
-      def load_primary_nodes
-        load_nodes(primary: true)
+      def read_primary_nodes
+        read_nodes(primary: true)
       end
 
       def nodes
-        load_nodeattr.safe_nodes_in_group(name)
+        read_nodeattr.safe_nodes_in_group(name)
       end
 
       def primary_nodes
-        load_nodeattr.safe_nodes_in_primary_group(name)
+        read_nodeattr.safe_nodes_in_primary_group(name)
       end
     end
   end

@@ -34,50 +34,54 @@ module FlightMetal
                       'flight_metal/models/node',
                       'flight_metal/template_map'
 
-      def run(type, identifier, force: false)
-        @type = type
-        @identifier = identifier
-        initial = File.read(template_path)
-        rendered = node.render_params.reduce(initial) do |memo, (key, value)|
-          memo.gsub("%#{key}%", value)
-        end
-        if !force && /%\w+%/.match?(rendered)
-          matches = rendered.scan(/%\w+%/).uniq.sort
-                            .map { |s| /\w+/.match(s).to_s }
-          raise MissingParams, <<~ERROR.squish
-            The following parameters have not bee replaced. Use the --force to
-            override this error. Missing: #{matches.join(',')}
-          ERROR
+      def run(identifier, cli_type,
+              force: false, nodes_in: nil, nodes_in_primary: nil)
+        # Verify the type
+        type = TemplateMap.lookup_key(cli_type)
+
+        # Load the nodes
+        nodes = if nodes_in
+          read_group(identifier).read_nodes
+        elsif nodes_in_primary
+          read_group(identifier).read_nodes
         else
-          File.write(rendered_path, rendered)
+          [Models::Node.read(Config.cluster, identifier)]
         end
+
+        # Render for each node
+        errors = false
+        nodes.each do |node|
+          initial = File.read(node.type_template_path(type))
+          rendered = node.render_params.reduce(initial) do |memo, (key, value)|
+            memo.gsub("%#{key}%", value)
+          end
+          if !force && /%\w+%/.match?(rendered)
+            errors = true
+            matches = rendered.scan(/%\w+%/).uniq.sort
+                              .map { |s| /\w+/.match(s).to_s }
+            Log.error_puts <<~ERROR.squish
+              Failed to render #{node.name} #{type}:
+              The following parameters have not been replaced:
+              #{matches.join(',')}
+            ERROR
+          else
+            dst = node.type_path(type)
+            FileUtils.mkdir_p File.dirname(dst)
+            File.write(node.type_path(type), rendered)
+          end
+        end
+
+        # Notify about the erros
+        Log.info_puts <<~INFO.squish if errors
+          Some templates have failed to render correctly. Use --force to skip
+          the error and save anyway
+        INFO
       end
 
       private
 
-      attr_reader :type, :identifier
-
-      def key
-        TemplateMap.lookup_key(type)
-      end
-
-      def node
-        @node ||= Models::Node.read(Config.cluster, identifier).tap(&:__data__)
-      end
-
-      def template_path
-        path = node.type_template_path(key)
-        if node.type_template_path?(key)
-          path
-        else
-          raise MissingFile, <<~ERROR.chomp
-            Can not render the file as the source does not exist: #{path}
-          ERROR
-        end
-      end
-
-      def rendered_path
-        node.type_path(key).tap { |p| FileUtils.mkdir_p(File.dirname(p)) }
+      def read_group(group)
+        Models::Group.read(Config.cluster, group)
       end
     end
   end
