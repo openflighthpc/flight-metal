@@ -24,81 +24,90 @@ Flight `metal` manages the following stages of a cluster deployment:
 3. Manages the build process, and
 4. Preforms `ipmi` and `power` related commands
 
-### Configuration Management
-#### Getting Started with Import
+### Getting Started
 
-`metal` is designed to seamlessly integrate within the _openFlightHPC_ ecosystem and can directly import cluster configurations. For this section, you will need a flight `manifest` and associated build files. Read further on how to configure cluster components manually without a `manifest`.
-
-The `import` command will cache the configurations/files from the manifest into the cluster. It is recommended that each import is into a new cluster with the `--init` flag.
+The following will create a new cluster with three basic nodes and three gpus nodes:
 
 ```
-> metal import <path to manifest> --init <new cluster identifier>
-```
-
-If your `manifest` contains a fully configured cluster, then you are ready to skip to hunting MAC address. Please see the following steps if further configuration is required.
-
-#### Getting Started without Import
-
-A new blank cluster can be created with the `init-cluster` command. It will prompt you for the required parameters and switch to the cluster. Don't worry if you do this by mistake, it is possible to `import` configurations at a later date.
-
-```
-# Creates and switches to the new cluster
-> metal init-cluster <new cluster identifier>
-```
-
-#### Import (Advanced)
-
-The `import` command is used to copy cluster configurations from an _openFlightHPC_ `manifest`. By default it only imports missing nodes into the current cluster.
-
-The `--force` flag is used to update BOTH the cluster and nodes configuration. This action may change the default configuration of the cluster.
-
-```
+# Create a new cluster configuration
 > metal init-cluster foo
 
-# Imports the nodes configuration only
-> metal import path/to/manifest
+# Create the first three nodes
+> metal create node1
+> metal create node2
+> metal create node3
 
-
-# NOOP: The nodes have already been imported
-> metal import path/to/manifest
-
-# Force updates the cluster and nodes configuration
-> metal import path/to/manifest --force
-
-# NOTE: Using --force with --init (Not Recommened)
-# Will switch to and force update the cluster specified by --init even if the
-# cluster already exists
-> metal import path/to/cluster --force --init bar
+> metal create gpu1
+> metal create gpu2
+> metal create gpu3
 ```
 
-#### Creating, Editing, and Deleting Configurations
-
-The adding and editing of `clusters` and `nodes` use a similar mechanism. All the following commands will open the configuration file in your terminal editor. The editor is set by the `$VISUAL` or `$EDITOR` env vars. The available fields will be documented in the editor.
-
-*NOTE*: All the following commands can be script non-interactively using the `--fields` flag. See command help for further details.
-
-A new cluster can be created with `init-cluster` command. This will create and switch to the new cluster. The cluster identifier has to be unique but does not need to match the domain name given in the `manifest`.
-
-New nodes are added to the cluster using the `create` command. It will take the path to the `pxelinux` and `kickstart` files along with the other configuration values. The configuration files can be updated after the fact, but this is only opportunity to set the build files.
-
-Nodes can be removed using the `delete` command, which will remove the configuration and build files from the cache. Existing node and cluster configurations can be updated using the `edit-cluster` and `edit` commands respectively.
+Next add the nodes to their relevant groups:
 
 ```
-# Create and configure the cluster details
-> metal init-cluster bar
+> metal update node1 groups=nodes
+> metal update node2 groups=nodes
+> metal update node3 groups=nodes
 
-# Edit the current ('bar') cluster details
-> metal edit-cluster
-
-# Add and configure a new node
-> metal create node01
-
-# Edit the node
-> metal edit node01
-
-# Delete the node
-> metal detete node01
+> metal update gpu1 groups=gpus,nodes
+> metal update gpu2 groups=gpus,nodes
+> metal update gpu3 groups=gpus,nodes
 ```
+
+In order to build the nodes, they need a mac address and build files. The `metal hunt` command will collect the `mac` as the nodes pxeboot. Alternatively, the mac can be set using an update.
+
+```
+> metal hunt
+Waiting for new nodes to appear on the network, please network boot them now...,
+(Ctrl-C to terminate)
+Detected a machine on the network (52:54:00:F2:DA:F0). Please enter the hostname:  |node1|
+Saved node1 : ...
+
+^CReceived Interrupt!
+
+> metal update node2 mac=...
+> metal update node3 mac=...
+```
+
+Now the `pxelinux`, `kickstart`, and `dhcp` files need to created. The following will create the `pxelinux` files manually by opening them in the editor. The `--touch` flag is only required when creating a new file, otherwise it is ignored
+
+```
+> metal edit node1 pxelinux --touch
+> metal edit node2 pxelinux --touch
+> metal edit node3 pxelinux --touch
+```
+
+Alternatively they can render based on a domain level template. The template must be created first using `metal edit`.
+
+```
+> metal edit domain kickstart --touch
+
+# Render the nodes individually
+> metal render node1 kickstart
+> metal render node2 kickstart
+...
+
+# Render all the nodes (including the gpus)
+> metal render --nodes-in nodes kickstart
+```
+
+Finally it is also possible to render nodes based on a particular group template
+
+```
+> metal edit --group nodes dhcp
+# This will only render node[1-3] as the gpu's are not in the primary group
+> metal render --nodes-in-primary nodes dhcp
+
+# NOTE: The following command will render both node[1-3] and gpu[1-3]
+#       The regular nodes will use the group template where the gpus will use the domain
+> metal edit domain dhcp --touch
+> metal render --nodes-in nodes dhcp
+```
+
+#### Getting Started with Import
+
+TBA
+
 
 #### Switching and Listing
 
@@ -119,8 +128,11 @@ A full list of existing cluster can be retrieved using the `list-clusters` comma
 The full details of the configured nodes can be retrieved with the `list` command. This will include the list of nodes and their configuration properties:
 
 ```
-# View the details of all the nodes
+# View the important details about the nodes
 > metal list
+
+# View all the details about the nodes
+> metal list --verbose
 ```
 
 ### Collecting MAC Addresses and Updating DHCP
@@ -148,15 +160,6 @@ The prompt will auto increment the suffix for each MAC address it does recognise
 
 A MAC address can only be hunted once per call of the command. This filters out any spam from nodes that are stuck in a pxe boot loop. To re-hunt an existing node, the command must be called again.
 
-#### Updating DHCP
-
-Flight `metal` is only partially responsible for DHCP server management. Once the node has been fully configured (include MAC), it is ready to be added to the DHCP server with its statically defined IP. This is done using the `update-dhcp` command.
-
-By default, the core dhcp configuration file is not edited by `metal`. Instead the DHCP configuration is rendered to `/etc/dhcp/dhcpd.flight`. It is your responsibility to ensure that the file is included by the master `dhcp` configuration file.
-
-After the file is rendered, the DHCP server is restarted using `systemd`. The path to the rendered file and the restart command can be set in the core application configuration, see example for details:
-`etc/config.yaml.example`
-
 ### Building the nodes
 
 Fully configured nodes added using the `build` command without any arguments. Nodes will automatically be built if they have a MAC address and the `rebuild` flag has been set.
@@ -166,26 +169,6 @@ Nodes default to the `rebuild` state when they are initially created unless expl
 The build process will automatically place the `kickstart` and `pxelinux` files into their corresponding system locations. Existing system files will not be replaced by `build` and instead an warning will be raised. It is assumed that the existing files are from a currently running build, and should not be replaced. The files will be removed when each node reports back as complete.
 
 After setting up the build files, `metal` will listen on UDP port 24680 (configurable in main config) for nodes to report back. The complete message must include it's `node` name and `built` flag in `JSON` syntax: `{ "node" : <name>, "built" : true }`
-
-The build process will automatically exit once it has received complete messages from all the nodes it is currently building.
-
-### IPMI and Power Commands
-
-Finally their are the `ipmi` and `power` commands. `ipmi` wraps the underling `ipmitool` utility and passes through the hostname, bmc credentials, and interface parameter. It that is required is the node name (or range) and the bmc command:
-
-```
-# Runs the ipmi command on node01
-> bin/metal ipmi node01 <command>
-
-# Runs teh ipmi command on node01 to node10
-> bin/metal ipmi node[01-10] <command>
-
-# List the avaliable ipmi commands
-> bin/metal ipmi help
-```
-
-The `power` commands wrap the `ipmitool chassis <power,identify>` utilities to give a unified interface for querying/managing the state of the nodes. Please refer to the help text for
-the command mapping. `power` works with single and multiple nodes similarly to `ipmi`
 
 # License
 Eclipse Public License 2.0, see LICENSE.txt for details.

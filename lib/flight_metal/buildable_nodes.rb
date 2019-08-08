@@ -27,46 +27,58 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'active_support/concern'
+require 'flight_metal/models/node'
 
 module FlightMetal
-  module Commands
-    module Concerns
-      module NodeattrParser
-        class NodeArray < DelegateClass(Array)
-          def missing
-            self.reject { |n| File.exists?(n.path) }
-          end
+  class BuildableNodes < Array
+    Loader = Struct.new(:cluster, :registry, :quiet) do
+      def nodes
+        read_nodes.select(&:buildable?)
+      end
 
-          def raise_if_missing
-            return if missing.empty?
-            raise InvalidInput, <<~ERROR.squish
-              The following node#{missing.length > 1 ? 's do' : ' does'} not
-              exist: #{missing.map(&:name).join(',')}
-            ERROR
-          end
-        end
+      def hash
+        nodes.map { |n| [n.name, n] }.to_h
+      end
 
-        extend ActiveSupport::Concern
+      private
 
-        included do
-          command_require 'nodeattr_utils/node_parser',
-                          'flight_metal/models/node',
-                          'flight_metal/errors'
-        end
+      def read_nodes
+        Models::Node.glob_read(cluster, '*', registry: registry)
+      end
+    end
 
-        def nodeattr_parser(string, group: false)
-          nodes = if group
-                    Models::Nodeattr.read_or_new(Config.cluster)
-                                    .nodes_in_group(string)
-                  else
-                    NodeattrUtils::NodeParser.expand(string)
-                  end.map do |name|
-                    Models::Node.read_or_new(Config.cluster, name)
-                  end
-          NodeArray.new(nodes.sort_by(&:name))
+    def initialize(cluster)
+      super(Loader.new(cluster).nodes)
+    end
+
+    def buildable?(name)
+      find_name(name) ? true : false
+    end
+
+    def install_build_files
+      each do |node|
+        [:kickstart, :pxelinux, :dhcp].each do |type|
+          next unless node.type_status(type) == :pending
+          sys = node.type_system_path(type)
+          FileUtils.mkdir_p File.dirname(sys)
+          FileUtils.ln_s node.type_path(type), sys
         end
       end
+    end
+
+    def process_built(name)
+      node = find_name(name)
+      Models::Node.update(*node.__inputs__) do |n|
+        FileUtils.rm_f n.pxelinux_system_path
+        FileUtils.rm_f n.kickstart_system_path
+        n.rebuild = false
+        n.built = true
+      end
+      delete(node)
+    end
+
+    def find_name(name)
+      find { |n| n.name == name }
     end
   end
 end

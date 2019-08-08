@@ -26,12 +26,11 @@
 
 # =============================================================================
 # DHCPD Config Path
-# The path to the dhcpd config that will be rendered by the application. This
-# config is owned and managed directly by the application. All other changes
-# will be lost. It is recommended that other configuration be kept in a
-# separate file.
+# The directory where the dhcpd config will link to. Each node will have it's
+# own individually rendered config which needs to be included by the main
+# dhcpd.conf
 # =============================================================================
-# dhcpd_path: /etc/dhcp/dhcpd.flight
+# dhcpd_dir: /etc/dhcp/dhcpd.flight
 
 # =============================================================================
 # Restart DHCPD Command

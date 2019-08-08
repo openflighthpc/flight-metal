@@ -34,14 +34,17 @@ require 'flight_metal/version'
 
 require 'active_support/core_ext/string'
 
+require 'flight_metal/template_map'
 require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
-require 'flight_metal/commands/dhcp'
-require 'flight_metal/commands/import'
-require 'flight_metal/commands/ipmi'
+require 'flight_metal/commands/edit'
 require 'flight_metal/commands/hunt'
+require 'flight_metal/commands/import'
+require 'flight_metal/commands/init'
+require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/node'
+require 'flight_metal/commands/render'
 
 require 'pry' if FlightMetal::Config.debug
 
@@ -87,26 +90,28 @@ module FlightMetal
       SYNTAX
     end
 
+    # TODO: Remove me when refactoring is done
+    def self.xcommand(*_a); end
+
     command 'build' do |c|
       syntax(c)
       c.summary = 'Run the pxelinux build server'
       c.description = <<~DESC
-        Moves the kickstart file and pxelinux files into places before starting
-        the build server. The build server listens for UDP packets on port #{Config.build_port}.
+        Links the kickstart, pxelinux, and dhcp files into places before starting
+        the build server. The build server listens for UDP packets on port
+        #{Config.build_port}.
 
-        Only nodes with a MAC address, pxelinux and kickstart files will be built
-        There is no need to specify which nodes need to be built. Built nodes are
-        flagged internally and will not appear in the build process again. To force
-        a rebuild, please use the `#{Config.app_name} edit` command and set the `rebuild`
-        flag to true.
+        The node must have a MAC address and the above files must be pending/installed.
+        Built nodes are flagged to prevent them from rebuilding. To force a rebuild,
+        please use the `#{Config.app_name} update` with the --rebuild flag.
 
-        This command will write the kickstart and pxelinux files into the system
-        location when the build commences. Existing files are not overridden by build
-        as they could be in use; instead a warning will be issued.
+        The files are symlinked into place, which transitions them from the pending
+        to installed state. If the there is a file conflict, then the node will be
+        skipped. Conflicts files are listed as invalid in `#{Config.app_name} list`.
 
         The build server listens for JSON messages that specifies the `node` name
-        and `built` flag. This triggers the build files to be removed from their
-        system location and the server stops listening for the node.
+        and `built` flag. The kickstart and pxelinux file are removed at the end of
+        the build, where the dhcp file will remain.
 
         It is possible to send status updates to the server by specifing the `node`
         name and `message` in the JSON. The `message` will be printed to the display
@@ -124,19 +129,10 @@ module FlightMetal
     command 'create' do |c|
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
-      c.description = <<~DESC
-        Opens up the NODE configuration in your system editor. The
-        `pxelinux_file` and `kickstart_file` fields are required and must
-        specify the paths to the corresponding files.
-
-        All other fields are optional on create, but maybe required for the
-        advanced features to work. See the editor notes for further details.
-
-        To create a node in a non-interactive shell, use the --fields flag
-        with JSON syntax.
-      DESC
-      c.option '--fields JSON', 'The fields to be saved'
-      action(c, FlightMetal::Commands::Node, method: :create)
+      TemplateMap.flag_hash.each do |_, flag|
+        c.option "--#{flag} FILE", "Path to the '#{flag.gsub('-', ' ')}' file"
+      end
+      action(c, FlightMetal::Commands::Init, method: :node)
     end
 
     command 'delete' do |c|
@@ -146,39 +142,50 @@ module FlightMetal
     end
 
     command 'edit' do |c|
-      syntax(c, 'NODE_IDENTIFIER')
-      c.summary = 'Edit the properties of the node(s)'
-      c.description = <<~DESC
-        Edits the nodes given by NODE_IDENTIFIER. The identifier is expanded
-        using standard nodeattr syntax. This command can be used to edit the
-        built state and address information for a single or multiple nodes.
-        Alternatively, the NODE_IDENTIFIER can be used to specify a group of
-        nodes when used with the --group flag.
+      syntax(c, 'domain|[NODE|GROUP] TYPE')
+      c.summary = 'Edit a domain/group template or node file'
+      c.description = <<~DESC.chomp
+        Open a template/script/build file in the editor. This is used to manage
+        the build process and power commands. Specify which file is to be edited
+        with TYPE field. The supported types are listed below.
 
-        By default the command will open the editable fields in your system
-        editor. Refer to this document for a full list of fields that can
-        be edited.
+        The command works in three distinct modes based on the target:
+        - domain
+          Edits the default template used by the `render` command. Activated when
+          called with the 'domain' keyword
 
-        Alternatively, the update values can be given using json syntax with
-        --fields flag. This bypasses the interactive editor and updates the
-        fields directly.
+        - NODE
+          Edit the rendered file used by a particular node. Defaults to this mode
+          when called with a name
+
+        - --group GROUP
+          Edit the group level template to be used when rendering a node. See the
+          `render` for further details. Activated when called with the --group
+          option. Can not be used in combination with domain.
+
+        Valid TYPE arguments:
+          - #{TemplateMap.flag_hash.values.join("\n  - ")}
       DESC
-      c.option '--fields JSON', 'The updated fields to be saved'
-      c.option '-g', '--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
-      action(c, FlightMetal::Commands::Node, method: :edit)
+      c.option '-g', '--group', 'Switch the input from NODE to GROUP mode'
+      c.option '--touch', 'Create an empty file if it does not already exist'
+      c.option '--replace FILE', 'Copy the given FILE content instead of editing'
+      action(c, FlightMetal::Commands::Edit)
     end
 
-    command 'edit-cluster' do |c|
-      syntax(c)
-      c.summary = 'Update the current cluster configuration'
+    command 'update' do |c|
+      syntax(c, 'NODE [PARAMS...]')
+      c.summary = "Modify the node's parameters"
       c.description = <<~DESC
-        Opens the current cluster configuration in and editor to be updated.
-        See the editor comments for a description of the edittable fields.
+        Set, modify, and delete parameters assigned to the NODE. The parameter
+        keys must be an alphanumeric string which may contain underscores.
 
-        The editor can be bypassed by using the --fields flag instead.
+        PARAMS can set or modify keys by using `key=value` notation. The key can
+        be hard set to an empty string by omitting the value: `key=`. Keys are
+        permanently deleted when suffixed with a exclamation: `key!`.
       DESC
-      c.option '--fields JSON', 'The updated fields to be saved'
-      action(c, FlightMetal::Commands::Cluster, method: :edit)
+      c.option '--rebuild [false]',
+               "Flag the node to be rebuilt. Unset by including 'false'"
+      action(c, FlightMetal::Commands::Node, method: :update)
     end
 
     command 'hunt' do |c|
@@ -192,7 +199,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Hunt)
     end
 
-    command 'import' do |c|
+    xcommand 'import' do |c|
       syntax(c, 'MANIFEST_PATH')
       c.summary = 'Add node configuration profiles'
       c.description = <<~DESC
@@ -212,53 +219,26 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
-    command 'ipmi' do |c|
-      syntax(c, 'NODE_IDENTIFIER [...] [--] [ipmi-options]')
-      c.summary = 'Run commands with ipmitool'
-      c.description = <<~DESC
-        The ipmi command wraps the underlining ipmitool utility. Please
-        refer to commands list below or ipmitool man page for full details.
-
-        This tool communicates using BMC over Ethernet and as such the
-        following ipmitool options will be set:
-
-        * The interface will always be set with: `-I lanplus`,
-        * The remote server is set to: `-H <NODE_IDENTIFIER>.bmc`
-        * And the username/password will be resolved from the configs and
-          set with: `-U <username>` and `-P <password>`
-
-        Additional options can be passed to directly to `ipmitool` by placing
-        them after the optional double hypen: `--`. Without the hypen, the
-        flags will be interpreted by `#{Config.app_name}` and likely cause an
-        eror.
-
-        The ipmi command can be ran over multiple nodes by specifying a range
-        as part of the NODE_IDENTIFIER (e.g. node[01-10] for node01 to node10).
-        Alternatively the --group flag toggle the command to ran over all the
-        nodes within the group specified by NODE_IDENTIFIER.
-
-        IPMI Commands:
-        #{Config.ipmi_commands_help}
-      DESC
-      c.option '-g', '--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
-      action(c, FlightMetal::Commands::Ipmi)
-    end
-
     command 'init-cluster' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
-      c.description = <<~DESC
-        Create and switch to the new cluster IDENTIFIER. The fields form will
-        be opened in the system editor. The form can be bypassed by using the
-        --fields input.
-      DESC
       c.option '--fields JSON', 'The cluster fields to be saved'
-      action(c, FlightMetal::Commands::Cluster, method: :init)
+      TemplateMap.flag_hash.each do |_, flag|
+        c.option "--#{flag} TEMPLATE", "Path to the '#{flag.gsub('-', ' ')}' template"
+      end
+      action(c, FlightMetal::Commands::Init)
     end
 
     command 'list' do |c|
       syntax(c)
       c.summary = 'Display the state of all the nodes'
+      c.description = <<~DESC
+        Shows the current state, grouping and parameter's of a node.
+
+        The parameters used to populate the templates during `render`. Use the `update`
+        command to modify the parameters.
+      DESC
+      c.option '--verbose', 'Show greater details'
       action(c, FlightMetal::Commands::Node, method: :list)
     end
 
@@ -268,45 +248,47 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
-    command 'power' do |c|
-      syntax(c, 'NODE_IDENTIFIER COMMAND')
-      c.summary = 'Manage and check the power status of the nodes'
-      c.description = <<~DESC.chomp
-        Runs a power related command using ipmitool. The valid commands
-        are given below. Similarly to the ipmi command, the NODE_IDENTIFIER
-        can specify a:
-        1. Single node,
-        2. A range of nodes (e.g. node[01-10] for node01 to node10), or
-        3. A group of nodes when used with the --group flag
-
-        Power Commands:
-        #{
-          cmds_hash = FlightMetal::Commands::Ipmi::POWER_COMMANDS
-          max_len = cmds_hash.keys.max_by(&:length).length
-          cmds_hash.reduce([]) do |s, (k, v)|
-            s << "  * #{k}#{' ' * (max_len - k.length)} - #{v[:help]}"
-          end.join("\n")
-        }
-      DESC
-      c.option '-g','--group', 'Run the command over the nodes given by NODE_IDENTIFIER'
-      action(c, FlightMetal::Commands::Ipmi, method: :power)
+    def self.plugin_command(name)
+      command name do |c|
+        syntax(c, 'NODE')
+        c.summary = "Run the #{c.name} script"
+        c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
+        c.option '-p', '--nodes-in-primary',
+                 'Switch the input to nodes belonging to the primary group'
+        action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-', '_'))
+      end
     end
 
-    command 'update-dhcp' do |c|
-      syntax(c)
-      c.summary = 'Update the DHCP server with the nodes mac addresses'
+    ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
+
+    command 'render' do |c|
+      syntax(c, '[NODE|GROUP] TYPE')
+      c.summary = 'Render the template against the node parameters'
       c.description = <<~DESC.chomp
-        Renders a partial DHCP configuration file with the nodes that have
-        static ips and MAC addresses. The configuration is rendered to the
-        dedicated file: #{Config.dhcpd_path}
+        Generate content files for a node based off a template. The valid TYPE
+        arguments are given below. The templates are rendered against the
+        node's paramters. The subtitution delimited by pairs of '%' around
+        the key (e.g. 'my %key%' would render to: 'my value').
 
-        This file will not be automatically included by the main dhcpd.conf.
-        Please confirm it has been updated if the nodes are being skipped.
+        The command works in the following modes:
+        - NODE
+          By default, render a template for a single node. The node's primary
+          group template is used preferentially with the domain template as a
+          fallback.
 
-        The dhcpd server will be automatically restarted once the config file
-        has been updated.
+        - --nodes-in GROUP
+          Renders the template(s) for all nodes within the GROUP
+          Note: The template selection is based on primary group only. This may
+          use multiple templates
+
+        - --nodes-in-primary GROUP
+          Renders the template for nodes who have GROUP as their primary.
       DESC
-      action(c, FlightMetal::Commands::DHCP, method: :update)
+      c.option '--force', 'Allow missing tags when writing the file'
+      c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
+      c.option '-p', '--nodes-in-primary',
+               'Switch the input to nodes belonging to the primary group'
+      action(c, FlightMetal::Commands::Render)
     end
 
     command 'switch-cluster' do |c|

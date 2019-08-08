@@ -27,27 +27,42 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/models/node'
-require 'flight_metal/registry'
-
 module FlightMetal
-  Macs = Struct.new(:registry) do
-    def initialize(registry = nil)
-      super(registry || FlightConfig::Registry.new)
-    end
+  module Commands
+    class Init < Command
+      command_require 'flight_metal/models/cluster', 'flight_metal/template_map', 'flight_metal/models/node'
 
-    def find(mac)
-      nodes.find { |n| n.mac == mac }
-    end
+      def run(identifier, **kwargs)
+        new_cluster = Models::Cluster.create(identifier) do |cluster|
+          save_files(cluster, **kwargs)
+        end
+        Config.create_or_update do |config|
+          config.cluster = new_cluster.identifier
+        end
+      end
 
-    def nodes
-      Models::Node.glob_read('*', '*', registry: registry)
-                  .reject { |n| n.mac.nil? }
-    end
+      def node(identifier, **kwargs)
+        Models::Node.create(Config.cluster, identifier) do |node|
+          save_files(node, **kwargs)
+          node.rebuild = true
+        end
+      end
 
-    def macs
-      nodes.each_with_object({}) do |node, memo|
-        memo[node.mac] ||= node
+      private
+
+      def save_files(model, **kwargs)
+        saved = []
+        TemplateMap.keys.each do |key|
+          next unless src = kwargs[key]
+          path = model.type_path(key)
+          path.dirname.mkdir unless path.dirname.directory?
+          FileUtils.cp src, path
+          saved << path
+        end
+      # Clean up the saved files in the event of an error
+      rescue Interrupt, StandardError => e
+        saved.each { |s| FileUtils.rm s }
+        raise e
       end
     end
   end

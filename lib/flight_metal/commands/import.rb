@@ -37,7 +37,6 @@ module FlightMetal
 
         require 'flight_metal/models/cluster'
         require 'flight_metal/models/node'
-        require 'flight_metal/models/nodeattr'
         require 'flight_metal/errors'
         require 'flight_metal/commands/node'
         require 'flight_manifest'

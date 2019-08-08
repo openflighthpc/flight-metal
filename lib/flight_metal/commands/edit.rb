@@ -29,43 +29,48 @@
 
 module FlightMetal
   module Commands
-    class Ipmi < Command
-      command_require 'flight_metal/system_command',
-                      'flight_metal/template_map',
+    class Edit < Command
+      command_require 'flight_metal/models/cluster',
                       'flight_metal/models/node',
-                      'flight_metal/errors'
+                      'flight_metal/template_map',
+                      'tty-editor'
 
-      [:power_on, :power_off, :power_status, :ipmi].each do |type|
-        define_method(type) do |name, nodes_in: nil, nodes_in_primary: nil|
-          nodes = if nodes_in
-            Models::Group.read(Config.cluster, name).read_nodes
-          elsif nodes_in_primary
-            Models::Group.read(Config.cluster, name).read_primary_nodes
-          else
-            [Models::Node.read(Config.cluster, name)]
-          end
-          run_cmd(nodes, type)
+      def run(identifier, cli_type, group: false, touch: nil, replace: nil)
+        @type = TemplateMap.lookup_key(cli_type)
+        @identifier = identifier
+        @group_bool = group
+        FileUtils.touch path if touch
+        if replace
+          raise MissingFile, <<~DESC.chomp unless File.exists?(replace)
+            Can not replace the file as the sources does not exist: #{replace}
+          DESC
+          FileUtils.cp replace, path
+        elsif File.exists? path
+          TTY::Editor.open(path)
+        else
+          raise MissingFile, <<~DESC.chomp
+            Can not edit the file as it does not exist: #{path}
+          DESC
         end
       end
 
       private
 
-      def run_cmd(nodes, type)
-        nodes.each do |node|
-          if node.type_path?(type)
-            cmd = "bash #{node.type_path(type)}"
-            out = SystemCommand::CommandOutput.run(cmd)
-            if out.exit_0?
-              puts out.stdout
-            else
-              puts out.verbose
-            end
-          else
-            Log.warn_puts <<~WARN.squish
-              Skipping #{node.name}: The #{TemplateMap.flag(type)} file
-              can not be found: #{node.type_path(type)}
-            WARN
-          end
+      attr_reader :identifier, :type, :group_bool
+
+      def model
+        @model ||= if identifier == 'domain'
+          Models::Cluster.read(Config.cluster)
+        elsif group_bool
+          Models::Group.read(Config.cluster, identifier)
+        else
+          Models::Node.read(Config.cluster, identifier)
+        end.tap(&:__data__)
+      end
+
+      def path
+        @path ||= Pathname.new(model.type_path(type)).tap do |p|
+          FileUtils.mkdir_p p.dirname
         end
       end
     end

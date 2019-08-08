@@ -111,8 +111,8 @@ module FlightMetal
       __data__.fetch(:build_port) { 24680 }
     end
 
-    def dhcpd_path
-      __data__.fetch(:dhcpd_path) { '/etc/dhcp/dhcpd.flight' }
+    def dhcpd_dir
+      __data__.fetch(:dhcpd_dir) { '/etc/dhcp/dhcpd.flight' }
     end
 
     def restart_dhcpd_command
