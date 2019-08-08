@@ -52,10 +52,6 @@ module FlightMetal
                                                  'No'
                                                end %>
 
-        *Primary Group*: <%= primary_group || 'n/a' %>
-        <% sg = secondary_groups -%>
-        *Secondary Groups*: <%= sg.empty? ? 'n/a' : sg.join(',') %>
-
         <% first_status = true -%>
         <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
         <%

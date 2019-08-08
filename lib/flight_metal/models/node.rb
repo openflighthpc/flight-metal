@@ -79,14 +79,12 @@ module FlightMetal
 
       data_reader(:params) do |hash|
         hash = (hash || {}).symbolize_keys
-        mac ? hash.merge(mac: mac) : hash
+        hash.merge(special_params)
       end
-      data_writer(:params) do |raw_value|
-        value = raw_value.to_h.dup.symbolize_keys
-        if value.key?(:mac)
-          self.mac = value.delete(:mac)
-        end
-        value.delete_if do |k, _v|
+      data_writer(:params) do |raw|
+        hash = raw.to_h.dup.symbolize_keys
+        SpecialParameters.new(self).parse!(hash)
+        hash.delete_if do |k, _v|
           reserved_params.keys.include?(k).tap do |bool|
             Log.warn_puts <<~MSG.chomp if bool
               Cowardly refusing to overwrite '#{name}' reserved parameter key: #{k}
@@ -235,12 +233,59 @@ module FlightMetal
         end
       end
 
+      # Contains all the parameters that can be rendered against
       def render_params
         params.merge(reserved_params)
       end
 
+      # Quasi-parameters that are saved on the model directly. This allows
+      # integration code to be ran on the model. These appear in both
+      # params and render_params
+      SpecialParameters = Struct.new(:node) do
+        def to_h
+          keys.map { |k| [k, send(k)] }.to_h
+        end
+
+        def parse!(**kwargs)
+          keys.each { |k| setter(k, kwargs.delete(k)) if kwargs.key?(k) }
+        end
+
+        private
+
+        delegate :mac, :mac=, to: :node
+
+        def keys
+          [:mac, :groups]
+        end
+
+        def groups
+          node.groups.join(',')
+        end
+
+        # Do not allow the groups list to be updated via a parameter
+        # This action is not supported as it requires updating the nodeattr file
+        # This sort of destructive action should be explicitly handled in the CLI
+        def groups=(a)
+          return if a.nil? || a == groups
+          raise InvalidAction, <<~ERROR.squish
+            An unexpected error has occurred. Failed to update '#{node.name}'
+            groups list
+          ERROR
+        end
+
+        def setter(key, value)
+          send("#{key}=", value)
+        end
+      end
+
+      def special_params
+        SpecialParameters.new(self).to_h
+      end
+
+      # Parameters that can not be set by the user. They will be filtered
+      # from the params list on save.
       def reserved_params
-        { name: name, cluster: cluster }
+        { name: name, cluster: cluster, primary_group: primary_group }
       end
 
       def join(*a)
@@ -253,10 +298,6 @@ module FlightMetal
 
       def primary_group
         groups.first
-      end
-
-      def secondary_groups
-        groups[1..-1]
       end
 
       # TODO: Look how this integrates into FlightConfig
