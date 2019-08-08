@@ -124,11 +124,11 @@ module FlightMetal
 
       TemplateMap.path_methods(sub: 'template').each do |method, type|
         define_method("#{type}_template_model") do
-          links.group.type_template_path?(type) ? links.group : links.cluster
+          links.group.type_path?(type) ? links.group : links.cluster
         end
 
         define_method(method) do
-          links.cluster.type_path(type)
+          type_template_model(type).type_path(type)
         end
         define_path?(method)
       end

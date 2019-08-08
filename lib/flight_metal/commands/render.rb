@@ -53,7 +53,7 @@ module FlightMetal
         nodes.each do |node|
           initial = File.read(node.type_template_path(type))
           rendered = node.render_params.reduce(initial) do |memo, (key, value)|
-            memo.gsub("%#{key}%", value)
+            memo.gsub("%#{key}%", value.to_s)
           end
           if !force && /%\w+%/.match?(rendered)
             errors = true
