@@ -117,6 +117,11 @@ module FlightMetal
                             .map { |p| p.split('=', 2) }
                             .to_h
                             .symbolize_keys
+        if update_hash.key?(:groups)
+          Models::Nodeattr.create_or_update(Config.cluster)  do |attr|
+            attr.add_nodes(name, groups: update_hash[:groups].split(','))
+          end
+        end
         delete_keys = params.select { |p| /\A\w+!/.match?(p) }
                             .map { |p| p[0..-2].to_sym }
         Models::Node.update(Config.cluster, name) do |node|
