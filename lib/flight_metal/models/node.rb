@@ -129,7 +129,7 @@ module FlightMetal
 
       TemplateMap.path_methods(sub: 'template').each do |method, type|
         define_method("#{type}_template_model") do
-          read_primary_group.type_path?(type) ? links.group : links.cluster
+          read_primary_group.type_path?(type) ? read_primary_group : links.cluster
         end
 
         define_method(method) do
@@ -154,11 +154,11 @@ module FlightMetal
       end
 
       def kickstart_system_path
-        File.join(Config.kickstart_dir, cluster, name + '.ks')
+        File.join(Config.kickstart_dir, name + '.ks')
       end
 
       def dhcp_system_path
-        File.join(Config.dhcpd_dir, name + '-dhcpd.conf')
+        File.join(Config.dhcpd_dir, name + '.conf')
       end
 
       define_type_path_shortcuts(sub: 'system')
