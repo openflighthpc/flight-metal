@@ -79,11 +79,11 @@ module FlightMetal
 
       data_reader(:params) do |hash|
         hash = (hash || {}).symbolize_keys
-        hash.merge(special_params)
+        SpecialParameters.new(self).read(**hash)
       end
       data_writer(:params) do |raw|
         hash = raw.to_h.dup.symbolize_keys
-        SpecialParameters.new(self).parse!(hash)
+        SpecialParameters.new(self).write(hash)
         hash.delete_if do |k, _v|
           reserved_params.keys.include?(k).tap do |bool|
             Log.warn_puts <<~MSG.chomp if bool
@@ -239,14 +239,22 @@ module FlightMetal
       end
 
       # Quasi-parameters that are saved on the model directly. This allows
-      # integration code to be ran on the model. These appear in both
-      # params and render_params
+      # integration code to be ran on the model
       SpecialParameters = Struct.new(:node) do
         def to_h
-          keys.map { |k| [k, send(k)] }.to_h
+          read
         end
 
-        def parse!(**kwargs)
+        def read(**kwargs)
+          keys.each do |key|
+            kwargs.delete(key)
+            value = send(key)
+            kwargs[key] = value unless value.nil?
+          end
+          kwargs
+        end
+
+        def write(**kwargs)
           keys.each { |k| setter(k, kwargs.delete(k)) if kwargs.key?(k) }
         end
 

@@ -43,7 +43,7 @@ module FlightMetal
         nodes = if nodes_in
           read_group(identifier).read_nodes
         elsif nodes_in_primary
-          read_group(identifier).read_nodes
+          read_group(identifier).read_primary_nodes
         else
           [Models::Node.read(Config.cluster, identifier)]
         end
