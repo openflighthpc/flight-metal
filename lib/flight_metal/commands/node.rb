@@ -81,7 +81,16 @@ module FlightMetal
                bool = type_template_model(type).is_a?(FlightMetal::Models::Cluster)
                source = (bool ? 'Domain' : "Primary Group")
         -%>
-        - *<%= flag %>*: <%= source %>
+        - *<%= flag %>*: <%=
+          case type_template_model(type)
+          when FlightMetal::Models::Cluster
+            'Domain'
+          when FlightMetal::Models::Group
+            'Primary Group'
+          else
+            'Missing'
+          end
+        %>
         <%   end -%>
         <% end -%>
 
