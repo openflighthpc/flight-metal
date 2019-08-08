@@ -78,10 +78,16 @@ module FlightMetal
       end
 
       def read_nodes(primary: false)
-        nodes = Dir.glob(node_symlink_path('*')).map do |path|
-          FlightConfig::Globber::Matcher.new(Models::Node, 2, __registry__)
-                                        .read(Pathname.new(path).readlink.to_s)
-        end
+        nodes = Dir.glob(node_symlink_path('*'))
+                   .map do |path|
+          if File.exists? path
+            FlightConfig::Globber::Matcher.new(Models::Node, 2, __registry__)
+                                          .read(Pathname.new(path).readlink.to_s)
+          else
+            FileUtils.rm path # Delete the symlink if it doesn't reference a file
+            nil
+          end
+        end.reject(&:nil?)
         bad_nodes = nodes.reject { |n| n.groups.include?(name) }
         bad_nodes.each { |n| FileUtils.rm node_symlink_path(n.name) }
         good_nodes = nodes - bad_nodes
