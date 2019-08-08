@@ -248,29 +248,18 @@ module FlightMetal
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
-    command 'power-on' do |c|
-      syntax(c, 'NODE')
-      c.summary = "Run the #{c.name} script"
-      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
+    def self.plugin_command(name)
+      command name do |c|
+        syntax(c, 'NODE')
+        c.summary = "Run the #{c.name} script"
+        c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
+        c.option '-p', '--nodes-in-primary',
+                 'Switch the input to nodes belonging to the primary group'
+        action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-', '_'))
+      end
     end
 
-    command 'power-off' do |c|
-      syntax(c, 'NODE')
-      c.summary = "Run the #{c.name} script"
-      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
-    end
-
-    command 'power-status' do |c|
-      syntax(c, 'NODE')
-      c.summary = "Run the #{c.name} script"
-      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
-    end
-
-    command 'ipmi' do |c|
-      syntax(c, 'NODE')
-      c.summary = "Run the #{c.name} script"
-      action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-','_'))
-    end
+    ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
     command 'render' do |c|
       syntax(c, '[NODE|GROUP] TYPE')

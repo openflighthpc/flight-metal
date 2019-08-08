@@ -76,7 +76,7 @@ module FlightMetal
 
       def read_nodes(primary: false)
         (primary ? primary_nodes : nodes).map do |node|
-          Models::Node.read(cluster, name)
+          Models::Node.read(cluster, node)
         end
       end
 
