@@ -31,7 +31,6 @@ require 'flight_config'
 require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
-require 'flight_metal/models/nodeattr'
 require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
@@ -67,9 +66,6 @@ module FlightMetal
       def self.delete!(*a)
         delete(*a) do |node|
           FileUtils.rm_rf node.join('lib')
-          Models::Nodeattr.create_or_update(node.cluster) do |attr|
-            attr.remove_nodes(node.name)
-          end
           true
         end
       end
@@ -110,9 +106,18 @@ module FlightMetal
         end
       end
 
+      data_reader(:groups) do |groups|
+        (groups || []).tap { |g| g << 'orphan' if g.empty? }.each do |group|
+          sym_path = Pathname.new(Models::Group.node_symlink_path(cluster, group, name))
+          unless sym_path.exist?
+            FileUtils.mkdir_p sym_path.dirname
+            sym_path.make_symlink(path)
+          end
+        end
+      end
+      data_writer(:groups) { |v| v.to_a }
+
       define_link(:cluster, Models::Cluster) { [cluster] }
-      define_link(:nodeattr, Models::Nodeattr) { [cluster] }
-      define_link(:group, Models::Group) { [cluster, primary_group] }
 
       TemplateMap.path_methods.each do |method, type|
         define_method(method) do
@@ -124,7 +129,7 @@ module FlightMetal
 
       TemplateMap.path_methods(sub: 'template').each do |method, type|
         define_method("#{type}_template_model") do
-          links.group.type_path?(type) ? links.group : links.cluster
+          read_primary_group.type_path?(type) ? links.group : links.cluster
         end
 
         define_method(method) do
@@ -270,15 +275,9 @@ module FlightMetal
           node.groups.join(',')
         end
 
-        # Do not allow the groups list to be updated via a parameter
-        # This action is not supported as it requires updating the nodeattr file
-        # This sort of destructive action should be explicitly handled in the CLI
         def groups=(a)
           return if a.nil? || a == groups
-          raise InvalidAction, <<~ERROR.squish
-            An unexpected error has occurred. Failed to update '#{node.name}'
-            groups list
-          ERROR
+          node.groups = a.split(',')
         end
 
         def setter(key, value)
@@ -300,12 +299,12 @@ module FlightMetal
         self.class.join(*__inputs__, *a)
       end
 
-      def groups
-        links.nodeattr.groups_for_node(name)
-      end
-
       def primary_group
         groups.first
+      end
+
+      def read_primary_group
+        Models::Group.read(cluster, primary_group, registry: __registry__)
       end
 
       # TODO: Look how this integrates into FlightConfig

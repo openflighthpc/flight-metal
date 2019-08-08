@@ -35,7 +35,6 @@ gem 'activesupport'
 gem 'commander-openflighthpc'
 
 gem 'flight_config', '0.2.0'
-gem 'nodeattr_utils', '~>1.1.0'
 
 gem 'flight_manifest', '0.1.2'
 gem 'rubyzip'

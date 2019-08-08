@@ -32,8 +32,6 @@ GEM
     minitest (5.11.3)
     necromancer (0.4.0)
     net-dhcp (1.3.3)
-    nodeattr_utils (1.1.0)
-      flight_config (~> 0.2)
     paint (2.1.0)
     parallel (1.17.0)
     pastel (0.7.2)
@@ -95,7 +93,6 @@ DEPENDENCIES
   hashie
   highline
   net-dhcp
-  nodeattr_utils (~> 1.1.0)
   parallel
   pcap!
   pp
