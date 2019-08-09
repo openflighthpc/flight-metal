@@ -31,6 +31,7 @@ require 'erb'
 require 'tty-editor'
 require 'tty-markdown'
 require 'flight_metal/log'
+require 'ostruct'
 
 module FlightMetal
   class Templator

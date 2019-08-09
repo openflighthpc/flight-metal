@@ -33,7 +33,7 @@ module FlightMetal
       class ListDelegator < SimpleDelegator
         attr_reader :sys_ip, :sys_fqdn, :verbose
 
-        def initialize(node, fqdn:, ip: nil, verbose: nil)
+        def initialize(node, fqdn: nil, ip: nil, verbose: nil)
           super(node)
           @sys_ip = sys_ip
           @sys_fqdn = sys_fqdn
@@ -139,14 +139,11 @@ module FlightMetal
       def list(verbose: nil)
         nodes = Models::Node.glob_read(Config.cluster, '*')
                             .sort_by { |n| n.name }
-        outputs = SystemCommand.new(*nodes).fqdn_and_ip
-        sys_nodes = nodes.each_with_index
-                         .map do |node, idx|
-          fqdn, ip = outputs[idx].stdout.split
-          ListDelegator.new(node, fqdn: fqdn, ip: ip, verbose: verbose)
+        delegets = nodes.each_with_index.map do |node, idx|
+          ListDelegator.new(node, verbose: verbose)
         end
-        md = sys_nodes.map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
-                      .join
+        md = delegets.map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
+                     .join
         puts md
       end
 

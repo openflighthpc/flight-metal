@@ -4,6 +4,9 @@
 
 This app can be installed via:
 ```
+yum group install "Development Tools"
+yum install libpcap-devel
+
 git clone https://github.com/alces-software/flight-metal
 cd flight-metal 
 bundle install
