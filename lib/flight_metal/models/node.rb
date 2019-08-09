@@ -129,8 +129,8 @@ module FlightMetal
 
       TemplateMap.path_methods(sub: 'template').each do |method, type|
         define_method("#{type}_template_model") do
-          read_primary_group if read_primary_group.type_path?(type)
-          links.cluster if links.cluster.type_path?(type)
+          return read_primary_group if read_primary_group.type_path?(type)
+          return links.cluster if links.cluster.type_path?(type)
         end
 
         define_method(method) do
