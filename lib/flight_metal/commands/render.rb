@@ -75,7 +75,7 @@ module FlightMetal
             dst = node.type_path(type)
             FileUtils.mkdir_p File.dirname(dst)
             File.write(node.type_path(type), rendered)
-            Log.info_puts "Rendered '#{node.name}': #{dst}"
+            Log.info_puts "Rendered #{node.name}: #{dst}"
           end
         end
 
