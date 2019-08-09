@@ -250,7 +250,7 @@ module FlightMetal
 
     def self.plugin_command(name)
       command name do |c|
-        syntax(c, 'NODE')
+        syntax(c, 'NODE, [SHELL_ARGS...]')
         c.summary = "Run the #{c.name} script"
         c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
         c.option '-p', '--primary-nodes-in',

@@ -51,7 +51,7 @@ module FlightMetal
         # Reject those without a template
         nodes.reject! do |node|
           next if node.type_template_path?(type)
-          Log.warn_puts "Skipping #{node.name}: Can not locate the template"
+          Log.warn_puts "Skipping #{node.name}: Can not locate a template"
           true
         end
 

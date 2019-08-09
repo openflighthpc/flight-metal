@@ -33,10 +33,11 @@ module FlightMetal
       command_require 'flight_metal/system_command',
                       'flight_metal/template_map',
                       'flight_metal/models/node',
-                      'flight_metal/errors'
+                      'flight_metal/errors',
+                      'shellwords'
 
       [:power_on, :power_off, :power_status, :ipmi].each do |type|
-        define_method(type) do |name, nodes_in: nil, primary_nodes_in: nil|
+        define_method(type) do |name, *shell_args, nodes_in: nil, primary_nodes_in: nil|
           nodes = if nodes_in
             Models::Group.read(Config.cluster, name).read_nodes
           elsif primary_nodes_in
@@ -44,16 +45,17 @@ module FlightMetal
           else
             [Models::Node.read(Config.cluster, name)]
           end
-          run_cmd(nodes, type)
+          run_cmd(nodes, type, *shell_args)
         end
       end
 
       private
 
-      def run_cmd(nodes, type)
+      def run_cmd(nodes, type, *shell_args)
         nodes.each do |node|
           if node.type_path?(type)
-            cmd = "bash #{node.type_path(type)}"
+            args_str = shell_args.map { |s| Shellwords.shellescape(s) }.join(' ')
+            cmd = "bash #{node.type_path(type)} #{args_str}"
             out = SystemCommand::CommandOutput.run(cmd)
             if out.exit_0?
               puts out.stdout
