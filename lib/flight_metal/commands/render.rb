@@ -48,6 +48,13 @@ module FlightMetal
           [Models::Node.read(Config.cluster, identifier)]
         end
 
+        # Reject those without a template
+        nodes.reject! do |node|
+          next if node.type_template_path?(type)
+          Log.warn_puts "Skipping #{node.name}: Can not locate the template"
+          true
+        end
+
         # Render for each node
         errors = false
         nodes.each do |node|
