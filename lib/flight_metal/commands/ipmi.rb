@@ -36,10 +36,10 @@ module FlightMetal
                       'flight_metal/errors'
 
       [:power_on, :power_off, :power_status, :ipmi].each do |type|
-        define_method(type) do |name, nodes_in: nil, nodes_in_primary: nil|
+        define_method(type) do |name, nodes_in: nil, primary_nodes_in: nil|
           nodes = if nodes_in
             Models::Group.read(Config.cluster, name).read_nodes
-          elsif nodes_in_primary
+          elsif primary_nodes_in
             Models::Group.read(Config.cluster, name).read_primary_nodes
           else
             [Models::Node.read(Config.cluster, name)]

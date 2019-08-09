@@ -253,7 +253,7 @@ module FlightMetal
         syntax(c, 'NODE')
         c.summary = "Run the #{c.name} script"
         c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
-        c.option '-p', '--nodes-in-primary',
+        c.option '-p', '--primary-nodes-in',
                  'Switch the input to nodes belonging to the primary group'
         action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-', '_'))
       end
@@ -281,12 +281,12 @@ module FlightMetal
           Note: The template selection is based on primary group only. This may
           use multiple templates
 
-        - --nodes-in-primary GROUP
+        - --primary-nodes-in GROUP
           Renders the template for nodes who have GROUP as their primary.
       DESC
       c.option '--force', 'Allow missing tags when writing the file'
       c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
-      c.option '-p', '--nodes-in-primary',
+      c.option '-p', '--primary-nodes-in',
                'Switch the input to nodes belonging to the primary group'
       action(c, FlightMetal::Commands::Render)
     end

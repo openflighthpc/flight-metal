@@ -99,7 +99,7 @@ Finally it is also possible to render nodes based on a particular group template
 ```
 > metal edit --group nodes dhcp
 # This will only render node[1-3] as the gpu's are not in the primary group
-> metal render --nodes-in-primary nodes dhcp
+> metal render --primary-nodes-in nodes dhcp
 
 # NOTE: The following command will render both node[1-3] and gpu[1-3]
 #       The regular nodes will use the group template where the gpus will use the domain

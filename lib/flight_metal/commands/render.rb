@@ -35,14 +35,14 @@ module FlightMetal
                       'flight_metal/template_map'
 
       def run(identifier, cli_type,
-              force: false, nodes_in: nil, nodes_in_primary: nil)
+              force: false, nodes_in: nil, primary_nodes_in: nil)
         # Verify the type
         type = TemplateMap.lookup_key(cli_type)
 
         # Load the models
         nodes = if nodes_in
           read_group(identifier).read_nodes
-        elsif nodes_in_primary
+        elsif primary_nodes_in
           read_group(identifier).read_primary_nodes
         else
           [Models::Node.read(Config.cluster, identifier)]
