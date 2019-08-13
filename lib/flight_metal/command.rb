@@ -28,17 +28,75 @@
 #===============================================================================
 
 module FlightMetal
-  class Command
-    def self.command_require(*a)
-      command_requires.push(*a)
+  module CommandHelper
+    module ClassMethods
+      def command_require(*a)
+        command_requires.push(*a)
+      end
+
+      def command_requires
+        @command_requires ||= []
+      end
     end
 
-    def self.command_requires
-      @command_requires ||= []
+    def self.included(base)
+      base.extend(ClassMethods)
     end
 
-    def initialize
+    def initialize(*_a)
       self.class.command_requires.each { |d| require d }
+      super if defined?(super)
     end
+  end
+
+  ScopedCommand = Struct.new(:level, :raw_identifier) do
+    include CommandHelper
+
+    def model_class
+      case level
+      when :cluster, 'cluster'
+        require 'flight_metal/models/cluster'
+        Models::Cluster
+      when :group, 'group'
+        require 'flight_metal/models/group'
+        Models::Group
+      when :node, 'node'
+        require 'flight_metal/models/node'
+        Models::Node
+      else
+        raise InternalError, <<~ERROR.chomp
+          Unrecognised command level #{level}
+        ERROR
+      end
+    end
+
+    def identifier
+      raw = raw_identifier
+      is_cluster = [:cluster, 'cluster'].include?(level)
+      has_identifier = !(raw.nil? || raw.empty?)
+      if is_cluster && has_identifier
+        raise InternalError, <<~ERROR.chomp
+          Can not use the identifier input within the cluster level
+        ERROR
+      elsif is_cluster || has_identifier
+        raw
+      else
+        raise InternalError, <<~ERROR.chomp
+          The #{level.to_s} identifier has not been set
+        ERROR
+      end
+    end
+
+    def read_model
+      if model_class == Models::Cluster
+        Models::Cluster.read(Config.cluster)
+      else
+        model_class.read(Config.cluster, identifier)
+      end
+    end
+  end
+
+  class Command
+    include CommandHelper
   end
 end
