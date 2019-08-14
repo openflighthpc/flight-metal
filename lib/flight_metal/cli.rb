@@ -39,13 +39,13 @@ require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/create'
+require 'flight_metal/commands/delete'
 require 'flight_metal/commands/edit'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
-require 'flight_metal/commands/node'
 require 'flight_metal/commands/update'
 require 'flight_metal/commands/render'
 
@@ -141,10 +141,10 @@ module FlightMetal
       c.action(&Commands::Create.named_commander_proxy(:cluster))
     end
 
-    xcommand 'delete' do |c|
+    command 'node-delete' do |c|
       syntax(c, 'NODE')
       c.summary = 'Remove the node and associated configurations'
-      action(c, FlightMetal::Commands::Node, method: :delete)
+      c.action(Commands::Delete.named_commander_proxy(:node))
     end
 
     xcommand 'edit' do |c|

@@ -23,20 +23,20 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
 module FlightMetal
   module Commands
-    class Node < Command
+    class Delete < ScopedCommand
+      command_require 'flight_metal/models/node'
 
-      command_require 'flight_metal/models/node',
-                      'flight_metal/system_command'
-
-      def delete(name)
-        Models::Node.delete!(Config.cluster, name)
+      def node
+        node = Models::Node.delete!(Config.cluster, model_name_or_error)
+        Log.info_puts "Deleted node: '#{node.name}'"
       end
     end
   end
 end
+
