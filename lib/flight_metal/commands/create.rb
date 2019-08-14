@@ -30,10 +30,19 @@
 module FlightMetal
   module Commands
     class Create < ScopedCommand
+      command_require 'flight_metal/models/node'
+
       def cluster
         cluster = Models::Cluster.create(model_name_or_error)
         Config.create_or_update { |c| c.cluster = cluster.identifier }
         Log.info_puts "Created and switched to cluster '#{cluster.identifier}'"
+      end
+
+      def node
+        node = Models::Node.create(Config.cluster, model_name_or_error) do |n|
+          n.rebuild = true
+        end
+        Log.info_puts "Created: #{node.name}"
       end
     end
   end

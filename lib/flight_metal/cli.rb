@@ -42,7 +42,6 @@ require 'flight_metal/commands/create'
 require 'flight_metal/commands/edit'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
-require 'flight_metal/commands/init'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
@@ -130,13 +129,10 @@ module FlightMetal
       action(c, FlightMetal::Commands::Build)
     end
 
-    xcommand 'create' do |c|
+    command 'node-create' do |c|
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
-      TemplateMap.flag_hash.each do |_, flag|
-        c.option "--#{flag} FILE", "Path to the '#{flag.gsub('-', ' ')}' file"
-      end
-      action(c, FlightMetal::Commands::Init, method: :node)
+      c.action(&FlightMetal::Commands::Create.named_commander_proxy(:node))
     end
 
     command 'cluster-create' do |c|
