@@ -38,6 +38,7 @@ require 'flight_metal/template_map'
 require 'flight_metal/command'
 require 'flight_metal/commands/build'
 require 'flight_metal/commands/cluster'
+require 'flight_metal/commands/create'
 require 'flight_metal/commands/edit'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
@@ -93,7 +94,7 @@ module FlightMetal
     # TODO: Remove me when refactoring is done
     def self.xcommand(*_a); end
 
-    command 'build' do |c|
+    xcommand 'build' do |c|
       syntax(c)
       c.summary = 'Run the pxelinux build server'
       c.description = <<~DESC
@@ -126,7 +127,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Build)
     end
 
-    command 'create' do |c|
+    xcommand 'create' do |c|
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
       TemplateMap.flag_hash.each do |_, flag|
@@ -135,13 +136,19 @@ module FlightMetal
       action(c, FlightMetal::Commands::Init, method: :node)
     end
 
-    command 'delete' do |c|
+    command 'create-cluster' do |c|
+      syntax(c, 'IDENTIFIER')
+      c.summary = 'Create a new cluster profile'
+      c.action(&Commands::Create.named_commander_proxy(:cluster))
+    end
+
+    xcommand 'delete' do |c|
       syntax(c, 'NODE')
       c.summary = 'Remove the node and associated configurations'
       action(c, FlightMetal::Commands::Node, method: :delete)
     end
 
-    command 'edit' do |c|
+    xcommand 'edit' do |c|
       syntax(c, 'domain|[NODE|GROUP] TYPE')
       c.summary = 'Edit a domain/group template or node file'
       c.description = <<~DESC.chomp
@@ -172,7 +179,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Edit)
     end
 
-    command 'update' do |c|
+    xcommand 'update' do |c|
       syntax(c, 'NODE [PARAMS...]')
       c.summary = "Modify the node's parameters"
       c.description = <<~DESC
@@ -188,7 +195,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :update)
     end
 
-    command 'hunt' do |c|
+    xcommand 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'
       c.description = <<~DESC
@@ -219,17 +226,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
-    command 'init-cluster' do |c|
-      syntax(c, 'IDENTIFIER')
-      c.summary = 'Create a new cluster profile'
-      c.option '--fields JSON', 'The cluster fields to be saved'
-      TemplateMap.flag_hash.each do |_, flag|
-        c.option "--#{flag} TEMPLATE", "Path to the '#{flag.gsub('-', ' ')}' template"
-      end
-      action(c, FlightMetal::Commands::Init)
-    end
-
-    command 'list' do |c|
+    xcommand 'list' do |c|
       syntax(c)
       c.summary = 'Display the state of all the nodes'
       c.description = <<~DESC
@@ -242,14 +239,14 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :list)
     end
 
-    command 'list-clusters' do |c|
+    xcommand 'list-clusters' do |c|
       syntax(c)
       c.summary = 'Display the list of clusters'
       action(c, FlightMetal::Commands::Cluster, method: :list)
     end
 
     def self.plugin_command(name)
-      command name do |c|
+      xcommand name do |c|
         syntax(c, 'NODE, [SHELL_ARGS...]')
         c.summary = "Run the #{c.name} script"
         c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
@@ -261,7 +258,7 @@ module FlightMetal
 
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
-    command 'render' do |c|
+    xcommand 'render' do |c|
       syntax(c, '[NODE|GROUP] TYPE')
       c.summary = 'Render the template against the node parameters'
       c.description = <<~DESC.chomp
@@ -291,7 +288,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Render)
     end
 
-    command 'switch-cluster' do |c|
+    xcommand 'switch-cluster' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Change the current cluster profile'
       action(c, FlightMetal::Commands::Cluster, method: :switch)

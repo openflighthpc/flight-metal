@@ -49,8 +49,40 @@ module FlightMetal
     end
   end
 
-  ScopedCommand = Struct.new(:level, :raw_identifier) do
+  ScopedCommand = Struct.new(:level, :model_name) do
+    CommanderProxy = Struct.new(:command_model, :instance_args, :commander_opts) do
+      def run(method)
+        opts = commander_opts.__hash__.dup.tap { |hash| hash.delete(:trace) }
+        if opts.empty?
+          command_model.public_send(method, *instance_args)
+        else
+          command_model.public_send(method, *instance_args, **opts)
+        end
+      rescue Interrupt
+        Log.warn_puts 'Received Interrupt!'
+      rescue => e
+        Log.fatal(e)
+        raise e
+      end
+    end
+
     include CommandHelper
+
+    def self.named_commander_proxy(level, method: nil)
+      method ||= level
+      lambda do |args, commander_opts|
+        cmd_obj = new(level, args.first)
+        CommanderProxy.new(cmd_obj, args[1..-1], commander_opts).run(method)
+      end
+    end
+
+    def self.unnamed_commander_proxy(level, method: nil)
+      method ||= level
+      lambda do |args, commander_opts|
+        cmd_obj = new(level)
+        CommanderProxy.new(cmd_obj, args, commander_opts).run(method)
+      end
+    end
 
     def model_class
       case level
@@ -70,28 +102,23 @@ module FlightMetal
       end
     end
 
-    def identifier
-      raw = raw_identifier
-      is_cluster = [:cluster, 'cluster'].include?(level)
-      has_identifier = !(raw.nil? || raw.empty?)
-      if is_cluster && has_identifier
-        raise InternalError, <<~ERROR.chomp
-          Can not use the identifier input within the cluster level
-        ERROR
-      elsif is_cluster || has_identifier
-        raw
+    def model_name_or_error
+      has_name = !(model_name.nil? || model_name.empty?)
+      if has_name
+        model_name
       else
         raise InternalError, <<~ERROR.chomp
-          The #{level.to_s} identifier has not been set
+          The #{level.to_s} name has not been set
         ERROR
       end
     end
 
     def read_model
+      name = model_name_or_error # Ensure the error check has occurred
       if model_class == Models::Cluster
         Models::Cluster.read(Config.cluster)
       else
-        model_class.read(Config.cluster, identifier)
+        model_class.read(Config.cluster, name)
       end
     end
   end
