@@ -44,6 +44,7 @@ require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/init'
 require 'flight_metal/commands/ipmi'
+require 'flight_metal/commands/miscellaneous'
 require 'flight_metal/commands/node'
 require 'flight_metal/commands/render'
 
@@ -136,7 +137,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Init, method: :node)
     end
 
-    command 'create-cluster' do |c|
+    command 'cluster-create' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
       c.action(&Commands::Create.named_commander_proxy(:cluster))
@@ -239,10 +240,10 @@ module FlightMetal
       action(c, FlightMetal::Commands::Node, method: :list)
     end
 
-    xcommand 'list-clusters' do |c|
+    command 'cluster-list' do |c|
       syntax(c)
       c.summary = 'Display the list of clusters'
-      action(c, FlightMetal::Commands::Cluster, method: :list)
+      c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
     end
 
     def self.plugin_command(name)
@@ -288,10 +289,10 @@ module FlightMetal
       action(c, FlightMetal::Commands::Render)
     end
 
-    xcommand 'switch-cluster' do |c|
+    command 'cluster-switch' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Change the current cluster profile'
-      action(c, FlightMetal::Commands::Cluster, method: :switch)
+      c.action(&Commands::Miscellaneous.named_commander_proxy(:cluster, method: :switch_cluster))
     end
   end
 end
