@@ -92,6 +92,10 @@ module FlightMetal
       def post_hunt_script?
         File.exists? post_hunt_script_path
       end
+
+      def read_nodes
+        Models::Node.glob_read(identifier, '*')
+      end
     end
   end
 end

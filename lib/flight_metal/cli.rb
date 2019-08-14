@@ -44,6 +44,7 @@ require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/init'
 require 'flight_metal/commands/ipmi'
+require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
 require 'flight_metal/commands/node'
 require 'flight_metal/commands/render'
@@ -227,23 +228,25 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
-    xcommand 'list' do |c|
-      syntax(c)
-      c.summary = 'Display the state of all the nodes'
-      c.description = <<~DESC
-        Shows the current state, grouping and parameter's of a node.
-
-        The parameters used to populate the templates during `render`. Use the `update`
-        command to modify the parameters.
-      DESC
-      c.option '--verbose', 'Show greater details'
-      action(c, FlightMetal::Commands::Node, method: :list)
-    end
-
     command 'cluster-list' do |c|
       syntax(c)
       c.summary = 'Display the list of clusters'
       c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
+    end
+
+    shared_cluster_list_nodes = ->(c) do
+      syntax(c)
+      c.summary = 'List all the nodes within the cluster'
+      c.option '--verbose', 'Show greater details'
+      c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster))
+    end
+
+    command 'node-list' do |c|
+      shared_cluster_list_nodes.call(c)
+    end
+
+    command 'cluster-list-nodes' do |c|
+      shared_cluster_list_nodes.call(c)
     end
 
     def self.plugin_command(name)

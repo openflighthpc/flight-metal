@@ -30,88 +30,8 @@
 module FlightMetal
   module Commands
     class Node < Command
-      class ListDelegator < SimpleDelegator
-        attr_reader :sys_ip, :sys_fqdn, :verbose
-
-        def initialize(node, fqdn: nil, ip: nil, verbose: nil)
-          super(node)
-          @sys_ip = sys_ip
-          @sys_fqdn = sys_fqdn
-          @verbose = verbose
-        end
-      end
-
-      LIST_TEMPLATE = <<~ERB
-        # Node: '<%= name %>'
-        *Built*: <%= built? ? built_time : 'Never' %>
-        *<%= built? ? 'Reb' : 'B' %>uild*: <%= if buildable?
-                                                 'Scheduled'
-                                               elsif rebuild?
-                                                 'Skipping'
-                                               else
-                                                 'No'
-                                               end %>
-
-        <% first_status = true -%>
-        <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        <%
-             status = type_status(type, error: false)
-             text = case status
-                    when :invalid
-                      'Invalid - check link: ' + type_system_path(type)
-                    else
-                      status.capitalize
-                    end
-        -%>
-        <%   if verbose || ![:pending, :installed].include?(status) -%>
-        <%=
-               if first_status
-                 first_status = false
-                 '## File Status'
-               end
-        %>
-        - *<%= flag %>*: <%= text %>
-        <%   end -%>
-        <% end -%>
-
-        <% if verbose -%>
-        ## File Template Source
-        <%   FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        <%
-               bool = type_template_model(type).is_a?(FlightMetal::Models::Cluster)
-               source = (bool ? 'Domain' : "Primary Group")
-        -%>
-        - *<%= flag %>*: <%=
-          case type_template_model(type)
-          when FlightMetal::Models::Cluster
-            'Domain'
-          when FlightMetal::Models::Group
-            'Primary Group'
-          else
-            'Missing'
-          end
-        %>
-        <%   end -%>
-        <% end -%>
-
-
-        ## Reserved Parameters
-        <% reserved_params.each do |key, value| -%>
-        - _<%= key %>_: <%= value %>
-        <% end -%>
-
-        <% unless params.empty? -%>
-        ## Other Parameters
-        <%   params.each do |key, value| -%>
-        - *<%= key %>*: <%= value %>
-        <%   end -%>
-        <% end -%>
-
-      ERB
 
       command_require 'flight_metal/models/node',
-                      'flight_metal/buildable_nodes',
-                      'flight_metal/templator',
                       'flight_metal/system_command'
 
       def update(name, *params, rebuild: nil)
@@ -134,17 +54,6 @@ module FlightMetal
           node.params = new
           node.rebuild = rebuild unless rebuild.nil?
         end
-      end
-
-      def list(verbose: nil)
-        nodes = Models::Node.glob_read(Config.cluster, '*')
-                            .sort_by { |n| n.name }
-        delegets = nodes.each_with_index.map do |node, idx|
-          ListDelegator.new(node, verbose: verbose)
-        end
-        md = delegets.map { |n| Templator.new(n).markdown(LIST_TEMPLATE) }
-                     .join
-        puts md
       end
 
       def delete(name)

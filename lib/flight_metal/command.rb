@@ -103,22 +103,31 @@ module FlightMetal
     end
 
     def model_name_or_error
-      has_name = !(model_name.nil? || model_name.empty?)
-      if has_name
-        model_name
-      else
+      if model_name.nil? || model_name.empty?
         raise InternalError, <<~ERROR.chomp
           The #{level.to_s} name has not been set
         ERROR
+      else
+        model_name
       end
     end
 
     def read_model
-      name = model_name_or_error # Ensure the error check has occurred
       if model_class == Models::Cluster
-        Models::Cluster.read(Config.cluster)
+        Models::Cluster.read(model_name || Config.cluster)
       else
-        model_class.read(Config.cluster, name)
+        model_class.read(Config.cluster, model_name_or_error)
+      end
+    end
+
+    def read_nodes
+      model = read_model
+      if model.is_a?(Models::Node)
+        raise InternalError, <<~ERROR.chomp
+          Can not read nodes when a single node is in scope
+        ERROR
+      else
+        model.read_nodes
       end
     end
   end
