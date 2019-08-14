@@ -92,6 +92,9 @@ module FlightMetal
       when :group, 'group'
         require 'flight_metal/models/group'
         Models::Group
+      when :primary_group, 'primary_group'
+        require 'flight_metal/models/group'
+        Models::Group
       when :node, 'node'
         require 'flight_metal/models/node'
         Models::Node
@@ -123,9 +126,9 @@ module FlightMetal
     def read_nodes
       model = read_model
       if model.is_a?(Models::Node)
-        raise InternalError, <<~ERROR.chomp
-          Can not read nodes when a single node is in scope
-        ERROR
+        [model]
+      elsif [:primary_group, 'primary_group'].include?(level)
+        model.read_nodes(primary: true)
       else
         model.read_nodes
       end

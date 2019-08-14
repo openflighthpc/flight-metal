@@ -111,7 +111,7 @@ module FlightMetal
 
       command_require 'flight_metal/buildable_nodes', 'flight_metal/templator'
 
-      def cluster(verbose: nil)
+      def shared(verbose: nil)
         nodes = read_nodes.sort_by(&:name)
         delegets = nodes.each_with_index.map do |node, idx|
           ListDelegator.new(node, verbose: verbose)

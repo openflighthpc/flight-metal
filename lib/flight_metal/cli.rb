@@ -238,11 +238,26 @@ module FlightMetal
       syntax(c)
       c.summary = 'List all the nodes within the cluster'
       c.option '--verbose', 'Show greater details'
-      c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster))
+      c.action(&Commands::ListNodes.unnamed_commander_proxy(:shared))
     end
 
     command 'node-list' do |c|
       shared_cluster_list_nodes.call(c)
+    end
+
+    command 'group-list-nodes' do |c|
+      syntax(c, 'GROUP')
+      c.summary = 'List thes nodes within the group'
+      c.option '--verbose', 'Show greater details'
+      c.option '--primary', 'Only show primary nodes'
+      c.action do |args, opts|
+        proxy = if opts.__hash__.delete(:primary)
+          Commands::ListNodes.named_commander_proxy(:primary_group, method: :shared)
+        else
+          Commands::ListNodes.named_commander_proxy(:group, method: :shared)
+        end
+        proxy.call(args, opts)
+      end
     end
 
     command 'cluster-list-nodes' do |c|
