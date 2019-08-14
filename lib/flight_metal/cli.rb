@@ -47,6 +47,7 @@ require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
 require 'flight_metal/commands/node'
+require 'flight_metal/commands/update'
 require 'flight_metal/commands/render'
 
 require 'pry' if FlightMetal::Config.debug
@@ -181,7 +182,7 @@ module FlightMetal
       action(c, FlightMetal::Commands::Edit)
     end
 
-    xcommand 'update' do |c|
+    command 'node-update' do |c|
       syntax(c, 'NODE [PARAMS...]')
       c.summary = "Modify the node's parameters"
       c.description = <<~DESC
@@ -194,7 +195,7 @@ module FlightMetal
       DESC
       c.option '--rebuild [false]',
                "Flag the node to be rebuilt. Unset by including 'false'"
-      action(c, FlightMetal::Commands::Node, method: :update)
+      c.action(&Commands::Update.named_commander_proxy(:node))
     end
 
     xcommand 'hunt' do |c|
@@ -238,7 +239,7 @@ module FlightMetal
       syntax(c)
       c.summary = 'List all the nodes within the cluster'
       c.option '--verbose', 'Show greater details'
-      c.action(&Commands::ListNodes.unnamed_commander_proxy(:shared))
+      c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster, method: :shared))
     end
 
     command 'node-list' do |c|

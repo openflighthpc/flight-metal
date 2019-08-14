@@ -109,7 +109,7 @@ module FlightMetal
 
       ERB
 
-      command_require 'flight_metal/buildable_nodes', 'flight_metal/templator'
+      command_require('flight_metal/buildable_nodes', 'flight_metal/templator')
 
       def shared(verbose: nil)
         nodes = read_nodes.sort_by(&:name)

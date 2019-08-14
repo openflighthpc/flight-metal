@@ -29,13 +29,29 @@
 
 module FlightMetal
   module Commands
-    class Node < Command
+    class Update < ScopedCommand
+      command_require 'flight_metal/models/node'
 
-      command_require 'flight_metal/models/node',
-                      'flight_metal/system_command'
-
-      def delete(name)
-        Models::Node.delete!(Config.cluster, name)
+      def node(*params, rebuild: nil)
+        rebuild = if rebuild.nil?
+                    nil
+                  elsif [false, 'false'].include?(rebuild)
+                    false # Treat 'false' as false
+                  else
+                    true
+                  end
+        update_hash = params.select { |p| /\A\w+=.*/.match?(p) }
+                            .map { |p| p.split('=', 2) }
+                            .to_h
+                            .symbolize_keys
+        delete_keys = params.select { |p| /\A\w+!/.match?(p) }
+                            .map { |p| p[0..-2].to_sym }
+        Models::Node.update(Config.cluster, model_name_or_error) do |node|
+          new = node.params.merge(update_hash)
+          delete_keys.each { |k| new.delete(k) }
+          node.params = new
+          node.rebuild = rebuild unless rebuild.nil?
+        end
       end
     end
   end
