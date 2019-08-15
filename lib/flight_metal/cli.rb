@@ -87,17 +87,34 @@ module FlightMetal
       end
     end
 
-    def self.syntax(command, args_str = '')
+    def self.syntax(command, args_str = '', hidden: true)
       command.syntax = <<~SYNTAX.squish
         #{program(:name)} #{command.name} #{args_str}
       SYNTAX
+      command.hidden = hidden
     end
 
     # TODO: Remove me when refactoring is done
     def self.xcommand(*_a); end
 
+
     ['cluster', 'group', 'node'].each do |level|
-      command "#{level}-build" do |c|
+      command level do |c|
+        syntax(c, hidden: false)
+        snippet = (level == 'node' ? 'a node resource' : "the #{level} resource")
+        c.summary = "View, configure, or manage #{snippet}"
+        c.sub_command_group = true
+        c.action do
+          # This is caught by Commander and triggers the help text to be displayed
+          raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
+            Select from the following commands:
+          ERROR
+        end
+      end
+    end
+
+    ['cluster', 'group', 'node'].each do |level|
+      command "#{level} build" do |c|
         level == 'cluster' ? syntax(c) : syntax(c, level.upcase)
         c.summary = 'Run the pxelinux build server'
         c.description = <<~DESC
@@ -139,32 +156,32 @@ module FlightMetal
       end
     end
 
-    command 'cluster-switch' do |c|
+    command 'cluster switch' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Change the current cluster profile'
       c.action(&Commands::Miscellaneous.named_commander_proxy(:cluster, method: :switch_cluster))
     end
 
-    command 'node-create' do |c|
+    command 'node create' do |c|
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
       c.action(&FlightMetal::Commands::Create.named_commander_proxy(:node))
     end
 
-    command 'cluster-create' do |c|
+    command 'cluster create' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
       c.action(&Commands::Create.named_commander_proxy(:cluster))
     end
 
-    command 'node-delete' do |c|
+    command 'node delete' do |c|
       syntax(c, 'NODE')
       c.summary = 'Remove the node and associated configurations'
       c.action(Commands::Delete.named_commander_proxy(:node))
     end
 
     ['cluster', 'node', 'group'].each do |level|
-      command "#{level}-edit" do |c|
+      command "#{level} edit" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         c.summary = 'Open a managed node file in the editor'
         c.description = <<~DESC.chomp
@@ -184,7 +201,7 @@ module FlightMetal
       end
     end
 
-    command 'node-update' do |c|
+    command 'node update' do |c|
       syntax(c, 'NODE [PARAMS...]')
       c.summary = "Modify the node's parameters"
       c.description = <<~DESC
@@ -201,7 +218,7 @@ module FlightMetal
     end
 
     command 'hunt' do |c|
-      syntax(c)
+      syntax(c, hidden: false)
       c.summary = 'Collect node mac addesses from DHCP Discover'
       c.description = <<~DESC
         Listens for DHCP DISCOVER packets containing PXEClient as its vendor
@@ -231,22 +248,22 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
-    command 'cluster-list' do |c|
+    command 'cluster list' do |c|
       syntax(c)
       c.summary = 'Display the list of clusters'
       c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
     end
 
-    ['cluster', 'group', 'node-list', 'node-show'].each do |level|
+    ['cluster', 'group', 'node list', 'node show'].each do |level|
       name = case level
-             when 'cluster'; 'cluster-list-nodes'
-             when 'group'; 'group-list-nodes'
+             when 'cluster'; 'cluster list-nodes'
+             when 'group'; 'group list-nodes'
              else; level
              end
       command name do |c|
         c.option '--verbose', 'Show greater details'
         case level
-        when 'cluster', 'node-list'
+        when 'cluster', 'node list'
           syntax(c)
           c.summary = 'List all the nodes within the cluster'
           c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster, method: :shared))
@@ -255,7 +272,7 @@ module FlightMetal
           c.summary = 'List all the nodes within the group'
           c.option '--primary', 'Only list nodes within the primary group'
           c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
-        when 'node-show'
+        when 'node show'
           syntax(c, 'NODE')
           c.summary = 'View the node state and configuration'
           c.action(&Commands::ListNodes.named_commander_proxy(:node, method: :shared))
@@ -266,7 +283,7 @@ module FlightMetal
     def self.plugin_command(name)
       method = name.gsub('-', '_').to_sym
       ['cluster', 'group', 'node'].each do |level|
-        command "#{level}-#{name}" do |c|
+        command "#{level} #{name}" do |c|
           syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}[SHELL_ARGS...]")
           c.summary = "Run the #{c.name} script"
           case level
@@ -285,7 +302,7 @@ module FlightMetal
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
     ['cluster', 'group', 'node'].each do |level|
-      command "#{level}-render#{ '-nodes' unless level == 'node'}" do |c|
+      command "#{level} render#{ '-nodes' unless level == 'node'}" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         c.summary = 'Render the template against the node parameters'
         c.option '--force', 'Allow missing tags when writing the file'
