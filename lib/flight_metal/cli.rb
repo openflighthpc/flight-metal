@@ -269,10 +269,17 @@ module FlightMetal
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         c.summary = 'Render the template against the node parameters'
         c.option '--force', 'Allow missing tags when writing the file'
-        if level == 'cluster'
+        case level
+        when 'cluster'
           c.action(&Commands::Render.unnamed_commander_proxy(:cluster, method: :run))
-        else
-          c.action(&Commands::Render.named_commander_proxy(level.to_sym, method: :run))
+        when 'group'
+          c.option '--primary', 'Only render nodes within the primary group'
+          c.action do |args, opts|
+            scope = opts.__hash__.delete(:primary) ? :primary_group : :group
+            Commands::Render.named_commander_proxy(scope, method: :run).call(args, opts)
+          end
+        when 'node'
+          c.action(&Commands::Render.named_commander_proxy(:node, method: :run))
         end
       end
     end
