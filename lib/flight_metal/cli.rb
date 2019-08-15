@@ -184,7 +184,7 @@ module FlightMetal
       c.action(&Commands::Update.named_commander_proxy(:node))
     end
 
-    xcommand 'hunt' do |c|
+    command 'hunt' do |c|
       syntax(c)
       c.summary = 'Collect node mac addesses from DHCP Discover'
       c.description = <<~DESC
@@ -252,13 +252,24 @@ module FlightMetal
     end
 
     def self.plugin_command(name)
-      xcommand name do |c|
-        syntax(c, 'NODE, [SHELL_ARGS...]')
-        c.summary = "Run the #{c.name} script"
-        c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
-        c.option '-p', '--primary-nodes-in',
-                 'Switch the input to nodes belonging to the primary group'
-        action(c, FlightMetal::Commands::Ipmi, method: c.name.gsub('-', '_'))
+      method = name.gsub('-', '_').to_sym
+      ['cluster', 'group', 'node'].each do |level|
+        command "#{level}-#{name}" do |c|
+          syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}[SHELL_ARGS...]")
+          c.summary = "Run the #{c.name} script"
+          case level
+          when 'cluster'
+            c.action(&Commands::Ipmi.unnamed_commander_proxy(:cluster, method: method))
+          when 'group'
+            c.option '--primary', 'Only run the command for nodes within the primary group'
+            c.action do |args, opts|
+              scope = (opts.__hash__.delete(:primary) ? :primary_group : :group)
+              Commands::Ipmi.named_commander_proxy(scope, method: method).call(args, opts)
+            end
+          when 'node'
+            c.action(&Commands::Ipmi.named_commander_proxy(:node, method: method))
+          end
+        end
       end
     end
 

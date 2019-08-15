@@ -29,44 +29,30 @@
 
 module FlightMetal
   module Commands
-    class Ipmi < Command
+    class Ipmi < ScopedCommand
       command_require 'flight_metal/system_command',
                       'flight_metal/template_map',
-                      'flight_metal/models/node',
                       'flight_metal/errors',
                       'shellwords'
 
       [:power_on, :power_off, :power_status, :ipmi].each do |type|
-        define_method(type) do |name, *shell_args, nodes_in: nil, primary_nodes_in: nil|
-          nodes = if nodes_in
-            Models::Group.read(Config.cluster, name).read_nodes
-          elsif primary_nodes_in
-            Models::Group.read(Config.cluster, name).read_primary_nodes
-          else
-            [Models::Node.read(Config.cluster, name)]
-          end
-          run_cmd(nodes, type, *shell_args)
-        end
-      end
-
-      private
-
-      def run_cmd(nodes, type, *shell_args)
-        nodes.each do |node|
-          if node.type_path?(type)
-            args_str = shell_args.map { |s| Shellwords.shellescape(s) }.join(' ')
-            cmd = "bash #{node.type_path(type)} #{args_str}"
-            out = SystemCommand::CommandOutput.run(cmd)
-            if out.exit_0?
-              puts out.stdout
+        define_method(type) do |*shell_args|
+          read_nodes.each do |node|
+            if node.type_path?(type)
+              args_str = shell_args.map { |s| Shellwords.shellescape(s) }.join(' ')
+              cmd = "bash #{node.type_path(type)} #{args_str}"
+              out = SystemCommand::CommandOutput.run(cmd)
+              if out.exit_0?
+                puts out.stdout
+              else
+                puts out.verbose
+              end
             else
-              puts out.verbose
+              Log.warn_puts <<~WARN.squish
+                Skipping #{node.name}: The #{TemplateMap.flag(type)} file
+                can not be found: #{node.type_path(type)}
+              WARN
             end
-          else
-            Log.warn_puts <<~WARN.squish
-              Skipping #{node.name}: The #{TemplateMap.flag(type)} file
-              can not be found: #{node.type_path(type)}
-            WARN
           end
         end
       end
