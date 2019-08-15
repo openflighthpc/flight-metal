@@ -29,24 +29,13 @@
 
 module FlightMetal
   module Commands
-    class Render < Command
-      command_require 'flight_metal/models/cluster',
-                      'flight_metal/models/node',
-                      'flight_metal/template_map'
+    class Render < ScopedCommand
+      command_require 'flight_metal/template_map'
 
-      def run(identifier, cli_type,
-              force: false, nodes_in: nil, primary_nodes_in: nil)
-        # Verify the type
+      def run(cli_type, force: false)
+        # Load an verify the type and nodes
         type = TemplateMap.lookup_key(cli_type)
-
-        # Load the models
-        nodes = if nodes_in
-          read_group(identifier).read_nodes
-        elsif primary_nodes_in
-          read_group(identifier).read_primary_nodes
-        else
-          [Models::Node.read(Config.cluster, identifier)]
-        end
+        nodes = read_nodes
 
         # Reject those without a template
         nodes.reject! do |node|
@@ -84,12 +73,6 @@ module FlightMetal
           Some templates have failed to render correctly. Use --force to skip
           the error(s) and save anyway
         INFO
-      end
-
-      private
-
-      def read_group(group)
-        Models::Group.read(Config.cluster, group)
       end
     end
   end

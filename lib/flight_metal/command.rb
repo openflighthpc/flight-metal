@@ -124,6 +124,7 @@ module FlightMetal
     end
 
     def read_nodes
+      require 'flight_metal/models/node'
       model = read_model
       if model.is_a?(Models::Node)
         [model]

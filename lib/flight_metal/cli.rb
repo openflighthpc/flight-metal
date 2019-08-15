@@ -264,34 +264,17 @@ module FlightMetal
 
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
-    xcommand 'render' do |c|
-      syntax(c, '[NODE|GROUP] TYPE')
-      c.summary = 'Render the template against the node parameters'
-      c.description = <<~DESC.chomp
-        Generate content files for a node based off a template. The valid TYPE
-        arguments are given below. The templates are rendered against the
-        node's paramters. The subtitution delimited by pairs of '%' around
-        the key (e.g. 'my %key%' would render to: 'my value').
-
-        The command works in the following modes:
-        - NODE
-          By default, render a template for a single node. The node's primary
-          group template is used preferentially with the domain template as a
-          fallback.
-
-        - --nodes-in GROUP
-          Renders the template(s) for all nodes within the GROUP
-          Note: The template selection is based on primary group only. This may
-          use multiple templates
-
-        - --primary-nodes-in GROUP
-          Renders the template for nodes who have GROUP as their primary.
-      DESC
-      c.option '--force', 'Allow missing tags when writing the file'
-      c.option '-n', '--nodes-in', 'Switch the input to the nodes within the GROUP'
-      c.option '-p', '--primary-nodes-in',
-               'Switch the input to nodes belonging to the primary group'
-      action(c, FlightMetal::Commands::Render)
+    ['cluster', 'group', 'node'].each do |level|
+      command "#{level}-render#{ '-nodes' unless level == 'node'}" do |c|
+        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
+        c.summary = 'Render the template against the node parameters'
+        c.option '--force', 'Allow missing tags when writing the file'
+        if level == 'cluster'
+          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, method: :run))
+        else
+          c.action(&Commands::Render.named_commander_proxy(level.to_sym, method: :run))
+        end
+      end
     end
 
     command 'cluster-switch' do |c|
