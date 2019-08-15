@@ -237,14 +237,7 @@ module FlightMetal
       c.summary = 'List thes nodes within the group'
       c.option '--verbose', 'Show greater details'
       c.option '--primary', 'Only show primary nodes'
-      c.action do |args, opts|
-        proxy = if opts.__hash__.delete(:primary)
-          Commands::ListNodes.named_commander_proxy(:primary_group, method: :shared)
-        else
-          Commands::ListNodes.named_commander_proxy(:group, method: :shared)
-        end
-        proxy.call(args, opts)
-      end
+      c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
     end
 
     command 'cluster-list-nodes' do |c|
@@ -262,10 +255,7 @@ module FlightMetal
             c.action(&Commands::Ipmi.unnamed_commander_proxy(:cluster, method: method))
           when 'group'
             c.option '--primary', 'Only run the command for nodes within the primary group'
-            c.action do |args, opts|
-              scope = (opts.__hash__.delete(:primary) ? :primary_group : :group)
-              Commands::Ipmi.named_commander_proxy(scope, method: method).call(args, opts)
-            end
+            c.action(&Commands::Ipmi.named_commander_proxy(:group, method: method))
           when 'node'
             c.action(&Commands::Ipmi.named_commander_proxy(:node, method: method))
           end
@@ -284,11 +274,9 @@ module FlightMetal
         when 'cluster'
           c.action(&Commands::Render.unnamed_commander_proxy(:cluster, method: :run))
         when 'group'
+          # NOTE: Using --primary mutates :group to :primary_group within the proxy
           c.option '--primary', 'Only render nodes within the primary group'
-          c.action do |args, opts|
-            scope = opts.__hash__.delete(:primary) ? :primary_group : :group
-            Commands::Render.named_commander_proxy(scope, method: :run).call(args, opts)
-          end
+          c.action(&Commands::Render.named_commander_proxy(:group, method: :run))
         when 'node'
           c.action(&Commands::Render.named_commander_proxy(:node, method: :run))
         end

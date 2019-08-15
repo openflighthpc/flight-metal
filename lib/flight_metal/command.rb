@@ -50,13 +50,45 @@ module FlightMetal
   end
 
   ScopedCommand = Struct.new(:level, :model_name) do
-    CommanderProxy = Struct.new(:command_model, :instance_args, :commander_opts) do
-      def run(method)
-        opts = commander_opts.__hash__.dup.tap { |hash| hash.delete(:trace) }
-        if opts.empty?
-          command_model.public_send(method, *instance_args)
+    class CommanderProxy
+      def self.named(klass, cli_level, name_and_args, commander_opts)
+        name = name_and_args.first
+        args = name_and_args[1..-1]
+        level, opts_hash = resolve_level_and_hash(cli_level, commander_opts)
+        cmd_instance = klass.new(level, name)
+        new(cmd_instance, *args, **opts_hash)
+      end
+
+      def self.unnamed(klass, cli_level, args, commander_opts)
+        level, opts_hash = resolve_level_and_hash(cli_level, commander_opts)
+        cmd_instance = klass.new(level)
+        new(cmd_instance, *args, **opts_hash)
+      end
+
+      private_class_method
+
+      def self.resolve_level_and_hash(cli_level, commander_opts)
+        hash = commander_opts.__hash__.dup.tap { |h| h.delete(:trace) }
+        if [:group, 'group'].include?(cli_level) && hash[:primary]
+          [:primary_group, hash.tap { |h| h.delete(:primary) }]
         else
-          command_model.public_send(method, *instance_args, **opts)
+          [cli_level, hash]
+        end
+      end
+
+      attr_reader :cmd_instance, :args, :opts
+
+      def initialize(cmd_instance, *args, **opts)
+        @cmd_instance = cmd_instance
+        @args = args
+        @opts = opts
+      end
+
+      def run(method)
+        if opts.empty?
+          cmd_instance.public_send(method, *args)
+        else
+          cmd_instance.public_send(method, *args, **opts)
         end
       rescue Interrupt
         Log.warn_puts 'Received Interrupt!'
@@ -70,17 +102,15 @@ module FlightMetal
 
     def self.named_commander_proxy(level, method: nil)
       method ||= level
-      lambda do |args, commander_opts|
-        cmd_obj = new(level, args.first)
-        CommanderProxy.new(cmd_obj, args[1..-1], commander_opts).run(method)
+      lambda do |name_and_args, commander_opts|
+        CommanderProxy.named(self, level, name_and_args, commander_opts).run(method)
       end
     end
 
     def self.unnamed_commander_proxy(level, method: nil)
       method ||= level
       lambda do |args, commander_opts|
-        cmd_obj = new(level)
-        CommanderProxy.new(cmd_obj, args, commander_opts).run(method)
+        CommanderProxy.unnamed(self, level, args, commander_opts).run(method)
       end
     end
 
