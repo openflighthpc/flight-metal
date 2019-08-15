@@ -96,37 +96,47 @@ module FlightMetal
     # TODO: Remove me when refactoring is done
     def self.xcommand(*_a); end
 
-    xcommand 'build' do |c|
-      syntax(c)
-      c.summary = 'Run the pxelinux build server'
-      c.description = <<~DESC
-        Links the kickstart, pxelinux, and dhcp files into places before starting
-        the build server. The build server listens for UDP packets on port
-        #{Config.build_port}.
+    ['cluster', 'group', 'node'].each do |level|
+      command "#{level}-build" do |c|
+        level == 'cluster' ? syntax(c) : syntax(c, level.upcase)
+        c.summary = 'Run the pxelinux build server'
+        c.description = <<~DESC
+          Links the kickstart, pxelinux, and dhcp files into places before starting
+          the build server. The build server listens for UDP packets on port
+          #{Config.build_port}.
 
-        The node must have a MAC address and the above files must be pending/installed.
-        Built nodes are flagged to prevent them from rebuilding. To force a rebuild,
-        please use the `#{Config.app_name} update` with the --rebuild flag.
+          The node must have a MAC address and the above files must be pending/installed.
+          Built nodes are flagged to prevent them from rebuilding. To force a rebuild,
+          please use the `#{Config.app_name} update` with the --rebuild flag.
 
-        The files are symlinked into place, which transitions them from the pending
-        to installed state. If the there is a file conflict, then the node will be
-        skipped. Conflicts files are listed as invalid in `#{Config.app_name} list`.
+          The files are symlinked into place, which transitions them from the pending
+          to installed state. If the there is a file conflict, then the node will be
+          skipped. Conflicts files are listed as invalid in `#{Config.app_name} list`.
 
-        The build server listens for JSON messages that specifies the `node` name
-        and `built` flag. The kickstart and pxelinux file are removed at the end of
-        the build, where the dhcp file will remain.
+          The build server listens for JSON messages that specifies the `node` name
+          and `built` flag. The kickstart and pxelinux file are removed at the end of
+          the build, where the dhcp file will remain.
 
-        It is possible to send status updates to the server by specifing the `node`
-        name and `message` in the JSON. The `message` will be printed to the display
-        for inspection. Nodes can not send status messages once they have finished
-        building.
+          It is possible to send status updates to the server by specifing the `node`
+          name and `message` in the JSON. The `message` will be printed to the display
+          for inspection. Nodes can not send status messages once they have finished
+          building.
 
-        The command will end once all the nodes have reported back. Using interrupt
-        with build is not recommended as it can cause built messages to be skipped.
-        However as the build files are not removed on interrupt, the process can be
-        recommenced by calling build again.
-      DESC
-      action(c, FlightMetal::Commands::Build)
+          The command will end once all the nodes have reported back. Using interrupt
+          with build is not recommended as it can cause built messages to be skipped.
+          However as the build files are not removed on interrupt, the process can be
+          recommenced by calling build again.
+        DESC
+        case level
+        when 'cluster'
+          c.action(&Commands::Build.unnamed_commander_proxy(:cluster, method: :run))
+        when 'group'
+          c.option '--primary', 'Only build nodes within the primary group'
+          c.action(&Commands::Build.named_commander_proxy(:group, method: :run))
+        when 'node'
+          c.action(&Commands::Build.named_commander_proxy(:node, method: :run))
+        end
+      end
     end
 
     command 'node-create' do |c|

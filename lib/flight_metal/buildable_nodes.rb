@@ -31,24 +31,17 @@ require 'flight_metal/models/node'
 
 module FlightMetal
   class BuildableNodes < Array
-    Loader = Struct.new(:cluster, :registry, :quiet) do
-      def nodes
-        read_nodes.select(&:buildable?)
+    def initialize(nodes)
+      buildable_nodes = nodes.reject do |node|
+        next if node.buildable?
+        if node.rebuild?
+          Log.warn_puts <<~WARN.chomp
+            Skipping #{node.name}: It can not be built at this time
+          WARN
+        end
+        true
       end
-
-      def hash
-        nodes.map { |n| [n.name, n] }.to_h
-      end
-
-      private
-
-      def read_nodes
-        Models::Node.glob_read(cluster, '*', registry: registry)
-      end
-    end
-
-    def initialize(cluster)
-      super(Loader.new(cluster).nodes)
+      super(buildable_nodes)
     end
 
     def buildable?(name)

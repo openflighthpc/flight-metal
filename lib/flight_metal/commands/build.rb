@@ -29,13 +29,11 @@
 
 module FlightMetal
   module Commands
-    class Build
-      def initialize
-        require 'flight_metal/server'
-        require 'flight_metal/buildable_nodes'
-        require 'flight_metal/log'
-        require 'flight_metal/errors'
-      end
+    class Build < ScopedCommand
+      command_require 'flight_metal/server',
+                      'flight_metal/buildable_nodes',
+                      'flight_metal/log',
+                      'flight_metal/errors'
 
       def run
         if buildable_nodes.empty?
@@ -64,7 +62,7 @@ module FlightMetal
       end
 
       def buildable_nodes
-        @buildable_nodes ||= BuildableNodes.new(Config.cluster)
+        @buildable_nodes ||= BuildableNodes.new(read_nodes)
       end
     end
   end
