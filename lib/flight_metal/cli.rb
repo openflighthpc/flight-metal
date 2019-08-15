@@ -139,6 +139,12 @@ module FlightMetal
       end
     end
 
+    command 'cluster-switch' do |c|
+      syntax(c, 'IDENTIFIER')
+      c.summary = 'Change the current cluster profile'
+      c.action(&Commands::Miscellaneous.named_commander_proxy(:cluster, method: :switch_cluster))
+    end
+
     command 'node-create' do |c|
       syntax(c, 'NODE')
       c.summary = 'Add a new node to the cluster'
@@ -231,27 +237,30 @@ module FlightMetal
       c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
     end
 
-    shared_cluster_list_nodes = ->(c) do
-      syntax(c)
-      c.summary = 'List all the nodes within the cluster'
-      c.option '--verbose', 'Show greater details'
-      c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster, method: :shared))
-    end
-
-    command 'node-list' do |c|
-      shared_cluster_list_nodes.call(c)
-    end
-
-    command 'group-list-nodes' do |c|
-      syntax(c, 'GROUP')
-      c.summary = 'List thes nodes within the group'
-      c.option '--verbose', 'Show greater details'
-      c.option '--primary', 'Only show primary nodes'
-      c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
-    end
-
-    command 'cluster-list-nodes' do |c|
-      shared_cluster_list_nodes.call(c)
+    ['cluster', 'group', 'node-list', 'node-show'].each do |level|
+      name = case level
+             when 'cluster'; 'cluster-list-nodes'
+             when 'group'; 'group-list-nodes'
+             else; level
+             end
+      command name do |c|
+        c.option '--verbose', 'Show greater details'
+        case level
+        when 'cluster', 'node-list'
+          syntax(c)
+          c.summary = 'List all the nodes within the cluster'
+          c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster, method: :shared))
+        when 'group'
+          syntax(c, 'GROUP')
+          c.summary = 'List all the nodes within the group'
+          c.option '--primary', 'Only list nodes within the primary group'
+          c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
+        when 'node-show'
+          syntax(c, 'NODE')
+          c.summary = 'View the node state and configuration'
+          c.action(&Commands::ListNodes.named_commander_proxy(:node, method: :shared))
+        end
+      end
     end
 
     def self.plugin_command(name)
@@ -291,12 +300,6 @@ module FlightMetal
           c.action(&Commands::Render.named_commander_proxy(:node, method: :run))
         end
       end
-    end
-
-    command 'cluster-switch' do |c|
-      syntax(c, 'IDENTIFIER')
-      c.summary = 'Change the current cluster profile'
-      c.action(&Commands::Miscellaneous.named_commander_proxy(:cluster, method: :switch_cluster))
     end
   end
 end
