@@ -29,17 +29,12 @@
 
 module FlightMetal
   module Commands
-    class Edit < Command
-      command_require 'flight_metal/models/cluster',
-                      'flight_metal/models/node',
-                      'flight_metal/template_map',
-                      'tty-editor'
+    class Edit < ScopedCommand
+      command_require 'flight_metal/template_map', 'tty-editor'
 
-      def run(identifier, cli_type, group: false, touch: nil, replace: nil)
+      def run(cli_type, replace: nil)
         @type = TemplateMap.lookup_key(cli_type)
-        @identifier = identifier
-        @group_bool = group
-        FileUtils.touch path if touch
+        FileUtils.touch path unless model.type_path?(type)
         if replace
           raise MissingFile, <<~DESC.chomp unless File.exists?(replace)
             Can not replace the file as the sources does not exist: #{replace}
@@ -56,16 +51,10 @@ module FlightMetal
 
       private
 
-      attr_reader :identifier, :type, :group_bool
+      attr_reader :type
 
       def model
-        @model ||= if identifier == 'domain'
-          Models::Cluster.read(Config.cluster)
-        elsif group_bool
-          Models::Group.read(Config.cluster, identifier)
-        else
-          Models::Node.read(Config.cluster, identifier)
-        end.tap(&:__data__)
+        @model ||= read_model.tap(&:__data__)
       end
 
       def path

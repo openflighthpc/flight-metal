@@ -147,35 +147,25 @@ module FlightMetal
       c.action(Commands::Delete.named_commander_proxy(:node))
     end
 
-    xcommand 'edit' do |c|
-      syntax(c, 'domain|[NODE|GROUP] TYPE')
-      c.summary = 'Edit a domain/group template or node file'
-      c.description = <<~DESC.chomp
-        Open a template/script/build file in the editor. This is used to manage
-        the build process and power commands. Specify which file is to be edited
-        with TYPE field. The supported types are listed below.
+    ['cluster', 'node', 'group'].each do |level|
+      command "#{level}-edit" do |c|
+        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
+        c.summary = 'Open a managed node file in the editor'
+        c.description = <<~DESC.chomp
+          Open a template/script/build file in the editor. This is used to manage
+          the build process and power commands. Specify which file is to be edited
+          with TYPE field. The supported types are listed below.
 
-        The command works in three distinct modes based on the target:
-        - domain
-          Edits the default template used by the `render` command. Activated when
-          called with the 'domain' keyword
-
-        - NODE
-          Edit the rendered file used by a particular node. Defaults to this mode
-          when called with a name
-
-        - --group GROUP
-          Edit the group level template to be used when rendering a node. See the
-          `render` for further details. Activated when called with the --group
-          option. Can not be used in combination with domain.
-
-        Valid TYPE arguments:
-          - #{TemplateMap.flag_hash.values.join("\n  - ")}
-      DESC
-      c.option '-g', '--group', 'Switch the input from NODE to GROUP mode'
-      c.option '--touch', 'Create an empty file if it does not already exist'
-      c.option '--replace FILE', 'Copy the given FILE content instead of editing'
-      action(c, FlightMetal::Commands::Edit)
+          Valid TYPE arguments:
+            - #{TemplateMap.flag_hash.values.join("\n  - ")}
+        DESC
+        c.option '--replace FILE', 'Copy the given FILE content instead of editing'
+        if level == 'cluster'
+          c.action(&Commands::Edit.unnamed_commander_proxy(:cluster, method: :run))
+        else
+          c.action(&Commands::Edit.named_commander_proxy(level.to_sym, method: :run))
+        end
+      end
     end
 
     command 'node-update' do |c|
