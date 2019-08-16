@@ -44,13 +44,17 @@ module FlightMetal
         Models::Cluster.join(cluster, 'var', 'groups', name, *a)
       end
 
+      def self.cache_join(cluster, name, *a)
+        Models::Cluster.cache_join(cluster, 'groups', name, *a)
+      end
+
       def self.path(cluster, name)
         join(cluster, name, 'etc', 'config.yaml')
       end
       define_input_methods_from_path_parameters
 
       def self.node_symlink_path(cluster, group, node)
-        join(cluster, group, 'nodes', "#{node}.link")
+        cache_join(cluster, group, 'nodes', "#{node}.link")
       end
 
       def join(*a)

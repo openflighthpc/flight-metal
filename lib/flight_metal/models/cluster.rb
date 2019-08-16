@@ -50,6 +50,10 @@ module FlightMetal
         Pathname.new(Config.content_dir).join('clusters', identifier, *rest)
       end
 
+      def self.cache_join(identifier, *rest)
+        Pathname.new(Config.content_dir).join('cache', 'clusters', identifier, *rest)
+      end
+
       def self.path(identifier)
         join(identifier, 'etc/config.yaml')
       end
