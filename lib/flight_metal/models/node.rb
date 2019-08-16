@@ -23,32 +23,21 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-require 'flight_metal/flight_config_utils'
+require 'flight_metal/model'
+
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
-require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
-require 'flight_manifest'
-require 'flight_metal/template_map'
 
 module FlightMetal
   module Models
-    class Node
-      include FlightConfig::Updater
-      include FlightConfig::Globber
-      include FlightConfig::Deleter
-      include FlightConfig::Accessor
+    class Node < Model
       include FlightConfig::Links
-
-      include TemplateMap::PathAccessors
-
-      include FlightMetal::FlightConfigUtils
 
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
@@ -58,10 +47,6 @@ module FlightMetal
         join(cluster, name, 'etc', 'config.yaml')
       end
       define_input_methods_from_path_parameters
-
-      def self.exists?(*a)
-        Pathname.new(new(*a).path).file?
-      end
 
       def self.delete!(*a)
         delete(*a) do |node|
@@ -347,10 +332,6 @@ module FlightMetal
         { name: name, cluster: cluster, groups: groups.join(',') }
       end
 
-      def join(*a)
-        self.class.join(*__inputs__, *a)
-      end
-
       def read_primary_group
         Models::Group.read(cluster, primary_group, registry: __registry__)
       end
@@ -361,18 +342,6 @@ module FlightMetal
       def update(&b)
         new_node = self.class.update(*__inputs__, &b)
         self.instance_variable_set(:@__data__, new_node.__data__)
-      end
-
-      def base_dir
-        File.dirname(File.dirname(path))
-      end
-
-      def template_dir
-        File.join(base_dir, 'var/templates')
-      end
-
-      def ipmi_opts
-        "-H #{name}.bmc -U #{bmc_username} -P #{bmc_password}"
       end
     end
   end

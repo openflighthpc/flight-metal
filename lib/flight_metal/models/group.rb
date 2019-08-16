@@ -25,20 +25,12 @@
 # https://github.com/openflighthpc/nodeattr_utils
 #==============================================================================
 
-require 'flight_config'
+require 'flight_metal/model'
 require 'flight_metal/models/cluster'
-require 'flight_metal/template_map'
 
 module FlightMetal
   module Models
-    class Group
-      include FlightConfig::Reader
-      include FlightConfig::Updater
-      include FlightConfig::Accessor
-      include FlightConfig::Globber
-
-      include TemplateMap::PathAccessors
-
+    class Group < Model
       allow_missing_read
 
       def self.join(cluster, name, *a)
@@ -53,10 +45,6 @@ module FlightMetal
         join(cluster, name, 'etc', 'config.yaml')
       end
       define_input_methods_from_path_parameters
-
-      def join(*a)
-        self.class.join(*__inputs__, *a)
-      end
 
       TemplateMap.path_methods.each do |method, key|
         define_method(method) { join('libexec', TemplateMap.find_filename(key)) }

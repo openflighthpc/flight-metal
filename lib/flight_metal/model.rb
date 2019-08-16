@@ -27,47 +27,34 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/model'
+require 'flight_config'
+require 'pathname'
+
+require 'flight_metal/config'
+require 'flight_metal/flight_config_utils'
+require 'flight_metal/template_map'
 
 module FlightMetal
-  module Models
-    class Cluster < Model
-      def self.join(identifier, *rest)
-        Pathname.new(Config.content_dir).join('clusters', identifier, *rest)
-      end
+  class Model
+    include FlightConfig::Updater
+    include FlightConfig::Deleter
+    include FlightConfig::Globber
+    include FlightConfig::Accessor
 
-      def self.cache_join(identifier, *rest)
-        Pathname.new(Config.content_dir).join('cache', 'clusters', identifier, *rest)
-      end
+    include FlightConfigUtils
+    include TemplateMap::PathAccessors
 
-      def self.path(identifier)
-        join(identifier, 'etc/config.yaml')
-      end
-      define_input_methods_from_path_parameters
+    def self.exists?(*a)
+      File.exists? path(*a)
+    end
 
-      flag :imported
+    def self.join(*_a)
+      raise NotImplementedError
+    end
 
-      data_reader(:bmc_username) { 'default' }
-      data_reader(:bmc_password) { 'default' }
-
-      data_writer :bmc_username
-      data_writer :bmc_password
-
-      data_reader :gateway_ip
-      data_writer :gateway_ip
-
-      TemplateMap.path_methods.each do |method, type|
-        define_method(method) do
-          join('libexec', TemplateMap.find_filename(type))
-        end
-
-        define_path?(method)
-      end
-      define_type_path_shortcuts
-
-      def read_nodes
-        Models::Node.glob_read(identifier, '*')
-      end
+    def join(*rest)
+      self.class.join(*__inputs__, *rest)
     end
   end
 end
+
