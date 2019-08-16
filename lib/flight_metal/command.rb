@@ -159,7 +159,7 @@ module FlightMetal
       if model.is_a?(Models::Node)
         [model]
       elsif [:primary_group, 'primary_group'].include?(level)
-        model.read_nodes(primary: true)
+        model.read_primary_nodes
       else
         model.read_nodes
       end

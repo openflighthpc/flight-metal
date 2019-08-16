@@ -73,13 +73,16 @@ module FlightMetal
        Models::Cluster.read(cluster, registry: __registry__)
       end
 
-      def read_nodes(primary: false)
-        nodes = Models::Node.glob_symlink_proxy(:groups, cluster, '*', name)
-        primary ? nodes.select { |n| n.primary_group == name } : nodes
+      def read_nodes
+        [*read_primary_nodes, *read_other_nodes]
+      end
+
+      def read_other_nodes
+        Models::Node.glob_symlink_proxy(:other_groups, cluster, '*', name)
       end
 
       def read_primary_nodes
-        read_nodes(primary: true)
+        Models::Node.glob_symlink_proxy(:primary_group, cluster, '*', name)
       end
     end
   end
