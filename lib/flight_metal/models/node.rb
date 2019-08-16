@@ -27,8 +27,6 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/model'
-
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
 require 'flight_metal/macs'
@@ -37,6 +35,10 @@ require 'flight_metal/system_command'
 module FlightMetal
   module Models
     class Node < Model
+      # Must be required after the class declaration
+      require 'flight_metal/models/node/has_groups'
+      include HasGroups
+
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
       end
@@ -86,66 +88,6 @@ module FlightMetal
           ERROR
         else
           hwaddr.to_s
-        end
-      end
-
-      def groups
-        [primary_group, *other_groups]
-      end
-
-      data_reader(:primary_group) do |primary|
-        primary || begin
-          if File.exists? Models::Group.path(cluster, 'orphan')
-            'orphan'
-          else
-            Models::Group.create(cluster, 'orphan').name
-          end
-        end
-      end
-      data_writer(:primary_group) do |primary|
-        if File.exists? Models::Group.path(cluster, primary)
-          primary
-        else
-          raise InvalidModel, <<~ERROR.chomp
-            Can not set the primary group as '#{primary}' does not exist
-          ERROR
-        end
-      end
-
-      define_symlinks(:primary_group) do |link|
-        link.path_builder do |cluster, node, group|
-          Models::Group.cache_join(cluster, group, 'primary-nodes', node + '.link')
-        end
-
-        link.paths do |n|
-          [link.path_builder.call(n.cluster, n.name, n.primary_group)]
-        end
-
-        link.validate do |n, link_path|
-          regex = /#{link.path_builder.call(n.cluster, n.name, '(?<group>.*)')}/
-          group = link_path.to_s.match(regex)[:group]
-          n.primary_group == group
-        end
-      end
-
-      data_reader(:other_groups) do |groups|
-        groups || []
-      end
-      data_writer(:other_groups) { |v| v.to_a }
-
-      define_symlinks(:other_groups) do |link|
-        link.path_builder do |cluster, node, group|
-          Models::Group.cache_join(cluster, group, 'other-nodes', node + '.link')
-        end
-
-        link.paths do |n|
-          n.other_groups.map { |g| link.path_builder.call(n.cluster, n.name, g) }
-        end
-
-        link.validate do |n, link_path|
-          regex = /#{link.path_builder.call(n.cluster, n.name, '(?<group>.*)')}/
-          group = link_path.to_s.match(regex)[:group]
-          n.groups.include?(group)
         end
       end
 
