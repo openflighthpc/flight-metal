@@ -106,10 +106,19 @@ module FlightMetal
         end
       end
 
-      data_reader(:groups) do |groups|
-        (groups || []).tap { |g| g << 'orphan' if g.empty? }
+      def groups
+        [primary_group, *other_groups]
       end
-      data_writer(:groups) { |v| v.to_a }
+
+      data_reader(:primary_group) do |primary|
+        primary || 'orphan'
+      end
+      data_writer(:primary_group) { |g| g.to_s }
+
+      data_reader(:other_groups) do |groups|
+        groups || []
+      end
+      data_writer(:other_groups) { |v| v.to_a }
 
       define_symlinks(:groups) do |link|
         link.path_builder do |cluster, node, group|
@@ -278,19 +287,19 @@ module FlightMetal
 
         private
 
-        delegate :mac, :mac=, to: :node
+        delegate :mac, :mac=, :primary_group, :primary_group=, to: :node
 
         def keys
-          [:mac, :groups]
+          [:mac, :primary_group, :other_groups]
         end
 
-        def groups
-          node.groups.join(',')
+        def other_groups
+          node.other_groups.join(',')
         end
 
-        def groups=(a)
-          return if a.nil? || a == groups
-          node.groups = a.split(',')
+        def other_groups=(a)
+          return if a.nil? || a == other_groups
+          node.other_groups = a.split(',')
         end
 
         def setter(key, value)
@@ -305,15 +314,11 @@ module FlightMetal
       # Parameters that can not be set by the user. They will be filtered
       # from the params list on save.
       def reserved_params
-        { name: name, cluster: cluster, primary_group: primary_group }
+        { name: name, cluster: cluster, groups: groups.join(',') }
       end
 
       def join(*a)
         self.class.join(*__inputs__, *a)
-      end
-
-      def primary_group
-        groups.first
       end
 
       def read_primary_group
