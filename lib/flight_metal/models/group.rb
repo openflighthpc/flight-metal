@@ -35,6 +35,7 @@ module FlightMetal
       include FlightConfig::Reader
       include FlightConfig::Updater
       include FlightConfig::Accessor
+      include FlightConfig::Globber
 
       include TemplateMap::PathAccessors
 

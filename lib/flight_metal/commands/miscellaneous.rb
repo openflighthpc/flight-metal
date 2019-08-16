@@ -43,6 +43,12 @@ module FlightMetal
         end
         puts id_strs.join("\n")
       end
+
+      def list_groups
+        require 'flight_metal/models/group'
+        groups = Models::Group.glob_read(Config.cluster, '*')
+        puts groups.map(&:name)
+      end
     end
   end
 end

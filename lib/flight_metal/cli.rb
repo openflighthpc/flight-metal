@@ -254,10 +254,17 @@ module FlightMetal
       action(c, FlightMetal::Commands::Import)
     end
 
-    command 'cluster list' do |c|
-      syntax(c)
-      c.summary = 'Display the list of clusters'
-      c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
+    ['cluster', 'group'].each do |level|
+      command "#{level} list" do |c|
+        syntax(c)
+        c.summary = "Display the list of #{level}s"
+        case level
+        when 'cluster'
+          c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
+        when 'group'
+          c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :list_groups))
+        end
+      end
     end
 
     ['cluster', 'group', 'node list', 'node show'].each do |level|
