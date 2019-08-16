@@ -111,9 +111,23 @@ module FlightMetal
       end
 
       data_reader(:primary_group) do |primary|
-        primary || 'orphan'
+        primary || begin
+          if File.exists? Models::Group.path(cluster, 'orphan')
+            'orphan'
+          else
+            Models::Group.create(cluster, 'orphan').name
+          end
+        end
       end
-      data_writer(:primary_group) { |g| g.to_s }
+      data_writer(:primary_group) do |primary|
+        if File.exists? Models::Group.path(cluster, primary)
+          primary
+        else
+          raise InvalidModel, <<~ERROR.chomp
+            Can not set the primary group as '#{primary}' does not exist
+          ERROR
+        end
+      end
 
       define_symlinks(:primary_group) do |link|
         link.path_builder do |cluster, node, group|
