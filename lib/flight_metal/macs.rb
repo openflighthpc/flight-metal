@@ -28,7 +28,6 @@
 #===============================================================================
 
 require 'flight_metal/models/node'
-require 'flight_metal/registry'
 
 module FlightMetal
   Macs = Struct.new(:registry) do

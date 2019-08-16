@@ -28,7 +28,7 @@
 #===============================================================================
 
 require 'flight_config'
-require 'flight_metal/registry'
+require 'flight_metal/flight_config_utils'
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
 require 'flight_metal/errors'
@@ -107,16 +107,16 @@ module FlightMetal
       end
 
       data_reader(:groups) do |groups|
-        (groups || []).tap { |g| g << 'orphan' if g.empty? }.each do |group|
-          sym_path = Pathname.new(Models::Group.node_symlink_path(cluster, group, name))
-          unless sym_path.exist?
-            FileUtils.mkdir_p sym_path.dirname
-            sym_path.make_symlink(path)
-          end
-        end
+        (groups || []).tap { |g| g << 'orphan' if g.empty? }
       end
       data_writer(:groups) { |v| v.to_a }
 
+      define_symlink do
+        groups.map { |g| Models::Group.node_symlink_path(cluster, g, name) }
+      end
+
+      # TODO: Remove the links syntax, it has nothing to do with the symlinks
+      # Replace `links.cluster` with `read_cluster`
       define_link(:cluster, Models::Cluster) { [cluster] }
 
       TemplateMap.path_methods.each do |method, type|

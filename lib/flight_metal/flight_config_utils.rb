@@ -29,6 +29,26 @@
 
 require 'flight_metal/errors'
 require 'flight_config/globber'
+require 'flight_config/updater'
+
+# Override FlightConfig::Updater to generate sym_link
+# Consider merging into FlightConfig
+module FlightConfig
+  module UpdaterPatch
+    def create_or_update(config, *a)
+      super
+      if config.respond_to?(:generate_symlinks)
+        config.generate_symlinks
+      end
+    end
+  end
+
+  module Updater
+    class << self
+      self.prepend(UpdaterPatch)
+    end
+  end
+end
 
 module FlightMetal
   module FlightConfigUtils
@@ -56,10 +76,32 @@ module FlightMetal
           Time.at(__data__.fetch("__#{name}_time__") || 0)
         end
       end
+
+      def define_symlink(&b)
+        @symlink_blocks ||= []
+        @symlink_blocks << b
+      end
+
+      def symlink_blocks
+        base = (defined?(super) ? super : [])
+        [*base, *@symlink_blocks]
+      end
     end
 
     def self.included(base)
       base.extend(ClassMethods)
+    end
+
+    def generate_symlinks
+      self.class.symlink_blocks.map { |b| instance_exec(&b) }
+                               .flatten
+                               .each do |raw_link|
+        link = Pathname.new(raw_link)
+        unless link.exist?
+          FileUtils.mkdir_p link.dirname
+          link.make_symlink(path)
+        end
+      end
     end
   end
 end

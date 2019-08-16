@@ -33,7 +33,7 @@ require 'pathname'
 
 require 'flight_metal/template_map'
 require 'flight_metal/config'
-require 'flight_metal/registry'
+require 'flight_metal/flight_config_utils'
 
 module FlightMetal
   module Models
