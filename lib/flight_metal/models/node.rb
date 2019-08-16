@@ -111,8 +111,20 @@ module FlightMetal
       end
       data_writer(:groups) { |v| v.to_a }
 
-      define_symlink do
-        groups.map { |g| Models::Group.node_symlink_path(cluster, g, name) }
+      define_symlinks(:groups) do |link|
+        link.path_builder do |cluster, node, group|
+          Models::Group.cache_join(cluster, group, 'nodes', node + '.link')
+        end
+
+        link.paths do |n|
+          n.groups.map { |g| link.path_builder.call(n.cluster, n.name, g) }
+        end
+
+        link.validate do |n, link_path|
+          regex = /#{link.path_builder.call(n.cluster, n.name, '(?<group>.*)')}/
+          group = link_path.to_s.match(regex)[:group]
+          n.groups.include?(group)
+        end
       end
 
       # TODO: Remove the links syntax, it has nothing to do with the symlinks

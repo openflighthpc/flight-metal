@@ -53,16 +53,8 @@ module FlightMetal
       end
       define_input_methods_from_path_parameters
 
-      def self.node_symlink_path(cluster, group, node)
-        cache_join(cluster, group, 'nodes', "#{node}.link")
-      end
-
       def join(*a)
         self.class.join(*__inputs__, *a)
-      end
-
-      def node_symlink_path(node)
-        self.class.node_symlink_path(*__inputs__, node)
       end
 
       TemplateMap.path_methods.each do |method, key|
@@ -82,20 +74,8 @@ module FlightMetal
       end
 
       def read_nodes(primary: false)
-        nodes = Dir.glob(node_symlink_path('*'))
-                   .map do |path|
-          if File.exists? path
-            FlightConfig::Globber::Matcher.new(Models::Node, 2, __registry__)
-                                          .read(Pathname.new(path).readlink.to_s)
-          else
-            FileUtils.rm path # Delete the symlink if it doesn't reference a file
-            nil
-          end
-        end.reject(&:nil?)
-        bad_nodes = nodes.reject { |n| n.groups.include?(name) }
-        bad_nodes.each { |n| FileUtils.rm node_symlink_path(n.name) }
-        good_nodes = nodes - bad_nodes
-        primary ? good_nodes.select { |n| n.primary_group == name } : good_nodes
+        nodes = Models::Node.glob_symlink_proxy(:groups, cluster, '*', name)
+        primary ? nodes.select { |n| n.primary_group == name } : nodes
       end
 
       def read_primary_nodes
