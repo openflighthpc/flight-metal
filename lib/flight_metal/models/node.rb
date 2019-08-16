@@ -37,8 +37,6 @@ require 'flight_metal/system_command'
 module FlightMetal
   module Models
     class Node < Model
-      include FlightConfig::Links
-
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
       end
@@ -151,10 +149,6 @@ module FlightMetal
         end
       end
 
-      # TODO: Remove the links syntax, it has nothing to do with the symlinks
-      # Replace `links.cluster` with `read_cluster`
-      define_link(:cluster, Models::Cluster) { [cluster] }
-
       TemplateMap.path_methods.each do |method, type|
         define_method(method) do
           join('libexec', TemplateMap.find_filename(type))
@@ -166,7 +160,7 @@ module FlightMetal
       TemplateMap.path_methods(sub: 'template').each do |method, type|
         define_method("#{type}_template_model") do
           return read_primary_group if read_primary_group.type_path?(type)
-          return links.cluster if links.cluster.type_path?(type)
+          return read_cluster if read_cluster.type_path?(type)
         end
 
         define_method(method) do
@@ -330,6 +324,10 @@ module FlightMetal
       # from the params list on save.
       def reserved_params
         { name: name, cluster: cluster, groups: groups.join(',') }
+      end
+
+      def read_cluster
+        Models::Cluster.read(cluster, registry: __registry__)
       end
 
       def read_primary_group
