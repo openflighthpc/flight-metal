@@ -34,6 +34,8 @@ require 'flight_metal/config'
 require 'flight_metal/flight_config_utils'
 require 'flight_metal/template_map'
 
+require 'active_support/core_ext/hash'
+
 module FlightMetal
   class Model
     include FlightConfig::Updater

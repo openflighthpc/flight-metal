@@ -47,8 +47,7 @@ module FlightMetal
 
           data_writer(:params) do |hash|
             hash = hash.to_h.dup.symbolize_keys
-            update_keys = hash.keys & self.class.named_param_keys
-            update_keys.each do |key|
+            (hash.keys & self.class.named_param_keys).each do |key|
               write_named_param(key, hash[key])
               hash.delete(key)
             end
@@ -60,7 +59,7 @@ module FlightMetal
                 MSG
               end
             end
-            hash
+            hash.reject { |_, v| v.nil? }
           end
         end
 
@@ -95,6 +94,7 @@ module FlightMetal
 
         def merge_params!(hash)
           self.params = self.params.merge(hash)
+          self.params # Ensure the actual params are returned
         end
 
         def read_named_param(key)

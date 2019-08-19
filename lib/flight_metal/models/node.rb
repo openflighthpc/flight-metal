@@ -58,7 +58,9 @@ module FlightMetal
 
       include Concerns::HasParams
       named_param_reader(:mac)
-      named_param_reader(:primary_group)
+      named_param_writer(:primary_group) do |primary|
+        primary || ''
+      end
 
       named_param_reader(:other_groups) do |groups|
         groups.empty? ? nil : groups.join(',')

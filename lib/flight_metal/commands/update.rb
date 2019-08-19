@@ -46,10 +46,9 @@ module FlightMetal
                             .symbolize_keys
         delete_keys = params.select { |p| /\A\w+!/.match?(p) }
                             .map { |p| p[0..-2].to_sym }
+        hash = update_hash.merge(delete_keys.map { |k| [k, nil] }.to_h)
         Models::Node.update(Config.cluster, model_name_or_error) do |node|
-          new = node.params.merge(update_hash)
-          delete_keys.each { |k| new.delete(k) }
-          node.params = new
+          node.merge_params!(hash)
           node.rebuild = rebuild unless rebuild.nil?
         end
       end
