@@ -44,10 +44,30 @@ module FlightMetal
         puts id_strs.join("\n")
       end
 
+      LIST_GROUPS = <<~ERB
+        # Group: <%= name %>
+
+        ## Reserved Parameters
+        <% reserved_params.each do |key, value| -%>
+        - _<%= key %>_: <%= value %>
+        <% end -%>
+
+        <% unless non_reserved_params.empty? -%>
+        ## Other Parameters
+        <%   non_reserved_params.each do |key, value| -%>
+        - *<%= key %>*: <%= value %>
+        <%   end -%>
+        <% end -%>
+
+      ERB
       def list_groups
         require 'flight_metal/models/group'
-        groups = Models::Group.glob_read(Config.cluster, '*')
-        puts groups.map(&:name)
+        require 'flight_metal/templator'
+        list = Models::Group.glob_read(Config.cluster, '*')
+                            .sort_by(&:name)
+                            .map { |g| Templator.new(g).markdown(LIST_GROUPS) }
+                            .join
+        puts list
       end
     end
   end

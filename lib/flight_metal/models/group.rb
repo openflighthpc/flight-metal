@@ -27,6 +27,7 @@
 
 require 'flight_metal/model'
 require 'flight_metal/models/cluster'
+require 'flight_metal/models/node'
 require 'flight_metal/models/concerns/has_params'
 
 module FlightMetal
@@ -35,6 +36,11 @@ module FlightMetal
       include Concerns::HasParams
 
       allow_missing_read
+
+      reserved_param_reader(:name)
+      reserved_param_reader(:cluster)
+      reserved_param_reader(:nodes) { |nodes| nodes.join(',') }
+      reserved_param_reader(:primary_nodes) { |nodes| nodes.join(',') }
 
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'groups', name, *a)
@@ -75,6 +81,14 @@ module FlightMetal
 
       def read_primary_nodes
         Models::Node.glob_symlink_proxy(:primary_group, cluster, '*', name)
+      end
+
+      def nodes
+        read_nodes.map(&:name)
+      end
+
+      def primary_nodes
+        read_primary_nodes.map(&:name)
       end
     end
   end
