@@ -207,20 +207,27 @@ module FlightMetal
       end
     end
 
-    command 'node update' do |c|
-      syntax(c, 'NODE [PARAMS...]')
-      c.summary = "Modify the node's parameters"
-      c.description = <<~DESC
-        Set, modify, and delete parameters assigned to the NODE. The parameter
-        keys must be an alphanumeric string which may contain underscores.
+    ['node', 'group'].each do |level|
+      command "#{level} update" do |c|
+        syntax(c, "#{level.upcase} [PARAMS...]")
+        c.summary = "Modify the #{level}'s parameters"
+        c.description = <<~DESC
+          Set, modify, and delete parameters assigned to the #{level.upcase}. The parameter
+          keys must be an alphanumeric string which may contain underscores.
 
-        PARAMS can set or modify keys by using `key=value` notation. The key can
-        be hard set to an empty string by omitting the value: `key=`. Keys are
-        permanently deleted when suffixed with a exclamation: `key!`.
-      DESC
-      c.option '--rebuild [false]',
-               "Flag the node to be rebuilt. Unset by including 'false'"
-      c.action(&Commands::Update.named_commander_proxy(:node))
+          PARAMS can set or modify keys by using `key=value` notation. The key can
+          be hard set to an empty string by omitting the value: `key=`. Keys are
+          permanently deleted when suffixed with a exclamation: `key!`.
+        DESC
+        case level
+        when 'node'
+          c.option '--rebuild [false]',
+                   "Flag the node to be rebuilt. Unset by including 'false'"
+          c.action(&Commands::Update.named_commander_proxy(:node))
+        when 'group'
+          c.action(&Commands::Update.named_commander_proxy(:group))
+        end
+      end
     end
 
     command 'hunt' do |c|

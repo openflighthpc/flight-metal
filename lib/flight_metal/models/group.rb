@@ -27,10 +27,13 @@
 
 require 'flight_metal/model'
 require 'flight_metal/models/cluster'
+require 'flight_metal/models/concerns/has_params'
 
 module FlightMetal
   module Models
     class Group < Model
+      include Concerns::HasParams
+
       allow_missing_read
 
       def self.join(cluster, name, *a)
