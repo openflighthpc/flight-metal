@@ -31,6 +31,7 @@ require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
+require 'flight_metal/models/concerns/has_params'
 
 module FlightMetal
   module Models
@@ -55,24 +56,26 @@ module FlightMetal
         end
       end
 
+      include Concerns::HasParams
+      named_param_reader(:mac)
+      named_param_reader(:primary_group)
+
+      named_param_reader(:other_groups) do |groups|
+        groups.empty? ? nil : groups.join(',')
+      end
+
+      named_param_writer(:other_groups) do |groups_str|
+        (groups_str.nil? || groups_str.empty?) ? [] : groups_str.split(',')
+      end
+
+      reserved_param_reader(:name)
+      reserved_param_reader(:cluster)
+      reserved_param_reader(:groups) do |groups|
+        groups.join(',')
+      end
+
       flag :built
       flag :rebuild
-
-      data_reader(:params) do |hash|
-        hash = (hash || {}).symbolize_keys
-        SpecialParameters.new(self).read(**hash)
-      end
-      data_writer(:params) do |raw|
-        hash = raw.to_h.dup.symbolize_keys
-        SpecialParameters.new(self).write(hash)
-        hash.delete_if do |k, _v|
-          reserved_params.keys.include?(k).tap do |bool|
-            Log.warn_puts <<~MSG.chomp if bool
-              Cowardly refusing to overwrite '#{name}' reserved parameter key: #{k}
-            MSG
-          end
-        end
-      end
 
       data_reader(:mac)
       data_writer(:mac) do |hwaddr|
@@ -211,61 +214,9 @@ module FlightMetal
         end
       end
 
-      # Contains all the parameters that can be rendered against
+      # TODO: Remove render_params as it is now equivalent to params
       def render_params
-        params.merge(reserved_params)
-      end
-
-      # Quasi-parameters that are saved on the model directly. This allows
-      # integration code to be ran on the model
-      SpecialParameters = Struct.new(:node) do
-        def to_h
-          read
-        end
-
-        def read(**kwargs)
-          keys.each do |key|
-            kwargs.delete(key)
-            value = send(key)
-            kwargs[key] = value unless value.nil?
-          end
-          kwargs
-        end
-
-        def write(**kwargs)
-          keys.each { |k| setter(k, kwargs.delete(k)) if kwargs.key?(k) }
-        end
-
-        private
-
-        delegate :mac, :mac=, :primary_group, :primary_group=, to: :node
-
-        def keys
-          [:mac, :primary_group, :other_groups]
-        end
-
-        def other_groups
-          node.other_groups.join(',')
-        end
-
-        def other_groups=(a)
-          return if a.nil? || a == other_groups
-          node.other_groups = a.split(',')
-        end
-
-        def setter(key, value)
-          send("#{key}=", value)
-        end
-      end
-
-      def special_params
-        SpecialParameters.new(self).to_h
-      end
-
-      # Parameters that can not be set by the user. They will be filtered
-      # from the params list on save.
-      def reserved_params
-        { name: name, cluster: cluster, groups: groups.join(',') }
+        params
       end
 
       def read_cluster

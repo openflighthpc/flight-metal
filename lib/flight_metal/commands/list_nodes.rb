@@ -100,9 +100,9 @@ module FlightMetal
         - _<%= key %>_: <%= value %>
         <% end -%>
 
-        <% unless params.empty? -%>
+        <% unless non_reserved_params.empty? -%>
         ## Other Parameters
-        <%   params.each do |key, value| -%>
+        <%   non_reserved_params.each do |key, value| -%>
         - *<%= key %>*: <%= value %>
         <%   end -%>
         <% end -%>
