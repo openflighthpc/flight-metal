@@ -31,12 +31,10 @@ module FlightMetal
   module Commands
     class ListNodes < ScopedCommand
       class ListDelegator < SimpleDelegator
-        attr_reader :sys_ip, :sys_fqdn, :verbose
+        attr_reader :verbose
 
         def initialize(node, fqdn: nil, ip: nil, verbose: nil)
           super(node)
-          @sys_ip = sys_ip
-          @sys_fqdn = sys_fqdn
           @verbose = verbose
         end
       end
