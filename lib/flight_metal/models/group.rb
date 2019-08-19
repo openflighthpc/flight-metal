@@ -58,6 +58,8 @@ module FlightMetal
       TemplateMap.path_methods.each do |method, key|
         define_method(method) { join('libexec', TemplateMap.find_filename(key)) }
         define_path?(method)
+
+        define_method("#{key}_status") { type_status(key) }
       end
       define_type_path_shortcuts
 
@@ -66,6 +68,16 @@ module FlightMetal
         define_path?(method)
       end
       define_type_path_shortcuts(sub: 'template')
+
+      def type_status(type)
+        if type_path?(type)
+          :ready
+        elsif type_template_path?(type)
+          :renderable
+        else
+          :missing
+        end
+      end
 
       def read_cluster
        Models::Cluster.read(cluster, registry: __registry__)

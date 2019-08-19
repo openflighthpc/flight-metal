@@ -47,6 +47,11 @@ module FlightMetal
       LIST_GROUPS = <<~ERB
         # Group: <%= name %>
 
+        ## File Status
+        <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
+        - *<%= flag %>*: <%= type_status(type).capitalize %>
+        <% end -%>
+
         ## Reserved Parameters
         <% reserved_params.each do |key, value| -%>
         - _<%= key %>_: <%= value %>
