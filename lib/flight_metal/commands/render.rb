@@ -33,18 +33,17 @@ module FlightMetal
       command_require 'flight_metal/template_map', 'flight_metal/models/group'
 
       def groups(cli_type)
-        # TODO: Implement this as `read_groups` on the Command base clase
-        models = [Models::Group.read(Config.cluster, model_name_or_error)]
-        shared(cli_type, models)
+        shared(cli_type, true)
       end
 
       def nodes(cli_type, force: false)
-        shared(cli_type, read_models, force: force)
+        shared(cli_type, force)
       end
 
       private
 
-      def shared(cli_type, models, force: true)
+      def shared(cli_type, force)
+        models = read_models
         type = TemplateMap.lookup_key(cli_type)
 
         # Reject those without a template

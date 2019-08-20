@@ -321,7 +321,7 @@ module FlightMetal
 
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
-    proxy_opts = { method: :nodes, index: :nodes }
+    # Define the nodes rendering commands
     ['cluster', 'group', 'node'].each do |level|
       command "#{level} render#{ '-nodes' unless level == 'node'}" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
@@ -329,21 +329,29 @@ module FlightMetal
         c.option '--force', 'Allow missing tags when writing the file'
         case level
         when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, **proxy_opts))
+          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :nodes))
         when 'group'
           # NOTE: Using --primary mutates :group to :primary_group within the proxy
           c.option '--primary', 'Only render nodes within the primary group'
-         c.action(&Commands::Render.named_commander_proxy(:group, **proxy_opts))
+         c.action(&Commands::Render.named_commander_proxy(:group, index: :nodes))
         when 'node'
-          c.action(&Commands::Render.named_commander_proxy(:node, **proxy_opts))
+          c.action(&Commands::Render.named_commander_proxy(:node, index: :nodes))
         end
       end
     end
 
-    command 'group render' do |c|
-      syntax(c, 'GROUP TYPE')
-      c.summary = 'Render the template against the group parameters'
-      c.action(&Commands::Render.named_commander_proxy(:group, method: :groups))
+    # Define the groups rendering commands
+    ['cluster', 'group'].each do |level|
+      command "#{level} render#{ '-groups' unless level == 'group' }" do |c|
+        syntax(c, "#{ level.upcase + ' ' unless level == 'cluster' }TYPE")
+        c.summary = 'Render the template against the group parameters'
+        case level
+        when 'cluster'
+          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :groups))
+        when 'group'
+          c.action(&Commands::Render.named_commander_proxy(:group, index: :groups))
+        end
+      end
     end
   end
 end

@@ -66,7 +66,11 @@ module FlightMetal
       define_type_path_shortcuts
 
       def read_nodes
-        Models::Node.glob_read(identifier, '*')
+        Models::Node.glob_read(identifier, '*', registry: __registry__)
+      end
+
+      def read_groups
+        Models::Group.glob_read(identifier, '*', registry: __registry__)
       end
     end
   end

@@ -101,7 +101,7 @@ module FlightMetal
     include CommandHelper
 
     def self.named_commander_proxy(level, method: nil, index: nil)
-      method ||= level
+      method ||= (index || level)
       lambda do |name_and_args, commander_opts|
         CommanderProxy.named(self, level, name_and_args, commander_opts, index)
                       .run(method)
@@ -109,7 +109,7 @@ module FlightMetal
     end
 
     def self.unnamed_commander_proxy(level, method: nil, index: nil)
-      method ||= level
+      method ||= (index || level)
       lambda do |args, commander_opts|
         CommanderProxy.unnamed(self, level, args, commander_opts, index)
                       .run(method)
@@ -167,10 +167,24 @@ module FlightMetal
       end
     end
 
+    def read_groups
+      require 'flight_metal/models/group'
+      case model = read_model
+      when Models::Cluster
+        model.read_groups
+      when Models::Group
+        [model]
+      when Models::Node
+        model.read_groups
+      end
+    end
+
     def read_models
       case index
       when :nodes, 'nodes'
         read_nodes
+      when :groups, 'groups'
+        read_groups
       when NilClass
         raise InternalError, <<~ERROR.chomp
           The command index target has not been set

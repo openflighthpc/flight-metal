@@ -97,6 +97,18 @@ module FlightMetal
         def groups
           [primary_group, *other_groups]
         end
+
+        def read_groups
+          groups.map { |n| Models::Group.read(cluster, n, registry: __registry__) }
+        end
+
+        def read_other_groups
+          other_groups.map { |n| Models::Group.read(cluster, n, registry: __registry__) }
+        end
+
+        def read_primary_group
+          Models::Group.read(cluster, primary_group, registry: __registry__)
+        end
       end
     end
   end

@@ -225,10 +225,6 @@ module FlightMetal
         Models::Cluster.read(cluster, registry: __registry__)
       end
 
-      def read_primary_group
-        Models::Group.read(cluster, primary_group, registry: __registry__)
-      end
-
       # TODO: Look how this integrates into FlightConfig
       # NOTE: This method does not share a registry and will cause all files to
       # reload. Consider refactoring?
