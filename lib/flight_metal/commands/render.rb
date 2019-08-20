@@ -61,7 +61,13 @@ module FlightMetal
         models.each do |model|
           initial = File.read(model.type_template_path(type))
           rendered = model.params.reduce(initial) do |memo, (key, value)|
+            prefix = case model
+                     when Models::Node; 'node'
+                     when Models::Group; 'group'
+                     else; raise InternalError
+                     end
             memo.gsub("%#{key}%", value.to_s)
+                .gsub("%#{prefix}.#{key}%", value.to_s)
           end
           if !force && /%\w+%/.match?(rendered)
             errors = true
