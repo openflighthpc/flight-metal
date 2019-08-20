@@ -39,9 +39,7 @@ module FlightMetal
       end
 
       def nodes(cli_type, force: false)
-        # Load the nodes as the models
-        models = read_nodes
-        shared(cli_type, models, force: force)
+        shared(cli_type, read_models, force: force)
       end
 
       private

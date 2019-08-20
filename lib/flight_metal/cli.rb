@@ -321,6 +321,7 @@ module FlightMetal
 
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
+    proxy_opts = { method: :nodes, index: :nodes }
     ['cluster', 'group', 'node'].each do |level|
       command "#{level} render#{ '-nodes' unless level == 'node'}" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
@@ -328,13 +329,13 @@ module FlightMetal
         c.option '--force', 'Allow missing tags when writing the file'
         case level
         when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, method: :nodes))
+          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, **proxy_opts))
         when 'group'
           # NOTE: Using --primary mutates :group to :primary_group within the proxy
           c.option '--primary', 'Only render nodes within the primary group'
-         c.action(&Commands::Render.named_commander_proxy(:group, method: :nodes))
+         c.action(&Commands::Render.named_commander_proxy(:group, **proxy_opts))
         when 'node'
-          c.action(&Commands::Render.named_commander_proxy(:node, method: :nodes))
+          c.action(&Commands::Render.named_commander_proxy(:node, **proxy_opts))
         end
       end
     end

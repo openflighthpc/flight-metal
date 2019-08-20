@@ -49,19 +49,19 @@ module FlightMetal
     end
   end
 
-  ScopedCommand = Struct.new(:level, :model_name) do
+  ScopedCommand = Struct.new(:level, :model_name, :index) do
     class CommanderProxy
-      def self.named(klass, cli_level, name_and_args, commander_opts)
+      def self.named(klass, cli_level, name_and_args, commander_opts, index)
         name = name_and_args.first
         args = name_and_args[1..-1]
         level, opts_hash = resolve_level_and_hash(cli_level, commander_opts)
-        cmd_instance = klass.new(level, name)
+        cmd_instance = klass.new(level, name, index)
         new(cmd_instance, *args, **opts_hash)
       end
 
-      def self.unnamed(klass, cli_level, args, commander_opts)
+      def self.unnamed(klass, cli_level, args, commander_opts, index)
         level, opts_hash = resolve_level_and_hash(cli_level, commander_opts)
-        cmd_instance = klass.new(level)
+        cmd_instance = klass.new(level, nil, index)
         new(cmd_instance, *args, **opts_hash)
       end
 
@@ -100,17 +100,19 @@ module FlightMetal
 
     include CommandHelper
 
-    def self.named_commander_proxy(level, method: nil)
+    def self.named_commander_proxy(level, method: nil, index: nil)
       method ||= level
       lambda do |name_and_args, commander_opts|
-        CommanderProxy.named(self, level, name_and_args, commander_opts).run(method)
+        CommanderProxy.named(self, level, name_and_args, commander_opts, index)
+                      .run(method)
       end
     end
 
-    def self.unnamed_commander_proxy(level, method: nil)
+    def self.unnamed_commander_proxy(level, method: nil, index: nil)
       method ||= level
       lambda do |args, commander_opts|
-        CommanderProxy.unnamed(self, level, args, commander_opts).run(method)
+        CommanderProxy.unnamed(self, level, args, commander_opts, index)
+                      .run(method)
       end
     end
 
@@ -162,6 +164,21 @@ module FlightMetal
         model.read_primary_nodes
       else
         model.read_nodes
+      end
+    end
+
+    def read_models
+      case index
+      when :nodes, 'nodes'
+        read_nodes
+      when NilClass
+        raise InternalError, <<~ERROR.chomp
+          The command index target has not been set
+        ERROR
+      else
+        raise InternalError, <<~ERROR.chomp
+          Unrecognised command index target #{index}
+        ERROR
       end
     end
   end
