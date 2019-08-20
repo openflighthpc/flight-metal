@@ -30,25 +30,37 @@
 module FlightMetal
   module Commands
     class Render < ScopedCommand
-      command_require 'flight_metal/template_map'
+      command_require 'flight_metal/template_map', 'flight_metal/models/group'
 
-      def run(cli_type, force: false)
-        # Load an verify the type and nodes
+      def groups(cli_type)
+        # TODO: Implement this as `read_groups` on the Command base clase
+        models = [Models::Group.read(Config.cluster, model_name_or_error)]
+        shared(cli_type, models)
+      end
+
+      def nodes(cli_type, force: false)
+        # Load the nodes as the models
+        models = read_nodes
+        shared(cli_type, models, force: force)
+      end
+
+      private
+
+      def shared(cli_type, models, force: true)
         type = TemplateMap.lookup_key(cli_type)
-        nodes = read_nodes
 
         # Reject those without a template
-        nodes.reject! do |node|
-          next if node.type_template_path?(type)
-          Log.warn_puts "Skipping #{node.name}: Can not locate a template"
+        models.reject! do |model|
+          next if model.type_template_path?(type)
+          Log.warn_puts "Skipping #{model.name}: Can not locate a template"
           true
         end
 
-        # Render for each node
+        # Render each model
         errors = false
-        nodes.each do |node|
-          initial = File.read(node.type_template_path(type))
-          rendered = node.render_params.reduce(initial) do |memo, (key, value)|
+        models.each do |model|
+          initial = File.read(model.type_template_path(type))
+          rendered = model.params.reduce(initial) do |memo, (key, value)|
             memo.gsub("%#{key}%", value.to_s)
           end
           if !force && /%\w+%/.match?(rendered)
@@ -56,15 +68,15 @@ module FlightMetal
             matches = rendered.scan(/%\w+%/).uniq.sort
                               .map { |s| /\w+/.match(s).to_s }
             Log.error_puts <<~ERROR.squish
-              Failed to render #{node.name} #{type}:
+              Failed to render #{model.name} #{type}:
               The following parameters have not been replaced:
               #{matches.join(',')}
             ERROR
           else
-            dst = node.type_path(type)
+            dst = model.type_path(type)
             FileUtils.mkdir_p File.dirname(dst)
-            File.write(node.type_path(type), rendered)
-            Log.info_puts "Rendered #{node.name}: #{dst}"
+            File.write(model.type_path(type), rendered)
+            Log.info_puts "Rendered #{model.name}: #{dst}"
           end
         end
 

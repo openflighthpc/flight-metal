@@ -328,15 +328,21 @@ module FlightMetal
         c.option '--force', 'Allow missing tags when writing the file'
         case level
         when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, method: :run))
+          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, method: :nodes))
         when 'group'
           # NOTE: Using --primary mutates :group to :primary_group within the proxy
           c.option '--primary', 'Only render nodes within the primary group'
-          c.action(&Commands::Render.named_commander_proxy(:group, method: :run))
+         c.action(&Commands::Render.named_commander_proxy(:group, method: :nodes))
         when 'node'
-          c.action(&Commands::Render.named_commander_proxy(:node, method: :run))
+          c.action(&Commands::Render.named_commander_proxy(:node, method: :nodes))
         end
       end
+    end
+
+    command 'group render' do |c|
+      syntax(c, 'GROUP TYPE')
+      c.summary = 'Render the template against the group parameters'
+      c.action(&Commands::Render.named_commander_proxy(:group, method: :groups))
     end
   end
 end
