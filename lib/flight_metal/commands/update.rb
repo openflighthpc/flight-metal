@@ -30,11 +30,32 @@
 module FlightMetal
   module Commands
     class Update < ScopedCommand
+      Params = Struct.new(:params) do
+        def merge_hash
+          params.select { |p| /\A\w+=.*/.match?(p) }
+                .map { |p| p.split('=', 2) }
+                .to_h
+                .symbolize_keys
+        end
+
+        def delete_keys
+          params.select { |p| /\A\w+!/.match?(p) }
+                .map { |p| p[0..-2].to_sym }
+        end
+
+        def update_model(model)
+          model.params = model.params.dup.tap do |hash|
+            hash.merge!(merge_hash)
+            delete_keys.each { |k| hash.delete(k) }
+          end
+        end
+      end
+
       command_require 'flight_metal/models/node'
 
       def group(*params)
         Models::Group.update(Config.cluster, model_name_or_error) do |group|
-          group.merge_params!(parse_param_strings(*params))
+          Params.new(params).update_model(group)
         end
       end
 
@@ -46,23 +67,10 @@ module FlightMetal
                   else
                     true
                   end
-        hash = parse_param_strings(*params)
         Models::Node.update(Config.cluster, model_name_or_error) do |node|
-          node.merge_params!(hash)
-          node.rebuild = rebuild unless rebuild.nil?
+          Params.new(params).update_model(node)
+          node.rebuild = rebuild
         end
-      end
-
-      private
-
-      def parse_param_strings(*params)
-        update_hash = params.select { |p| /\A\w+=.*/.match?(p) }
-                            .map { |p| p.split('=', 2) }
-                            .to_h
-                            .symbolize_keys
-        delete_keys = params.select { |p| /\A\w+!/.match?(p) }
-                            .map { |p| p[0..-2].to_sym }
-        update_hash.merge(delete_keys.map { |k| [k, nil] }.to_h)
       end
     end
   end

@@ -92,11 +92,6 @@ module FlightMetal
           end
         end
 
-        def merge_params!(hash)
-          self.params = self.params.merge(hash)
-          self.params # Ensure the actual params are returned
-        end
-
         def read_named_param(key)
           model_value = send(key)
           if block = self.class.named_params[:reader][key]
