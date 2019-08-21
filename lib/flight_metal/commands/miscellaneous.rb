@@ -66,12 +66,10 @@ module FlightMetal
 
       ERB
       def list_groups
-        require 'flight_metal/models/group'
         require 'flight_metal/templator'
-        list = Models::Group.glob_read(Config.cluster, '*')
-                            .sort_by(&:name)
-                            .map { |g| Templator.new(g).markdown(LIST_GROUPS) }
-                            .join
+        list = read_groups.sort_by(&:name)
+                          .map { |g| Templator.new(g).markdown(LIST_GROUPS) }
+                          .join
         puts list
       end
     end
