@@ -41,6 +41,7 @@ require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/create'
 require 'flight_metal/commands/delete'
 require 'flight_metal/commands/edit'
+require 'flight_metal/commands/group_nodes'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
@@ -267,16 +268,30 @@ module FlightMetal
       c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
     end
 
-    command 'group list' do |c|
-      syntax(c)
-      c.summary = "Display the list of groups"
-      c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_groups))
+    ['cluster list-groups', 'group list'].each do |name|
+      command name do |c|
+        syntax(c)
+        c.summary = "Display the list of groups"
+        c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_groups))
+      end
     end
 
     command 'group show' do |c|
       syntax(c, 'GROUP')
       c.summary = "Display a group's details"
       c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :list_groups))
+    end
+
+    command 'group add-nodes' do |c|
+      syntax(c, 'group nodes')
+      c.summary = 'add nodes to the group'
+      c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
+    end
+
+    command 'group remove-nodes' do |c|
+      syntax(c, 'group nodes')
+      c.summary = 'remove the nodes from the group'
+      c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
     end
 
     ['cluster', 'group', 'node list', 'node show'].each do |level|

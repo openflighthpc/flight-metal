@@ -149,10 +149,26 @@ module FlightMetal
 
     def read_model
       if model_class == Models::Cluster
-        Models::Cluster.read(model_name || Config.cluster)
+        read_cluster
+      elsif model_class == Models::Group
+        read_group
+      elsif model_class == Models::Node
+        read_node
       else
-        model_class.read(Config.cluster, model_name_or_error)
+        raise InternalError
       end
+    end
+
+    def read_cluster
+      Models::Cluster.read(model_name || Config.cluster)
+    end
+
+    def read_group
+      Models::Group.read(Config.cluster, model_name_or_error)
+    end
+
+    def read_node
+      Models::Node.read(Config.cluster, model_name_or_error)
     end
 
     def read_nodes
