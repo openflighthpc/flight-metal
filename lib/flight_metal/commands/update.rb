@@ -69,7 +69,7 @@ module FlightMetal
                   end
         Models::Node.update(Config.cluster, model_name_or_error) do |node|
           Params.new(params).update_model(node)
-          node.rebuild = rebuild
+          node.rebuild = rebuild unless rebuild.nil?
         end
       end
     end
