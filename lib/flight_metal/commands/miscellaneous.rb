@@ -72,6 +72,19 @@ module FlightMetal
                           .join
         puts list
       end
+
+      def cat(cli_type, template: false)
+        require 'flight_metal/template_map'
+        type = TemplateMap.lookup_key(cli_type)
+        path = read_model.send(template ? :type_template_path : :type_path, type)
+        if File.exists?(path)
+          print File.read(path)
+        else
+          raise InvalidInput, <<~ERROR.chomp
+            Could not locate file: #{path}
+          ERROR
+        end
+      end
     end
   end
 end
