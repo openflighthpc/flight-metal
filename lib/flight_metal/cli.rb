@@ -285,6 +285,7 @@ module FlightMetal
     command 'group add-nodes' do |c|
       syntax(c, 'group nodes')
       c.summary = 'add nodes to the group'
+      c.option '--primary', 'Set the nodes to belong within the primary group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
     end
 
