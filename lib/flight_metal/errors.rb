@@ -47,7 +47,11 @@ module FlightMetal
   end
 
   class SystemCommandError < FlightMetalError; end
-  class InternalError < FlightMetalError; end
+  class InternalError < FlightMetalError
+    def initialize(msg = 'An unexpected error has occurred')
+      super
+    end
+  end
   class InvalidInput < FlightMetalError; end
 
   class InvalidModel < FlightMetalError; end

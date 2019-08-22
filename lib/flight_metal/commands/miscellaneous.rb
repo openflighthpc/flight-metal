@@ -43,6 +43,35 @@ module FlightMetal
         end
         puts id_strs.join("\n")
       end
+
+      LIST_GROUPS = <<~ERB
+        # Group: <%= name %>
+
+        ## File Status
+        <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
+        - *<%= flag %>*: <%= type_status(type).capitalize %>
+        <% end -%>
+
+        ## Reserved Parameters
+        <% reserved_params.each do |key, value| -%>
+        - _<%= key %>_: <%= value %>
+        <% end -%>
+
+        <% unless non_reserved_params.empty? -%>
+        ## Other Parameters
+        <%   non_reserved_params.each do |key, value| -%>
+        - *<%= key %>*: <%= value %>
+        <%   end -%>
+        <% end -%>
+
+      ERB
+      def list_groups
+        require 'flight_metal/templator'
+        list = read_groups.sort_by(&:name)
+                          .map { |g| Templator.new(g).markdown(LIST_GROUPS) }
+                          .join
+        puts list
+      end
     end
   end
 end

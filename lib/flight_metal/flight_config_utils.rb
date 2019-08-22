@@ -29,6 +29,63 @@
 
 require 'flight_metal/errors'
 require 'flight_config/globber'
+require 'flight_config/updater'
+
+# Override FlightConfig::Updater to generate sym_link
+# Consider merging into FlightConfig
+module FlightConfig
+  class ConfigSymlinkBuilder
+    def paths(&b)
+      @paths ||= b
+    end
+
+    def validate(&b)
+      @validate ||= b
+    end
+
+    def path_builder(&b)
+      @path_builder ||= b
+    end
+
+    def glob_read(klass, *a, registry: nil, arity: nil)
+      arity ||= klass.method(:path).arity
+      globber = FlightConfig::Globber::Matcher.new(klass, arity, registry)
+
+      Dir.glob(path_builder.call(*a))
+         .map do |link|
+        if File.exists? link
+          model = globber.read(Pathname.new(link).readlink.to_s)
+          if validate.call(model, link)
+            model
+          else
+            # Remove invalid links
+            FileUtils.rm link
+            nil
+          end
+        else
+          # Remove old links if they no longer exist
+          FileUtils.rm link
+          nil
+        end
+      end.reject(&:nil?)
+    end
+  end
+
+  module UpdaterPatch
+    def create_or_update(config, *a)
+      super
+      if config.respond_to?(:generate_symlinks)
+        config.generate_symlinks
+      end
+    end
+  end
+
+  module Updater
+    class << self
+      self.prepend(UpdaterPatch)
+    end
+  end
+end
 
 module FlightMetal
   module FlightConfigUtils
@@ -56,10 +113,39 @@ module FlightMetal
           Time.at(__data__.fetch("__#{name}_time__") || 0)
         end
       end
+
+      def define_symlinks(name)
+        builder = FlightConfig::ConfigSymlinkBuilder.new
+        yield builder
+        @symlink ||= {}
+        @symlink[name.to_sym] = builder
+      end
+
+      def symlinks
+        base = (defined?(super) ? super : {})
+        base.merge(@symlink || {})
+      end
+
+      def glob_symlink_proxy(type, *a)
+        symlinks[type].glob_read(self, *a)
+      end
     end
 
     def self.included(base)
       base.extend(ClassMethods)
+    end
+
+    def generate_symlinks
+      self.class.symlinks.values
+                         .map { |builder| builder.paths.call(self) }
+                         .flatten
+                         .each do |raw_link|
+        link = Pathname.new(raw_link)
+        unless link.exist?
+          FileUtils.mkdir_p link.dirname
+          link.make_symlink(path)
+        end
+      end
     end
   end
 end

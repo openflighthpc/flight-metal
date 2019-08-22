@@ -31,12 +31,10 @@ module FlightMetal
   module Commands
     class ListNodes < ScopedCommand
       class ListDelegator < SimpleDelegator
-        attr_reader :sys_ip, :sys_fqdn, :verbose
+        attr_reader :verbose
 
         def initialize(node, fqdn: nil, ip: nil, verbose: nil)
           super(node)
-          @sys_ip = sys_ip
-          @sys_fqdn = sys_fqdn
           @verbose = verbose
         end
       end
@@ -100,9 +98,9 @@ module FlightMetal
         - _<%= key %>_: <%= value %>
         <% end -%>
 
-        <% unless params.empty? -%>
+        <% unless non_reserved_params.empty? -%>
         ## Other Parameters
-        <%   params.each do |key, value| -%>
+        <%   non_reserved_params.each do |key, value| -%>
         - *<%= key %>*: <%= value %>
         <%   end -%>
         <% end -%>
@@ -113,6 +111,11 @@ module FlightMetal
 
       def shared(verbose: nil)
         nodes = read_nodes.sort_by(&:name)
+
+        # HACK: Insure all  the symlinks have been generated, is a backup in case
+        # the file was manually edited
+        nodes.each(&:generate_symlinks)
+
         delegets = nodes.each_with_index.map do |node, idx|
           ListDelegator.new(node, verbose: verbose)
         end

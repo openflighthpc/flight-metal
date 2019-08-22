@@ -49,19 +49,19 @@ module FlightMetal
     end
   end
 
-  ScopedCommand = Struct.new(:level, :model_name) do
+  ScopedCommand = Struct.new(:level, :model_name, :index) do
     class CommanderProxy
-      def self.named(klass, cli_level, name_and_args, commander_opts)
+      def self.named(klass, cli_level, name_and_args, commander_opts, index)
         name = name_and_args.first
         args = name_and_args[1..-1]
         level, opts_hash = resolve_level_and_hash(cli_level, commander_opts)
-        cmd_instance = klass.new(level, name)
+        cmd_instance = klass.new(level, name, index)
         new(cmd_instance, *args, **opts_hash)
       end
 
-      def self.unnamed(klass, cli_level, args, commander_opts)
+      def self.unnamed(klass, cli_level, args, commander_opts, index)
         level, opts_hash = resolve_level_and_hash(cli_level, commander_opts)
-        cmd_instance = klass.new(level)
+        cmd_instance = klass.new(level, nil, index)
         new(cmd_instance, *args, **opts_hash)
       end
 
@@ -100,17 +100,19 @@ module FlightMetal
 
     include CommandHelper
 
-    def self.named_commander_proxy(level, method: nil)
-      method ||= level
+    def self.named_commander_proxy(level, method: nil, index: nil)
+      method ||= (index || level)
       lambda do |name_and_args, commander_opts|
-        CommanderProxy.named(self, level, name_and_args, commander_opts).run(method)
+        CommanderProxy.named(self, level, name_and_args, commander_opts, index)
+                      .run(method)
       end
     end
 
-    def self.unnamed_commander_proxy(level, method: nil)
-      method ||= level
+    def self.unnamed_commander_proxy(level, method: nil, index: nil)
+      method ||= (index || level)
       lambda do |args, commander_opts|
-        CommanderProxy.unnamed(self, level, args, commander_opts).run(method)
+        CommanderProxy.unnamed(self, level, args, commander_opts, index)
+                      .run(method)
       end
     end
 
@@ -147,10 +149,26 @@ module FlightMetal
 
     def read_model
       if model_class == Models::Cluster
-        Models::Cluster.read(model_name || Config.cluster)
+        read_cluster
+      elsif model_class == Models::Group
+        read_group
+      elsif model_class == Models::Node
+        read_node
       else
-        model_class.read(Config.cluster, model_name_or_error)
+        raise InternalError
       end
+    end
+
+    def read_cluster
+      Models::Cluster.read(model_name || Config.cluster)
+    end
+
+    def read_group
+      Models::Group.read(Config.cluster, model_name_or_error)
+    end
+
+    def read_node
+      Models::Node.read(Config.cluster, model_name_or_error)
     end
 
     def read_nodes
@@ -159,9 +177,38 @@ module FlightMetal
       if model.is_a?(Models::Node)
         [model]
       elsif [:primary_group, 'primary_group'].include?(level)
-        model.read_nodes(primary: true)
+        model.read_primary_nodes
       else
         model.read_nodes
+      end
+    end
+
+    def read_groups
+      require 'flight_metal/models/group'
+      case model = read_model
+      when Models::Cluster
+        model.read_groups
+      when Models::Group
+        [model]
+      when Models::Node
+        model.read_groups
+      end
+    end
+
+    def read_models
+      case index
+      when :nodes, 'nodes'
+        read_nodes
+      when :groups, 'groups'
+        read_groups
+      when NilClass
+        raise InternalError, <<~ERROR.chomp
+          The command index target has not been set
+        ERROR
+      else
+        raise InternalError, <<~ERROR.chomp
+          Unrecognised command index target #{index}
+        ERROR
       end
     end
   end

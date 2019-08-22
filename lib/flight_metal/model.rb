@@ -23,10 +23,40 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_config'
+require 'pathname'
+
+require 'flight_metal/config'
+require 'flight_metal/flight_config_utils'
+require 'flight_metal/template_map'
+
+require 'active_support/core_ext/hash'
+
 module FlightMetal
-  VERSION = '0.3.1'
+  class Model
+    include FlightConfig::Updater
+    include FlightConfig::Deleter
+    include FlightConfig::Globber
+    include FlightConfig::Accessor
+
+    include FlightConfigUtils
+    include TemplateMap::PathAccessors
+
+    def self.exists?(*a)
+      File.exists? path(*a)
+    end
+
+    def self.join(*_a)
+      raise NotImplementedError
+    end
+
+    def join(*rest)
+      self.class.join(*__inputs__, *rest)
+    end
+  end
 end
+

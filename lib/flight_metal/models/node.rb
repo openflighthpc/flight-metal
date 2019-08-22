@@ -23,32 +23,22 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-require 'flight_metal/registry'
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
-require 'flight_metal/errors'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
-require 'flight_manifest'
-require 'flight_metal/template_map'
+require 'flight_metal/models/concerns/has_params'
 
 module FlightMetal
   module Models
-    class Node
-      include FlightConfig::Updater
-      include FlightConfig::Globber
-      include FlightConfig::Deleter
-      include FlightConfig::Accessor
-      include FlightConfig::Links
-
-      include TemplateMap::PathAccessors
-
-      include FlightMetal::FlightConfigUtils
+    class Node < Model
+      # Must be required after the class declaration
+      require 'flight_metal/models/node/has_groups'
+      include HasGroups
 
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
@@ -59,10 +49,6 @@ module FlightMetal
       end
       define_input_methods_from_path_parameters
 
-      def self.exists?(*a)
-        Pathname.new(new(*a).path).file?
-      end
-
       def self.delete!(*a)
         delete(*a) do |node|
           FileUtils.rm_rf node.join('lib')
@@ -70,24 +56,28 @@ module FlightMetal
         end
       end
 
+      include Concerns::HasParams
+      named_param_reader(:mac)
+      named_param_writer(:primary_group) do |primary|
+        primary || ''
+      end
+
+      named_param_reader(:other_groups) do |groups|
+        groups.empty? ? nil : groups.join(',')
+      end
+
+      named_param_writer(:other_groups) do |groups_str|
+        (groups_str.nil? || groups_str.empty?) ? [] : groups_str.split(',')
+      end
+
+      reserved_param_reader(:name)
+      reserved_param_reader(:cluster)
+      reserved_param_reader(:groups) do |groups|
+        groups.join(',')
+      end
+
       flag :built
       flag :rebuild
-
-      data_reader(:params) do |hash|
-        hash = (hash || {}).symbolize_keys
-        SpecialParameters.new(self).read(**hash)
-      end
-      data_writer(:params) do |raw|
-        hash = raw.to_h.dup.symbolize_keys
-        SpecialParameters.new(self).write(hash)
-        hash.delete_if do |k, _v|
-          reserved_params.keys.include?(k).tap do |bool|
-            Log.warn_puts <<~MSG.chomp if bool
-              Cowardly refusing to overwrite '#{name}' reserved parameter key: #{k}
-            MSG
-          end
-        end
-      end
 
       data_reader(:mac)
       data_writer(:mac) do |hwaddr|
@@ -106,19 +96,6 @@ module FlightMetal
         end
       end
 
-      data_reader(:groups) do |groups|
-        (groups || []).tap { |g| g << 'orphan' if g.empty? }.each do |group|
-          sym_path = Pathname.new(Models::Group.node_symlink_path(cluster, group, name))
-          unless sym_path.exist?
-            FileUtils.mkdir_p sym_path.dirname
-            sym_path.make_symlink(path)
-          end
-        end
-      end
-      data_writer(:groups) { |v| v.to_a }
-
-      define_link(:cluster, Models::Cluster) { [cluster] }
-
       TemplateMap.path_methods.each do |method, type|
         define_method(method) do
           join('libexec', TemplateMap.find_filename(type))
@@ -130,7 +107,7 @@ module FlightMetal
       TemplateMap.path_methods(sub: 'template').each do |method, type|
         define_method("#{type}_template_model") do
           return read_primary_group if read_primary_group.type_path?(type)
-          return links.cluster if links.cluster.type_path?(type)
+          return read_cluster if read_cluster.type_path?(type)
         end
 
         define_method(method) do
@@ -239,73 +216,13 @@ module FlightMetal
         end
       end
 
-      # Contains all the parameters that can be rendered against
+      # TODO: Remove render_params as it is now equivalent to params
       def render_params
-        params.merge(reserved_params)
+        params
       end
 
-      # Quasi-parameters that are saved on the model directly. This allows
-      # integration code to be ran on the model
-      SpecialParameters = Struct.new(:node) do
-        def to_h
-          read
-        end
-
-        def read(**kwargs)
-          keys.each do |key|
-            kwargs.delete(key)
-            value = send(key)
-            kwargs[key] = value unless value.nil?
-          end
-          kwargs
-        end
-
-        def write(**kwargs)
-          keys.each { |k| setter(k, kwargs.delete(k)) if kwargs.key?(k) }
-        end
-
-        private
-
-        delegate :mac, :mac=, to: :node
-
-        def keys
-          [:mac, :groups]
-        end
-
-        def groups
-          node.groups.join(',')
-        end
-
-        def groups=(a)
-          return if a.nil? || a == groups
-          node.groups = a.split(',')
-        end
-
-        def setter(key, value)
-          send("#{key}=", value)
-        end
-      end
-
-      def special_params
-        SpecialParameters.new(self).to_h
-      end
-
-      # Parameters that can not be set by the user. They will be filtered
-      # from the params list on save.
-      def reserved_params
-        { name: name, cluster: cluster, primary_group: primary_group }
-      end
-
-      def join(*a)
-        self.class.join(*__inputs__, *a)
-      end
-
-      def primary_group
-        groups.first
-      end
-
-      def read_primary_group
-        Models::Group.read(cluster, primary_group, registry: __registry__)
+      def read_cluster
+        Models::Cluster.read(cluster, registry: __registry__)
       end
 
       # TODO: Look how this integrates into FlightConfig
@@ -314,18 +231,6 @@ module FlightMetal
       def update(&b)
         new_node = self.class.update(*__inputs__, &b)
         self.instance_variable_set(:@__data__, new_node.__data__)
-      end
-
-      def base_dir
-        File.dirname(File.dirname(path))
-      end
-
-      def template_dir
-        File.join(base_dir, 'var/templates')
-      end
-
-      def ipmi_opts
-        "-H #{name}.bmc -U #{bmc_username} -P #{bmc_password}"
       end
     end
   end

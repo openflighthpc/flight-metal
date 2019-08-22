@@ -41,6 +41,7 @@ require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/create'
 require 'flight_metal/commands/delete'
 require 'flight_metal/commands/edit'
+require 'flight_metal/commands/group_nodes'
 require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
@@ -168,6 +169,12 @@ module FlightMetal
       c.action(&FlightMetal::Commands::Create.named_commander_proxy(:node))
     end
 
+    command 'group create' do |c|
+      syntax(c, 'GROUP')
+      c.summary = 'Add a new group to the cluster'
+      c.action(&FlightMetal::Commands::Create.named_commander_proxy(:group))
+    end
+
     command 'cluster create' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
@@ -201,20 +208,27 @@ module FlightMetal
       end
     end
 
-    command 'node update' do |c|
-      syntax(c, 'NODE [PARAMS...]')
-      c.summary = "Modify the node's parameters"
-      c.description = <<~DESC
-        Set, modify, and delete parameters assigned to the NODE. The parameter
-        keys must be an alphanumeric string which may contain underscores.
+    ['node', 'group'].each do |level|
+      command "#{level} update" do |c|
+        syntax(c, "#{level.upcase} [PARAMS...]")
+        c.summary = "Modify the #{level}'s parameters"
+        c.description = <<~DESC
+          Set, modify, and delete parameters assigned to the #{level.upcase}. The parameter
+          keys must be an alphanumeric string which may contain underscores.
 
-        PARAMS can set or modify keys by using `key=value` notation. The key can
-        be hard set to an empty string by omitting the value: `key=`. Keys are
-        permanently deleted when suffixed with a exclamation: `key!`.
-      DESC
-      c.option '--rebuild [false]',
-               "Flag the node to be rebuilt. Unset by including 'false'"
-      c.action(&Commands::Update.named_commander_proxy(:node))
+          PARAMS can set or modify keys by using `key=value` notation. The key can
+          be hard set to an empty string by omitting the value: `key=`. Keys are
+          permanently deleted when suffixed with a exclamation: `key!`.
+        DESC
+        case level
+        when 'node'
+          c.option '--rebuild [false]',
+                   "Flag the node to be rebuilt. Unset by including 'false'"
+          c.action(&Commands::Update.named_commander_proxy(:node))
+        when 'group'
+          c.action(&Commands::Update.named_commander_proxy(:group))
+        end
+      end
     end
 
     command 'hunt' do |c|
@@ -250,8 +264,34 @@ module FlightMetal
 
     command 'cluster list' do |c|
       syntax(c)
-      c.summary = 'Display the list of clusters'
+      c.summary = "Display the list of clusters"
       c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
+    end
+
+    ['cluster list-groups', 'group list'].each do |name|
+      command name do |c|
+        syntax(c)
+        c.summary = "Display the list of groups"
+        c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_groups))
+      end
+    end
+
+    command 'group show' do |c|
+      syntax(c, 'GROUP')
+      c.summary = "Display a group's details"
+      c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :list_groups))
+    end
+
+    command 'group add-nodes' do |c|
+      syntax(c, 'group nodes')
+      c.summary = 'add nodes to the group'
+      c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
+    end
+
+    command 'group remove-nodes' do |c|
+      syntax(c, 'group nodes')
+      c.summary = 'remove the nodes from the group'
+      c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
     end
 
     ['cluster', 'group', 'node list', 'node show'].each do |level|
@@ -301,6 +341,7 @@ module FlightMetal
 
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
+    # Define the nodes rendering commands
     ['cluster', 'group', 'node'].each do |level|
       command "#{level} render#{ '-nodes' unless level == 'node'}" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
@@ -308,13 +349,27 @@ module FlightMetal
         c.option '--force', 'Allow missing tags when writing the file'
         case level
         when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, method: :run))
+          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :nodes))
         when 'group'
           # NOTE: Using --primary mutates :group to :primary_group within the proxy
           c.option '--primary', 'Only render nodes within the primary group'
-          c.action(&Commands::Render.named_commander_proxy(:group, method: :run))
+         c.action(&Commands::Render.named_commander_proxy(:group, index: :nodes))
         when 'node'
-          c.action(&Commands::Render.named_commander_proxy(:node, method: :run))
+          c.action(&Commands::Render.named_commander_proxy(:node, index: :nodes))
+        end
+      end
+    end
+
+    # Define the groups rendering commands
+    ['cluster', 'group'].each do |level|
+      command "#{level} render#{ '-groups' unless level == 'group' }" do |c|
+        syntax(c, "#{ level.upcase + ' ' unless level == 'cluster' }TYPE")
+        c.summary = 'Render the template against the group parameters'
+        case level
+        when 'cluster'
+          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :groups))
+        when 'group'
+          c.action(&Commands::Render.named_commander_proxy(:group, index: :groups))
         end
       end
     end

@@ -23,14 +23,41 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
 module FlightMetal
   module Commands
     class Update < ScopedCommand
+      Params = Struct.new(:params) do
+        def merge_hash
+          params.select { |p| /\A\w+=.*/.match?(p) }
+                .map { |p| p.split('=', 2) }
+                .to_h
+                .symbolize_keys
+        end
+
+        def delete_keys
+          params.select { |p| /\A\w+!/.match?(p) }
+                .map { |p| p[0..-2].to_sym }
+        end
+
+        def update_model(model)
+          model.params = model.params.dup.tap do |hash|
+            hash.merge!(merge_hash)
+            delete_keys.each { |k| hash.delete(k) }
+          end
+        end
+      end
+
       command_require 'flight_metal/models/node'
+
+      def group(*params)
+        Models::Group.update(Config.cluster, model_name_or_error) do |group|
+          Params.new(params).update_model(group)
+        end
+      end
 
       def node(*params, rebuild: nil)
         rebuild = if rebuild.nil?
@@ -40,17 +67,9 @@ module FlightMetal
                   else
                     true
                   end
-        update_hash = params.select { |p| /\A\w+=.*/.match?(p) }
-                            .map { |p| p.split('=', 2) }
-                            .to_h
-                            .symbolize_keys
-        delete_keys = params.select { |p| /\A\w+!/.match?(p) }
-                            .map { |p| p[0..-2].to_sym }
         Models::Node.update(Config.cluster, model_name_or_error) do |node|
-          new = node.params.merge(update_hash)
-          delete_keys.each { |k| new.delete(k) }
-          node.params = new
-          node.rebuild = rebuild unless rebuild.nil?
+          Params.new(params).update_model(node)
+          node.rebuild = rebuild
         end
       end
     end

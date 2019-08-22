@@ -25,23 +25,29 @@
 # https://github.com/openflighthpc/nodeattr_utils
 #==============================================================================
 
-require 'flight_config'
+require 'flight_metal/model'
 require 'flight_metal/models/cluster'
-require 'flight_metal/template_map'
+require 'flight_metal/models/node'
+require 'flight_metal/models/concerns/has_params'
 
 module FlightMetal
   module Models
-    class Group
-      include FlightConfig::Reader
-      include FlightConfig::Updater
-      include FlightConfig::Accessor
-
-      include TemplateMap::PathAccessors
+    class Group < Model
+      include Concerns::HasParams
 
       allow_missing_read
 
+      reserved_param_reader(:name)
+      reserved_param_reader(:cluster)
+      reserved_param_reader(:nodes) { |nodes| nodes.join(',') }
+      reserved_param_reader(:primary_nodes) { |nodes| nodes.join(',') }
+
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'groups', name, *a)
+      end
+
+      def self.cache_join(cluster, name, *a)
+        Models::Cluster.cache_join(cluster, 'groups', name, *a)
       end
 
       def self.path(cluster, name)
@@ -49,21 +55,11 @@ module FlightMetal
       end
       define_input_methods_from_path_parameters
 
-      def self.node_symlink_path(cluster, group, node)
-        join(cluster, group, 'nodes', "#{node}.link")
-      end
-
-      def join(*a)
-        self.class.join(*__inputs__, *a)
-      end
-
-      def node_symlink_path(node)
-        self.class.node_symlink_path(*__inputs__, node)
-      end
-
       TemplateMap.path_methods.each do |method, key|
         define_method(method) { join('libexec', TemplateMap.find_filename(key)) }
         define_path?(method)
+
+        define_method("#{key}_status") { type_status(key) }
       end
       define_type_path_shortcuts
 
@@ -73,29 +69,38 @@ module FlightMetal
       end
       define_type_path_shortcuts(sub: 'template')
 
+      def type_status(type)
+        if type_path?(type)
+          :ready
+        elsif type_template_path?(type)
+          :renderable
+        else
+          :missing
+        end
+      end
+
       def read_cluster
        Models::Cluster.read(cluster, registry: __registry__)
       end
 
-      def read_nodes(primary: false)
-        nodes = Dir.glob(node_symlink_path('*'))
-                   .map do |path|
-          if File.exists? path
-            FlightConfig::Globber::Matcher.new(Models::Node, 2, __registry__)
-                                          .read(Pathname.new(path).readlink.to_s)
-          else
-            FileUtils.rm path # Delete the symlink if it doesn't reference a file
-            nil
-          end
-        end.reject(&:nil?)
-        bad_nodes = nodes.reject { |n| n.groups.include?(name) }
-        bad_nodes.each { |n| FileUtils.rm node_symlink_path(n.name) }
-        good_nodes = nodes - bad_nodes
-        primary ? good_nodes.select { |n| n.primary_group == name } : good_nodes
+      def read_nodes
+        [*read_primary_nodes, *read_other_nodes]
+      end
+
+      def read_other_nodes
+        Models::Node.glob_symlink_proxy(:other_groups, cluster, '*', name)
       end
 
       def read_primary_nodes
-        read_nodes(primary: true)
+        Models::Node.glob_symlink_proxy(:primary_group, cluster, '*', name)
+      end
+
+      def nodes
+        read_nodes.map(&:name)
+      end
+
+      def primary_nodes
+        read_primary_nodes.map(&:name)
       end
     end
   end

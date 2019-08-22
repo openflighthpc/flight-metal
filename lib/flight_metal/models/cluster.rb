@@ -23,31 +23,21 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_config'
-
-require 'pathname'
-
-require 'flight_metal/template_map'
-require 'flight_metal/config'
-require 'flight_metal/registry'
+require 'flight_metal/model'
 
 module FlightMetal
   module Models
-    class Cluster
-      include FlightConfig::Updater
-      include FlightConfig::Globber
-      include FlightConfig::Accessor
-
-      include FlightMetal::FlightConfigUtils
-
-      include TemplateMap::PathAccessors
-
+    class Cluster < Model
       def self.join(identifier, *rest)
         Pathname.new(Config.content_dir).join('clusters', identifier, *rest)
+      end
+
+      def self.cache_join(identifier, *rest)
+        Pathname.new(Config.content_dir).join('cache', 'clusters', identifier, *rest)
       end
 
       def self.path(identifier)
@@ -75,26 +65,12 @@ module FlightMetal
       end
       define_type_path_shortcuts
 
-      def join(*a)
-        self.class.join(*__inputs__, *a)
-      end
-
-      def set_from_manifest(man)
-        self.bmc_user = man.bmc_username unless man.bmc_username.nil?
-        self.bmc_password = man.bmc_password unless man.bmc_password.nil?
-        self.gateway_ip = man.gateway_ip unless man.gateway_ip.nil?
-      end
-
-      def post_hunt_script_path
-        File.join(template_dir, 'post-hunt.sh')
-      end
-
-      def post_hunt_script?
-        File.exists? post_hunt_script_path
-      end
-
       def read_nodes
-        Models::Node.glob_read(identifier, '*')
+        Models::Node.glob_read(identifier, '*', registry: __registry__)
+      end
+
+      def read_groups
+        Models::Group.glob_read(identifier, '*', registry: __registry__)
       end
     end
   end
