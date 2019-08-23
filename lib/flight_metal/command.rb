@@ -137,6 +137,10 @@ module FlightMetal
       end
     end
 
+    def is_primary?
+      [:primary_group, 'primary_group'].include?(level)
+    end
+
     def model_name_or_error
       if model_name.nil? || model_name.empty?
         raise InternalError, <<~ERROR.chomp

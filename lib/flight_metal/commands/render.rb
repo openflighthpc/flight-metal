@@ -32,6 +32,9 @@ module FlightMetal
     class Render < ScopedCommand
       command_require 'flight_metal/template_map', 'flight_metal/models/group'
 
+      RENDER_KEY = /\w*\.?\w+/
+      RENDER_TAG = Regexp.new("%#{RENDER_KEY}%")
+
       def groups(cli_type)
         shared(cli_type, true)
       end
@@ -66,10 +69,10 @@ module FlightMetal
             memo.gsub("%#{key}%", value.to_s)
                 .gsub("%#{prefix}.#{key}%", value.to_s)
           end
-          if !force && /%\w+%/.match?(rendered)
+          if !force && RENDER_TAG.match?(rendered)
             errors = true
-            matches = rendered.scan(/%\w+%/).uniq.sort
-                              .map { |s| /\w+/.match(s).to_s }
+            matches = rendered.scan(RENDER_TAG).uniq.sort
+                              .map { |s| RENDER_KEY.match(s).to_s }
             Log.error_puts <<~ERROR.squish
               Failed to render #{model.name} #{type}:
               The following parameters have not been replaced:

@@ -43,9 +43,15 @@ module FlightMetal
         end
         nodes.each do |node_name|
           Models::Node.update(Config.cluster, node_name) do |node|
-            next if node.other_groups.include?(group_name)
-            next if node.primary_group == group_name
-            node.other_groups = node.other_groups.dup.unshift(group_name)
+            if is_primary? && node.primary_group == group_name
+              # noop
+            elsif is_primary?
+              node.primary_group = read_group.tap(&:__data__).name
+            elsif node.other_groups.include?(group_name)
+              # noop
+            else
+              node.other_groups = node.other_groups.dup.unshift(group_name)
+            end
           end
         end
       end
@@ -61,13 +67,7 @@ module FlightMetal
         end
         nodes.each do |node_name|
           Models::Node.update(Config.cluster, node_name) do |node|
-            if node.primary_group == group_name
-              Log.warn_puts <<~WARN.chomp
-                Can not unassign node '#{node_name}' from its primary group '#{group_name}'
-              WARN
-            else
-              node.other_groups = node.other_groups.dup.tap { |g| g.delete(group_name) }
-            end
+            node.other_groups = node.other_groups.dup.tap { |g| g.delete(group_name) }
           end
         end
       end

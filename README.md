@@ -33,28 +33,30 @@ The following will create a new cluster with three basic nodes and three gpus no
 
 ```
 # Create a new cluster configuration
-> metal init-cluster foo
+> metal cluster create foo
 
 # Create the first three nodes
-> metal create node1
-> metal create node2
-> metal create node3
+> metal node create node1
+> metal node create node2
+> metal node create node3
 
-> metal create gpu1
-> metal create gpu2
-> metal create gpu3
+> metal node create gpu1
+> metal node create gpu2
+> metal node create gpu3
 ```
 
-Next add the nodes to their relevant groups:
+Next create and add the nodes to the relevant primary group
 
 ```
-> metal update node1 groups=nodes
-> metal update node2 groups=nodes
-> metal update node3 groups=nodes
+> metal group create nodes
+> metal update node1 primary_group=nodes
+> metal update node2 primary_group=nodes
+> metal update node3 primary_group=nodes
 
-> metal update gpu1 groups=gpus,nodes
-> metal update gpu2 groups=gpus,nodes
-> metal update gpu3 groups=gpus,nodes
+> metal group create gpus
+> metal update gpu1 primary_group=gpus other_groups=nodes
+> metal update gpu2 primary_group=gpus other_groups=nodes
+> metal update gpu3 primary_group=gpus other_groups=nodes
 ```
 
 In order to build the nodes, they need a mac address and build files. The `metal hunt` command will collect the `mac` as the nodes pxeboot. Alternatively, the mac can be set using an update.
@@ -75,36 +77,37 @@ Saved node1 : ...
 Now the `pxelinux`, `kickstart`, and `dhcp` files need to created. The following will create the `pxelinux` files manually by opening them in the editor. The `--touch` flag is only required when creating a new file, otherwise it is ignored
 
 ```
-> metal edit node1 pxelinux --touch
-> metal edit node2 pxelinux --touch
-> metal edit node3 pxelinux --touch
+> metal node edit node1 pxelinux
+> metal node edit node2 pxelinux
+> metal node edit node3 pxelinux
 ```
 
-Alternatively they can render based on a domain level template. The template must be created first using `metal edit`.
+Alternatively they can render based on a cluster level template. The template must be created first using `metal edit`.
 
 ```
-> metal edit domain kickstart --touch
+> metal cluster edit kickstart
 
 # Render the nodes individually
-> metal render node1 kickstart
-> metal render node2 kickstart
+> metal node render node1 kickstart
+> metal node render node2 kickstart
 ...
 
 # Render all the nodes (including the gpus)
-> metal render --nodes-in nodes kickstart
+> metal group render-nodes nodes kickstart
 ```
 
 Finally it is also possible to render nodes based on a particular group template
 
 ```
-> metal edit --group nodes dhcp
+# Render the group template based off the cluster
+> metal group render nodes dhcp
 # This will only render node[1-3] as the gpu's are not in the primary group
-> metal render --primary-nodes-in nodes dhcp
+> metal group render --primary nodes dhcp
 
 # NOTE: The following command will render both node[1-3] and gpu[1-3]
 #       The regular nodes will use the group template where the gpus will use the domain
-> metal edit domain dhcp --touch
-> metal render --nodes-in nodes dhcp
+> metal cluster edit dhcp --touch
+> metal group render-nodes nodes dhcp
 ```
 
 #### Getting Started with Import
@@ -118,25 +121,34 @@ A full list of existing cluster can be retrieved using the `list-clusters` comma
 
 ```
 # Creates the inital clusters and switches to bar
-> metal init-cluster foo
-> metal init-cluster bar
+> metal cluster create foo
+> metal cluster create bar
 
 # Lists the foo and bar clusters:
-> metal list-clusters
+> metal clusters list
 
 # Switches back to the foo cluster
-> metal switch-cluster foo
+> metal cluster switch foo
 ```
 
 The full details of the configured nodes can be retrieved with the `list` command. This will include the list of nodes and their configuration properties:
 
 ```
 # View the important details about the nodes
-> metal list
+> metal node list
 
 # View all the details about the nodes
-> metal list --verbose
+> metal node list --verbose
 ```
+
+### The rendering system
+
+Each cluster/group/node (aka model) can store its own copy of each content file (kickstart/dhcp/power-on etc.). The cluster and group versions are used as templates to generate the node's version. Only the node's version is used by the commands and build process.
+
+The `cluster edit` and `group edit` commands can be used to generate the initial templates. After this, the `node render` will try and use the node's primary group file as a template. The cluster is then used as a fall back if the primary group file is missing. Groups files can also be rendered against the cluster instead of editing them.
+
+The templating engine replaces tags with values from the model's parameter hash. The tag format must be one of the following: `%<key>%` or `%<prefix>.<key>%`. The `<key>` may represent any key within the model's parameter hash, and will trigger the tag to be replaced with the value. The optional `<prefix>` maybe either `group` or `node`, and is used to specify which level the tag should be rendered at. This is useful if their is duplicate tags (e.g. `name`) at both the group
+and node levels.
 
 ### Collecting MAC Addresses and Updating DHCP
 #### Hunting for MAC

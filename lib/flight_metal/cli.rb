@@ -285,6 +285,7 @@ module FlightMetal
     command 'group add-nodes' do |c|
       syntax(c, 'group nodes')
       c.summary = 'add nodes to the group'
+      c.option '--primary', 'Set the nodes to belong within the primary group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
     end
 
@@ -370,6 +371,21 @@ module FlightMetal
           c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :groups))
         when 'group'
           c.action(&Commands::Render.named_commander_proxy(:group, index: :groups))
+        end
+      end
+    end
+
+    ['cluster', 'group', 'node'].each do |level|
+      command "#{level} cat" do |c|
+        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
+        reference = (level == 'cluster' ? 'the cluster' : "a #{level}")
+        c.summary = "View the render file for #{reference}"
+        case level
+        when 'cluster'
+          c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :cat))
+        else
+          c.option '--template', "View the #{level}'s template"
+          c.action(&Commands::Miscellaneous.named_commander_proxy(level.to_sym, method: :cat))
         end
       end
     end
