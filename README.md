@@ -141,6 +141,15 @@ The full details of the configured nodes can be retrieved with the `list` comman
 > metal node list --verbose
 ```
 
+### The rendering system
+
+Each cluster/group/node (aka model) can store its own copy of each content file (kickstart/dhcp/power-on etc.). The cluster and group versions are used as templates to generate the node's version. Only the node's version is used by the commands and build process.
+
+The `cluster edit` and `group edit` commands can be used to generate the initial templates. After this, the `node render` will try and use the node's primary group file as a template. The cluster is then used as a fall back if the primary group file is missing. Groups files can also be rendered against the cluster instead of editing them.
+
+The templating engine replaces tags with values from the model's parameter hash. The tag format must be one of the following: `%<key>%` or `%<prefix>.<key>%`. The `<key>` may represent any key within the model's parameter hash, and will trigger the tag to be replaced with the value. The optional `<prefix>` maybe either `group` or `node`, and is used to specify which level the tag should be rendered at. This is useful if their is duplicate tags (e.g. `name`) at both the group
+and node levels.
+
 ### Collecting MAC Addresses and Updating DHCP
 #### Hunting for MAC
 
