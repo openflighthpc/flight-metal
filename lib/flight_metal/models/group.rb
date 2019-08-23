@@ -84,7 +84,7 @@ module FlightMetal
       end
 
       def read_nodes
-        [*read_primary_nodes, *read_other_nodes]
+        [*read_primary_nodes, *read_other_nodes].uniq(&:__inputs__)
       end
 
       def read_other_nodes
