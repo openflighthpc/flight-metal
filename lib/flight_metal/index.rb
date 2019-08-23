@@ -41,7 +41,7 @@ module FlightMetal
       indices = super
       indices.reject do |index|
         next if index.valid?
-        File.rm_f index.path
+        FileUtils.rm_f index.path
         true
       end
     end
@@ -51,7 +51,7 @@ module FlightMetal
     def __data__
       @__data__ ||= begin
         if __read_mode__ && !valid?
-          File.rm_f path
+          FileUtils.rm_f path
           raise InvalidModel, <<~ERROR.chomp
             Could not load index as it is invalid
           ERROR

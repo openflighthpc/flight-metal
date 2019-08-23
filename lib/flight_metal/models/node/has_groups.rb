@@ -28,7 +28,7 @@
 #===============================================================================
 
 require 'active_support/concern'
-require 'flight_metal/indices/other_group_and_node'
+require 'flight_metal/indices/group_and_node'
 
 module FlightMetal
   module Models
@@ -64,6 +64,10 @@ module FlightMetal
 
           has_indices(Indices::OtherGroupAndNode) do |create|
             other_groups.each { |group| create.call(cluster, group, name) }
+          end
+
+          has_indices(Indices::PrimaryGroupAndNode) do |create|
+            create.call(cluster, primary_group, name)
           end
         end
 

@@ -31,11 +31,15 @@ require 'flight_metal/index'
 
 module FlightMetal
   module Indices
-    class OtherGroupAndNode < Index
+    class GroupAndNode < Index
       def self.path(cluster, group, node)
-        Models::Cluster.cache_join(cluster, 'other-groups', group, "#{node}.yaml")
+        raise NotImplementedError
       end
       define_input_methods_from_path_parameters
+
+      def is_primary?
+        raise NotImplementedError
+      end
 
       def read_group
         Models::Group.read(cluster, group, registry: __registry__)
@@ -46,7 +50,31 @@ module FlightMetal
       end
 
       def valid?
-        read_node.other_groups.include?(group)
+        if is_primary?
+          read_node.primary_group == group
+        else
+          read_node.other_groups.include?(group)
+        end
+      end
+    end
+
+    class PrimaryGroupAndNode < GroupAndNode
+      def self.path(cluster, group, node)
+        Models::Cluster.cache_join(cluster, 'primary-group', group, "#{node}.yaml")
+      end
+
+      def is_primary?
+        true
+      end
+    end
+
+    class OtherGroupAndNode < GroupAndNode
+      def self.path(cluster, group, node)
+        Models::Cluster.cache_join(cluster, 'other-group', group, "#{node}.yaml")
+      end
+
+      def is_primary?
+        false
       end
     end
   end
