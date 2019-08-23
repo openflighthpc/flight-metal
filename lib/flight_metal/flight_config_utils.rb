@@ -23,7 +23,7 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
@@ -73,9 +73,8 @@ module FlightConfig
 
   module UpdaterPatch
     def create_or_update(config, *a)
-      super
-      if config.respond_to?(:generate_symlinks)
-        config.generate_symlinks
+      super.tap do
+        config.generate_indices if config.respond_to?(:generate_indices)
       end
     end
   end
@@ -114,20 +113,15 @@ module FlightMetal
         end
       end
 
-      def define_symlinks(name)
-        builder = FlightConfig::ConfigSymlinkBuilder.new
-        yield builder
-        @symlink ||= {}
-        @symlink[name.to_sym] = builder
+      def has_indices(klass, &b)
+        @indices ||= []
+        @indices << [klass, b]
       end
 
-      def symlinks
-        base = (defined?(super) ? super : {})
-        base.merge(@symlink || {})
-      end
-
-      def glob_symlink_proxy(type, *a)
-        symlinks[type].glob_read(self, *a)
+      def indices
+        @indices ||= []
+        base = (defined?(super) ? super : [])
+        [*base, *@indices]
       end
     end
 
@@ -135,16 +129,9 @@ module FlightMetal
       base.extend(ClassMethods)
     end
 
-    def generate_symlinks
-      self.class.symlinks.values
-                         .map { |builder| builder.paths.call(self) }
-                         .flatten
-                         .each do |raw_link|
-        link = Pathname.new(raw_link)
-        unless link.exist?
-          FileUtils.mkdir_p link.dirname
-          link.make_symlink(path)
-        end
+    def generate_indices
+      self.class.indices.each do |klass, block|
+        instance_exec(klass.method(:create_or_update), &block)
       end
     end
   end

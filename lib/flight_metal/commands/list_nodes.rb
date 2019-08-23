@@ -112,9 +112,9 @@ module FlightMetal
       def shared(verbose: nil)
         nodes = read_nodes.sort_by(&:name)
 
-        # HACK: Insure all  the symlinks have been generated, is a backup in case
+        # HACK: Insure all the indices have been generated, is a backup in case
         # the file was manually edited
-        nodes.each(&:generate_symlinks)
+        nodes.each(&:generate_indices)
 
         delegets = nodes.each_with_index.map do |node, idx|
           ListDelegator.new(node, verbose: verbose)

@@ -23,42 +23,45 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/model'
+
 module FlightMetal
-  class FlightMetalError < StandardError; end
+  class Index < Model
+    # NOTE: For the time being, all indices must be .yaml b/c TTY::Config is used
+    # to write an empty file
+    # def path(....)
+    #   super
+    # end
 
-  class ImportError < FlightMetalError
-    def self.raise(name, type: 'Node')
-      Kernel.raise self, <<~ERROR
-        #{type} '#{name}' has already been imported
-      ERROR
+    def self.glob_read(*a)
+      indices = super
+      indices.reject do |index|
+        next if index.valid?
+        File.rm_f index.path
+        true
+      end
+    end
+
+    # Spoof the content data so that it doesn't load the file. Instead it will
+    # confirm the index is valid on `read`
+    def __data__
+      @__data__ ||= begin
+        if __read_mode__ && !valid?
+          File.rm_f path
+          raise InvalidModel, <<~ERROR.chomp
+            Could not load index as it is invalid
+          ERROR
+        end
+        TTY::Config.new
+      end
+    end
+
+    def valid?
+      raise NotImplementedError
     end
   end
-
-  class BadMessageError < FlightMetalError
-    MESSAGE = 'Cannot parse message body, ensure it is JSON and not truncated'
-
-    def initialize(msg = MESSAGE)
-      super
-    end
-  end
-
-  class SystemCommandError < FlightMetalError; end
-  class InternalError < FlightMetalError
-    def initialize(msg = 'An unexpected error has occurred')
-      super
-    end
-  end
-  class InvalidInput < FlightMetalError; end
-
-  class InvalidModel < FlightMetalError; end
-  class InvalidIndex < InvalidModel; end
-  class InvalidAction < FlightMetalError; end
-  class MissingFile < FlightMetalError; end
-  class MissingParams < FlightMetalError; end
 end
-
-
