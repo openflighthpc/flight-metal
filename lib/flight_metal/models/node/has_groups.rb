@@ -59,7 +59,7 @@ module FlightMetal
           data_reader(:other_groups) do |groups|
             groups || []
           end
-          data_writer(:other_groups) { |v| v.to_a }
+          data_writer(:other_groups) { |v| v.to_a.uniq }
 
           define_symlinks(:primary_group) do |link|
             link.path_builder do |cluster, node, group|
@@ -95,7 +95,7 @@ module FlightMetal
         end
 
         def groups
-          [primary_group, *other_groups]
+          [primary_group, *other_groups].uniq
         end
 
         def read_groups
