@@ -338,6 +338,16 @@ module FlightMetal
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
     end
 
+    command 'node update' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'Modify the metadata associated with a node'
+      c.option '--rebuild [false]', 'Flag the node to be rebuild. Unset by including false'
+      c.option '--mac ADDRESS', 'Specify the hardware address for the node'
+      c.option '--primary-group GROUP', 'Specify the new primary group for the node'
+      c.option '--other-groups GROUPS', 'A comma separated list of other groups for the node'
+      c.action(&Commands::Update.named_commander_proxy(:node))
+    end
+
     # NOTE: Disable cluster and group list-nodes
     # Consider refactoring
     # ['cluster', 'group', 'node list', 'node show'].each do |level|

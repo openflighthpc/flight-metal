@@ -77,19 +77,21 @@ module FlightMetal
       #   end
       # end
 
-      # def node(*params, rebuild: nil)
-      #   rebuild = if rebuild.nil?
-      #               nil
-      #             elsif [false, 'false'].include?(rebuild)
-      #               false # Treat 'false' as false
-      #             else
-      #               true
-      #             end
-      #   Models::Node.update(Config.cluster, model_name_or_error) do |node|
-      #     Params.new(params).update_model(node)
-      #     node.rebuild = rebuild unless rebuild.nil?
-      #   end
-      # end
+      def node(*params, rebuild: nil, primary_group: nil, other_groups: nil, mac: nil)
+        rebuild = if rebuild.nil?
+                    nil
+                  elsif [false, 'false'].include?(rebuild)
+                    false # Treat 'false' as false
+                  else
+                    true
+                  end
+        Models::Node.update(Config.cluster, model_name_or_error) do |node|
+          node.rebuild = rebuild unless rebuild.nil?
+          node.primary_group = primary_group if primary_group
+          node.other_groups = other_groups.split(',') if other_groups
+          node.mac = mac if mac
+        end
+      end
     end
   end
 end
