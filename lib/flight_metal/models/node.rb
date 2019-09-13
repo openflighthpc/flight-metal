@@ -38,6 +38,8 @@ module FlightMetal
     class Node < Model
       # Must be required after the class declaration
       require 'flight_metal/models/node/has_groups'
+
+      include Concerns::HasParams
       include HasGroups
 
       def self.join(cluster, name, *a)
@@ -56,19 +58,12 @@ module FlightMetal
         end
       end
 
-      include Concerns::HasParams
-      named_param_reader(:mac)
-      named_param_writer(:primary_group) do |primary|
-        primary || ''
-      end
+      reserved_param_reader(:mac)
 
-      named_param_reader(:other_groups) do |groups|
+      reserved_param_reader(:other_groups) do |groups|
         groups.empty? ? nil : groups.join(',')
       end
-
-      named_param_writer(:other_groups) do |groups_str|
-        (groups_str.nil? || groups_str.empty?) ? [] : groups_str.split(',')
-      end
+      reserved_param_reader(:primary_group)
 
       reserved_param_reader(:name)
       reserved_param_reader(:cluster)

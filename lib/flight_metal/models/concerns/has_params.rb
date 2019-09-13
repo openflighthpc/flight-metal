@@ -63,6 +63,8 @@ module FlightMetal
           end
         end
 
+        # NOTE: The named_param_reader and _writer are nolonger being used
+        # Consider refactoring
         class_methods do
           def named_param_reader(name, &b)
             named_params[:reader][name.to_sym] = b
