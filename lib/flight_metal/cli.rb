@@ -98,21 +98,20 @@ module FlightMetal
     # TODO: Remove me when refactoring is done
     def self.xcommand(*_a); end
 
+    help_action_lambda = lambda do |*_|
+      raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
+        Select from the following commands:
+      ERROR
+    end
 
     ['cluster', 'group', 'node'].each do |level|
       # This is caught by Commander and triggers the help text to be displayed
-      help_action = lambda do |*_|
-        raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
-          Select from the following commands:
-        ERROR
-      end
-
       command level do |c|
         syntax(c, hidden: false)
         snippet = (level == 'node' ? 'a node resource' : "the #{level} resource")
         c.summary = "View, configure, or manage #{snippet}"
         c.sub_command_group = true
-        c.action(&help_action)
+        c.action(&help_action_lambda)
       end
 
       command "#{level} run" do |c|
@@ -123,14 +122,14 @@ module FlightMetal
           c.summary = "Execute an action on all the nodes within the #{level}"
         end
         c.sub_command_group = true
-        c.action(&help_action)
+        c.action(&help_action_lambda)
       end
 
       command "#{level} file" do |c|
         syntax(c)
         c.summary = "View and update the content files for the #{level}"
         c.sub_command_group = true
-        c.action(&help_action)
+        c.action(&help_action_lambda)
       end
     end
 
@@ -305,14 +304,21 @@ module FlightMetal
       c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :list_groups))
     end
 
-    command 'group add-nodes' do |c|
+    command 'group nodes' do |c|
+      syntax(c)
+      c.summary = 'Manage the nodes within the group'
+      c.sub_command_group = true
+      c.action(&help_action_lambda)
+    end
+
+    command 'group nodes add' do |c|
       syntax(c, 'group nodes')
       c.summary = 'add nodes to the group'
       c.option '--primary', 'Set the nodes to belong within the primary group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
     end
 
-    command 'group remove-nodes' do |c|
+    command 'group nodes remove' do |c|
       syntax(c, 'group nodes')
       c.summary = 'remove the nodes from the group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
