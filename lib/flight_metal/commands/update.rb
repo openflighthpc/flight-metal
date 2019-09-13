@@ -51,11 +51,23 @@ module FlightMetal
         end
       end
 
-      command_require 'flight_metal/models/node'
+      command_require 'flight_metal/models/node', 'tty-editor'
 
       def params(*params)
         model_class.update(*read_model.__inputs__) do |model|
           Params.new(params).update_model(model)
+        end
+      end
+
+      def params_editor
+        model_class.update(*read_model.__inputs__) do |model|
+          yaml = YAML.dump(model.non_reserved_params)
+          Tempfile.open("#{model.name}-parameters", '/tmp') do |file|
+            file.write(yaml)
+            file.rewind
+            TTY::Editor.open(file.path)
+            model.params = YAML.safe_load(file.read, permitted_classes: [Symbol])
+          end
         end
       end
 
