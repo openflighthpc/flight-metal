@@ -228,7 +228,14 @@ module FlightMetal
     end
 
     ['node', 'group'].each do |level|
-      command "#{level} update" do |c|
+      command "#{level} parameters" do |c|
+        syntax(c)
+        c.summary = "Manage the parameters for a #{level}"
+        c.sub_command_group = true
+        c.action(&help_action_lambda)
+      end
+
+      command "#{level} parameters update" do |c|
         syntax(c, "#{level.upcase} [PARAMS...]")
         c.summary = "Modify the #{level}'s parameters"
         c.description = <<~DESC
@@ -243,9 +250,9 @@ module FlightMetal
         when 'node'
           c.option '--rebuild [false]',
                    "Flag the node to be rebuilt. Unset by including 'false'"
-          c.action(&Commands::Update.named_commander_proxy(:node))
+          c.action(&Commands::Update.named_commander_proxy(:node, method: :params))
         when 'group'
-          c.action(&Commands::Update.named_commander_proxy(:group))
+          c.action(&Commands::Update.named_commander_proxy(:group, method: :params))
         end
       end
     end

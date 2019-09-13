@@ -53,25 +53,31 @@ module FlightMetal
 
       command_require 'flight_metal/models/node'
 
-      def group(*params)
-        Models::Group.update(Config.cluster, model_name_or_error) do |group|
-          Params.new(params).update_model(group)
+      def params(*params)
+        model_class.update(*read_model.__inputs__) do |model|
+          Params.new(params).update_model(model)
         end
       end
 
-      def node(*params, rebuild: nil)
-        rebuild = if rebuild.nil?
-                    nil
-                  elsif [false, 'false'].include?(rebuild)
-                    false # Treat 'false' as false
-                  else
-                    true
-                  end
-        Models::Node.update(Config.cluster, model_name_or_error) do |node|
-          Params.new(params).update_model(node)
-          node.rebuild = rebuild unless rebuild.nil?
-        end
-      end
+      # def group(*params)
+      #   Models::Group.update(Config.cluster, model_name_or_error) do |group|
+      #     Params.new(params).update_model(group)
+      #   end
+      # end
+
+      # def node(*params, rebuild: nil)
+      #   rebuild = if rebuild.nil?
+      #               nil
+      #             elsif [false, 'false'].include?(rebuild)
+      #               false # Treat 'false' as false
+      #             else
+      #               true
+      #             end
+      #   Models::Node.update(Config.cluster, model_name_or_error) do |node|
+      #     Params.new(params).update_model(node)
+      #     node.rebuild = rebuild unless rebuild.nil?
+      #   end
+      # end
     end
   end
 end
