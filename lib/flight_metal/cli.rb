@@ -115,7 +115,7 @@ module FlightMetal
     end
 
     ['cluster', 'group', 'node'].each do |level|
-      command "#{level} build" do |c|
+      command "#{level} run build" do |c|
         level == 'cluster' ? syntax(c) : syntax(c, level.upcase)
         c.summary = 'Run the pxelinux build server'
         c.description = <<~DESC
@@ -268,7 +268,10 @@ module FlightMetal
       c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
     end
 
-    ['cluster list-groups', 'group list'].each do |name|
+    # NOTE: Disable the cluster list-groups command as a duplicate
+    # Consider refactoring if it is permanently removed
+    # ['cluster list-groups', 'group list'].each do |name|
+    ['group list'].each do |name|
       command name do |c|
         syntax(c)
         c.summary = "Display the list of groups"
@@ -295,7 +298,10 @@ module FlightMetal
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
     end
 
-    ['cluster', 'group', 'node list', 'node show'].each do |level|
+    # NOTE: Disable cluster and group list-nodes
+    # Consider refactoring
+    # ['cluster', 'group', 'node list', 'node show'].each do |level|
+    ['node list', 'node show'].each do |level|
       name = case level
              when 'cluster'; 'cluster list-nodes'
              when 'group'; 'group list-nodes'
@@ -361,7 +367,10 @@ module FlightMetal
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
     # Define the nodes rendering commands
-    ['cluster', 'group', 'node'].each do |level|
+    # NOTE: Disable cluster/group render-nodes methods
+    # Consider refactoring
+    # ['cluster', 'group', 'node'].each do |level|
+    ['node'].each do |level|
       command "#{level} render#{ '-nodes' unless level == 'node'}" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         c.summary = 'Render the template against the node parameters'
@@ -380,7 +389,10 @@ module FlightMetal
     end
 
     # Define the groups rendering commands
-    ['cluster', 'group'].each do |level|
+    # NOTE: Disable the 'cluster render-groups' command for the time being
+    # Consider refactoring if it is permanently commented out
+    # ['cluster', 'group'].each do |level|
+    ['group'].each do |level|
       command "#{level} render#{ '-groups' unless level == 'group' }" do |c|
         syntax(c, "#{ level.upcase + ' ' unless level == 'cluster' }TYPE")
         c.summary = 'Render the template against the group parameters'
