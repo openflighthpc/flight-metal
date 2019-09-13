@@ -77,7 +77,25 @@ module FlightMetal
       #   end
       # end
 
-      def node(*params, rebuild: nil, primary_group: nil, other_groups: nil, mac: nil)
+      def node_editor
+        node = read_node
+        keys = [:rebuild, :primary_group, :other_groups, :mac]
+        orginals = keys.map { |k| [k, node.public_send(k)] }.to_h
+        yaml = YAML.dump(orginals)
+        new = nil
+        Tempfile.open("#{node.name}-metadata", '/tmp') do |file|
+          file.write(yaml)
+          file.rewind
+          TTY::Editor.open(file.path)
+          new = YAML.safe_load(file.read, permitted_classes: [Symbol])
+        end
+        new.select! { |k, _| keys.include?(k) }
+        Models::Node.update(*node.__inputs__) do |update|
+          keys.each { |k| update.public_send("#{k}=", new[k]) }
+        end
+      end
+
+      def node(rebuild: nil, primary_group: nil, other_groups: nil, mac: nil)
         rebuild = if rebuild.nil?
                     nil
                   elsif [false, 'false'].include?(rebuild)

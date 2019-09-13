@@ -348,6 +348,12 @@ module FlightMetal
       c.action(&Commands::Update.named_commander_proxy(:node))
     end
 
+    command 'node edit' do |c|
+      syntax(c, 'NODE')
+      c.summary = "Modify the node's metadata via the editor"
+      c.action(&Commands::Update.named_commander_proxy(:node, method: :node_editor))
+    end
+
     # NOTE: Disable cluster and group list-nodes
     # Consider refactoring
     # ['cluster', 'group', 'node list', 'node show'].each do |level|
