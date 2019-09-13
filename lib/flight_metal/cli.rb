@@ -321,10 +321,28 @@ module FlightMetal
       end
     end
 
+    ['cluster', 'group', 'node'].each do |level|
+      command "#{level} run" do |c|
+        syntax(c)
+        if level == 'node'
+          c.summary = 'Execute an action on the node'
+        else
+          c.summary = "Execute an action on all the nodes within the #{level}"
+        end
+        c.sub_command_group = true
+        c.action do
+          # This is caught by Commander and triggers the help text to be displayed
+          raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
+            Select from the following commands:
+          ERROR
+        end
+      end
+    end
+
     def self.plugin_command(name)
       method = name.gsub('-', '_').to_sym
       ['cluster', 'group', 'node'].each do |level|
-        command "#{level} #{name}" do |c|
+        command "#{level} run #{name}" do |c|
           syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}[SHELL_ARGS...]")
           c.summary = "Run the #{c.name} script"
           case level
