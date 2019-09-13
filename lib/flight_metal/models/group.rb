@@ -29,6 +29,7 @@ require 'flight_metal/model'
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/node'
 require 'flight_metal/models/concerns/has_params'
+require 'flight_metal/indices/group_and_node'
 
 module FlightMetal
   module Models
@@ -88,11 +89,11 @@ module FlightMetal
       end
 
       def read_other_nodes
-        Models::Node.glob_symlink_proxy(:other_groups, cluster, '*', name)
+        Indices::OtherGroupAndNode.glob_read(cluster, name, '*').map(&:read_node)
       end
 
       def read_primary_nodes
-        Models::Node.glob_symlink_proxy(:primary_group, cluster, '*', name)
+        Indices::PrimaryGroupAndNode.glob_read(cluster, name, '*').map(&:read_node)
       end
 
       def nodes

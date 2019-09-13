@@ -28,6 +28,7 @@
 #===============================================================================
 
 require 'active_support/concern'
+require 'flight_metal/indices/group_and_node'
 
 module FlightMetal
   module Models
@@ -61,36 +62,12 @@ module FlightMetal
           end
           data_writer(:other_groups) { |v| v.to_a.uniq }
 
-          define_symlinks(:primary_group) do |link|
-            link.path_builder do |cluster, node, group|
-              Models::Group.cache_join(cluster, group, 'primary-nodes', node + '.link')
-            end
-
-            link.paths do |n|
-              [link.path_builder.call(n.cluster, n.name, n.primary_group)]
-            end
-
-            link.validate do |n, link_path|
-              regex = /#{link.path_builder.call(n.cluster, n.name, '(?<group>.*)')}/
-              group = link_path.to_s.match(regex)[:group]
-              n.primary_group == group
-            end
+          has_indices(Indices::OtherGroupAndNode) do |create|
+            other_groups.each { |group| create.call(cluster, group, name) }
           end
 
-          define_symlinks(:other_groups) do |link|
-            link.path_builder do |cluster, node, group|
-              Models::Group.cache_join(cluster, group, 'other-nodes', node + '.link')
-            end
-
-            link.paths do |n|
-              n.other_groups.map { |g| link.path_builder.call(n.cluster, n.name, g) }
-            end
-
-            link.validate do |n, link_path|
-              regex = /#{link.path_builder.call(n.cluster, n.name, '(?<group>.*)')}/
-              group = link_path.to_s.match(regex)[:group]
-              n.groups.include?(group)
-            end
+          has_indices(Indices::PrimaryGroupAndNode) do |create|
+            create.call(cluster, primary_group, name)
           end
         end
 
