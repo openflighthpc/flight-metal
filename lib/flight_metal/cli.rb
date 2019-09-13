@@ -100,17 +100,37 @@ module FlightMetal
 
 
     ['cluster', 'group', 'node'].each do |level|
+      # This is caught by Commander and triggers the help text to be displayed
+      help_action = lambda do |*_|
+        raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
+          Select from the following commands:
+        ERROR
+      end
+
       command level do |c|
         syntax(c, hidden: false)
         snippet = (level == 'node' ? 'a node resource' : "the #{level} resource")
         c.summary = "View, configure, or manage #{snippet}"
         c.sub_command_group = true
-        c.action do
-          # This is caught by Commander and triggers the help text to be displayed
-          raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
-            Select from the following commands:
-          ERROR
+        c.action(&help_action)
+      end
+
+      command "#{level} run" do |c|
+        syntax(c)
+        if level == 'node'
+          c.summary = 'Execute an action on the node'
+        else
+          c.summary = "Execute an action on all the nodes within the #{level}"
         end
+        c.sub_command_group = true
+        c.action(&help_action)
+      end
+
+      command "#{level} file" do |c|
+        syntax(c)
+        c.summary = "View and update the content files for the #{level}"
+        c.sub_command_group = true
+        c.action(&help_action)
       end
     end
 
@@ -188,7 +208,7 @@ module FlightMetal
     end
 
     ['cluster', 'node', 'group'].each do |level|
-      command "#{level} edit" do |c|
+      command "#{level} file edit" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         c.summary = 'Open a managed node file in the editor'
         c.description = <<~DESC.chomp
@@ -327,24 +347,6 @@ module FlightMetal
       end
     end
 
-    ['cluster', 'group', 'node'].each do |level|
-      command "#{level} run" do |c|
-        syntax(c)
-        if level == 'node'
-          c.summary = 'Execute an action on the node'
-        else
-          c.summary = "Execute an action on all the nodes within the #{level}"
-        end
-        c.sub_command_group = true
-        c.action do
-          # This is caught by Commander and triggers the help text to be displayed
-          raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
-            Select from the following commands:
-          ERROR
-        end
-      end
-    end
-
     def self.plugin_command(name)
       method = name.gsub('-', '_').to_sym
       ['cluster', 'group', 'node'].each do |level|
@@ -371,7 +373,7 @@ module FlightMetal
     # Consider refactoring
     # ['cluster', 'group', 'node'].each do |level|
     ['node'].each do |level|
-      command "#{level} render#{ '-nodes' unless level == 'node'}" do |c|
+      command "#{level} file render#{ '-nodes' unless level == 'node'}" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         c.summary = 'Render the template against the node parameters'
         c.option '--force', 'Allow missing tags when writing the file'
@@ -393,7 +395,7 @@ module FlightMetal
     # Consider refactoring if it is permanently commented out
     # ['cluster', 'group'].each do |level|
     ['group'].each do |level|
-      command "#{level} render#{ '-groups' unless level == 'group' }" do |c|
+      command "#{level} file render#{ '-groups' unless level == 'group' }" do |c|
         syntax(c, "#{ level.upcase + ' ' unless level == 'cluster' }TYPE")
         c.summary = 'Render the template against the group parameters'
         case level
@@ -406,7 +408,7 @@ module FlightMetal
     end
 
     ['cluster', 'group', 'node'].each do |level|
-      command "#{level} cat" do |c|
+      command "#{level} file show" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         reference = (level == 'cluster' ? 'the cluster' : "a #{level}")
         c.summary = "View the render file for #{reference}"
