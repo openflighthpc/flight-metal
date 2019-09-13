@@ -317,15 +317,23 @@ module FlightMetal
       c.action(&help_action_lambda)
     end
 
+    command 'group nodes list' do |c|
+      syntax(c, 'GROUP')
+      c.summary = 'List all the nodes within the group'
+      c.option '--primary', 'Only list the nodes within the primary group'
+      c.option '--verbose', 'Show greater details'
+      c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
+    end
+
     command 'group nodes add' do |c|
-      syntax(c, 'group nodes')
+      syntax(c, 'GROUP NODES')
       c.summary = 'add nodes to the group'
       c.option '--primary', 'Set the nodes to belong within the primary group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
     end
 
     command 'group nodes remove' do |c|
-      syntax(c, 'group nodes')
+      syntax(c, 'GROUP NODES')
       c.summary = 'remove the nodes from the group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
     end
