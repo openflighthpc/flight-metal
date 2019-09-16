@@ -14,7 +14,7 @@ GEM
       tzinfo (~> 1.1)
     byebug (11.0.1)
     coderay (1.1.2)
-    commander-openflighthpc (1.1.1)
+    commander-openflighthpc (1.1.2)
       highline (~> 1.7.2)
       paint (~> 2.1.0)
     concurrent-ruby (1.1.5)

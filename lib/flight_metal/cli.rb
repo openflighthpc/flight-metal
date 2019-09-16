@@ -64,7 +64,6 @@ module FlightMetal
     program :help_paging, false
 
     def self.run!
-      ARGV.push '--help' if ARGV.empty?
       Log.info "Command: #{Config.app_name} #{ARGV.join(' ')}"
       super
     end
@@ -98,12 +97,6 @@ module FlightMetal
     # TODO: Remove me when refactoring is done
     def self.xcommand(*_a); end
 
-    help_action_lambda = lambda do |*_|
-      raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
-        Select from the following commands:
-      ERROR
-    end
-
     ['cluster', 'group', 'node'].each do |level|
       # This is caught by Commander and triggers the help text to be displayed
       command level do |c|
@@ -111,7 +104,6 @@ module FlightMetal
         snippet = (level == 'node' ? 'a node resource' : "the #{level} resource")
         c.summary = "View, configure, or manage #{snippet}"
         c.sub_command_group = true
-        c.action(&help_action_lambda)
       end
 
       command "#{level} run" do |c|
@@ -122,14 +114,12 @@ module FlightMetal
           c.summary = "Execute an action on all the nodes within the #{level}"
         end
         c.sub_command_group = true
-        c.action(&help_action_lambda)
       end
 
       command "#{level} file" do |c|
         syntax(c)
         c.summary = "View and update the content files for the #{level}"
         c.sub_command_group = true
-        c.action(&help_action_lambda)
       end
     end
 
@@ -232,7 +222,6 @@ module FlightMetal
         syntax(c)
         c.summary = "Manage the parameters for a #{level}"
         c.sub_command_group = true
-        c.action(&help_action_lambda)
       end
 
       command "#{level} parameters update" do |c|
@@ -314,7 +303,6 @@ module FlightMetal
       syntax(c)
       c.summary = 'Manage the nodes within the group'
       c.sub_command_group = true
-      c.action(&help_action_lambda)
     end
 
     command 'group nodes list' do |c|
