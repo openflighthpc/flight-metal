@@ -38,6 +38,7 @@ module FlightMetal
       def self.path(cluster, name)
         join(cluster, name, 'etc', 'config.yaml')
       end
+      define_input_methods_from_path_parameters
 
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'nodes', name, 'machine', *a)
@@ -61,7 +62,7 @@ module FlightMetal
       end
 
       def source_model(type)
-        if (node = read_node).template?(type)
+        if (node = read_node).template?(type, to: :machine)
           node
         else
           nil

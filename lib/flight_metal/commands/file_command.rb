@@ -65,7 +65,35 @@ module FlightMetal
         end
       end
 
+      def source(cli_type)
+        model = read_model
+        type = TemplateMap.lookup_key(cli_type)
+        source = model.source_model(type)
+        if source
+          level = case source
+                  when Models::Node
+                    'node'
+                  when Models::Cluster
+                    'cluster'
+                  else
+                    raise InternalError, 'An unexpected error has occurred'
+                  end
+          puts "Level: #{level}"
+          puts " Path: #{source.template_path(type, to: deployable_type)}"
+        else
+          Log.warn_puts "Could not locate a #{cli_type} source template for #{model.name}"
+        end
+      end
+
       private
+
+      def deployable_type
+        if model_class == Models::Machine
+          :machine
+        else
+          raise InternalError, 'an unexpected error has occurred'
+        end
+      end
 
       def runner(cli_type, missing: false)
         type = TemplateMap.lookup_key(cli_type)
