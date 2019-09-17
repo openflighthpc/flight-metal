@@ -45,6 +45,7 @@ require 'flight_metal/commands/file_command'
 require 'flight_metal/commands/group_nodes'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
+require 'flight_metal/commands/list'
 require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
 require 'flight_metal/commands/template'
@@ -296,7 +297,7 @@ module FlightMetal
       c.summary = 'List all the nodes within the group'
       c.option '--primary', 'Only list the nodes within the primary group'
       c.option '--verbose', 'Show greater details'
-      c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
+      c.action(&Commands::List.named_commander_proxy(:group, index: :nodes))
     end
 
     command 'group nodes add' do |c|
@@ -322,39 +323,16 @@ module FlightMetal
       c.action(&Commands::Update.named_commander_proxy(:node))
     end
 
+    command 'node list' do |c|
+      syntax(c)
+      c.summary = 'Display all the nodes in the cluster'
+      c.action(&Commands::List.unnamed_commander_proxy(:cluster, index: :nodes))
+    end
+
     command 'node edit' do |c|
       syntax(c, 'NODE')
       c.summary = "Modify the node's metadata via the editor"
       c.action(&Commands::Update.named_commander_proxy(:node, method: :node_editor))
-    end
-
-    # NOTE: Disable cluster and group list-nodes
-    # Consider refactoring
-    # ['cluster', 'group', 'node list', 'node show'].each do |level|
-    ['node list', 'node show'].each do |level|
-      name = case level
-             when 'cluster'; 'cluster list-nodes'
-             when 'group'; 'group list-nodes'
-             else; level
-             end
-      command name do |c|
-        c.option '--verbose', 'Show greater details'
-        case level
-        when 'cluster', 'node list'
-          syntax(c)
-          c.summary = 'List all the nodes within the cluster'
-          c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster, method: :shared))
-        when 'group'
-          syntax(c, 'GROUP')
-          c.summary = 'List all the nodes within the group'
-          c.option '--primary', 'Only list nodes within the primary group'
-          c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
-        when 'node show'
-          syntax(c, 'NODE')
-          c.summary = 'View the node state and configuration'
-          c.action(&Commands::ListNodes.named_commander_proxy(:node, method: :shared))
-        end
-      end
     end
 
     def self.plugin_command(name)
