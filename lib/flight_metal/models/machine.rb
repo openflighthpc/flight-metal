@@ -27,6 +27,7 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/template_map'
 require 'flight_metal/models/cluster'
 
 module FlightMetal
@@ -44,6 +45,19 @@ module FlightMetal
 
       def read_node
         Models::Node.read(*__inputs__, registry: __registry__)
+      end
+
+      def file_path(type)
+        TemplateMap.raise_unless_valid_type(type)
+        join('rendered', TemplateMap.find_filename(type))
+      end
+
+      def file?(type)
+        File.exists? file_path(type)
+      end
+
+      def template_model(type)
+        raise NotImplementedError
       end
     end
   end
