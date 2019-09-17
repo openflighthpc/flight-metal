@@ -237,6 +237,10 @@ module FlightMetal
 
       private
 
+      def deployable_type
+        :machine
+      end
+
       def raise_unless_valid_template_target(value)
         return if value == :machine
         raise InvalidInput, <<~ERROR.squish

@@ -67,14 +67,14 @@ module FlightMetal
 
       def render(cli_type)
         runner(cli_type) do |model, type|
-          puts model.renderer(type, source: model, to: template_scope).rendered
+          puts model.renderer(type, source: model).rendered
         end
       end
 
       def render_node(node_name, cli_type)
         node = Models::Node.read(Config.cluster, node_name).tap(&:__data__)
         runner(cli_type) do |source, type|
-          puts node.renderer(type, source: source, to: :machine).rendered
+          puts node.renderer(type, source: source).rendered
         end
       end
 

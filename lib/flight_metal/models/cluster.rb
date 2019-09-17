@@ -69,6 +69,10 @@ module FlightMetal
 
       private
 
+      def deployable_type
+        :domain
+      end
+
       def raise_unless_valid_template_target(to)
         return if to == :machine
         raise InvalidInput, <<~ERROR.chomp

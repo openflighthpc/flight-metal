@@ -50,12 +50,16 @@ module FlightMetal
           File.read template_path(*a)
         end
 
-        def renderer(type, source:, to:)
-          path = source.template_path(type, to: to)
+        def renderer(type, source:)
+          path = source.template_path(type, to: deployable_type)
           Renderer.new(self, path)
         end
 
         private
+
+        def deployable_type
+          raise NotImplementedError
+        end
 
         def raise_unless_valid_template_target(_to)
           raise NotImplementedError
