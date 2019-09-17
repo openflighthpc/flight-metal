@@ -92,13 +92,22 @@ module FlightMetal
         end
       end
 
-      TemplateMap.path_methods.each do |method, type|
-        define_method(method) do
-          join('libexec', TemplateMap.find_filename(type))
-        end
-        define_path?(method)
+      def template_path(type)
+        TemplateMap.raise_unless_valid_type(type)
+        join('templates', TemplateMap.find_filename(type))
       end
-      define_type_path_shortcuts
+
+      def template?(type)
+        File.exists? template_path(type)
+      end
+
+      # TemplateMap.path_methods.each do |method, type|
+      #   define_method(method) do
+      #     join('libexec', TemplateMap.find_filename(type))
+      #   end
+      #   define_path?(method)
+      # end
+      # define_type_path_shortcuts
 
       # TemplateMap.path_methods(sub: 'template').each do |method, type|
       #   define_method("#{type}_template_model") do
@@ -113,27 +122,27 @@ module FlightMetal
       # end
       # define_type_path_shortcuts(sub: 'template')
 
-      def type_template_model(type)
-        public_send("#{type}_template_model")
-      end
+      # def type_template_model(type)
+      #   public_send("#{type}_template_model")
+      # end
 
-      def pxelinux_system_path
-        if mac
-          File.join(Config.tftpboot_dir,
-                    'pxelinux.cfg',
-                    '01-' + mac.downcase.gsub(':', '-'))
-        else
-          nil
-        end
-      end
+      # def pxelinux_system_path
+      #   if mac
+      #     File.join(Config.tftpboot_dir,
+      #               'pxelinux.cfg',
+      #               '01-' + mac.downcase.gsub(':', '-'))
+      #   else
+      #     nil
+      #   end
+      # end
 
-      def kickstart_system_path
-        File.join(Config.kickstart_dir, name + '.ks')
-      end
+      # def kickstart_system_path
+      #   File.join(Config.kickstart_dir, name + '.ks')
+      # end
 
-      def dhcp_system_path
-        File.join(Config.dhcpd_dir, name + '.conf')
-      end
+      # def dhcp_system_path
+      #   File.join(Config.dhcpd_dir, name + '.conf')
+      # end
 
       # define_type_path_shortcuts(sub: 'system')
 

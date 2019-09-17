@@ -56,8 +56,26 @@ module FlightMetal
         File.exists? file_path(type)
       end
 
-      def template_model(type)
-        raise NotImplementedError
+      def source_model(type)
+        if (node = read_node).template?(type)
+          node
+        else
+          nil
+        end
+      end
+
+      def source?(type)
+        source_model(type) ? true : false
+      end
+
+      def source_path(type)
+        if model = source_model(type)
+          model.template_path(type)
+        else
+          raise InvalidModel, <<~ERROR
+            Could not locate the source template for '#{name}' #{type} file
+          ERROR
+        end
       end
     end
   end
