@@ -33,7 +33,7 @@ require 'flight_metal/models/group'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
 require 'flight_metal/models/concerns/has_params'
-require 'flight_metal/renderer'
+require 'flight_metal/models/concerns/has_templates'
 
 module FlightMetal
   module Models
@@ -42,6 +42,7 @@ module FlightMetal
       require 'flight_metal/models/node/has_groups'
 
       include Concerns::HasParams
+      include Concerns::HasTemplates
       include HasGroups
 
       def self.join(cluster, name, *a)
@@ -91,28 +92,6 @@ module FlightMetal
         else
           hwaddr.to_s
         end
-      end
-
-      def template_path(type, to:)
-        TemplateMap.raise_unless_valid_type(type)
-        raise_unless_machine(to)
-        join(to.to_s, 'templates', TemplateMap.find_filename(type))
-      end
-
-      def template?(type, to:)
-        raise_unless_machine(to)
-        File.exists? template_path(type, to: to)
-      end
-
-      def read_template(type, to:)
-        raise_unless_machine(to)
-        File.read template_path(type, to: to)
-      end
-
-      def renderer(type, source:, to:)
-        raise_unless_machine(to)
-        path = source.template_path(type, to: to)
-        Renderer.new(self, path)
       end
 
       # TemplateMap.path_methods.each do |method, type|
@@ -258,7 +237,11 @@ module FlightMetal
 
       private
 
-      def raise_unless_machine(value)
+      def build_template_path(type, to:)
+        join(to.to_s, 'templates', TemplateMap.find_filename(type))
+      end
+
+      def raise_unless_valid_template_target(value)
         return if value == :machine
         raise InvalidInput, <<~ERROR.squish
           Nodes do not store templates for a #{value}
