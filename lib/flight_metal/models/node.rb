@@ -99,18 +99,18 @@ module FlightMetal
       end
       define_type_path_shortcuts
 
-      TemplateMap.path_methods(sub: 'template').each do |method, type|
-        define_method("#{type}_template_model") do
-          return read_primary_group if read_primary_group.type_path?(type)
-          return read_cluster if read_cluster.type_path?(type)
-        end
+      # TemplateMap.path_methods(sub: 'template').each do |method, type|
+      #   define_method("#{type}_template_model") do
+      #     return read_primary_group if read_primary_group.type_path?(type)
+      #     return read_cluster if read_cluster.type_path?(type)
+      #   end
 
-        define_method(method) do
-          type_template_model(type)&.type_path(type)
-        end
-        define_path?(method)
-      end
-      define_type_path_shortcuts(sub: 'template')
+      #   define_method(method) do
+      #     type_template_model(type)&.type_path(type)
+      #   end
+      #   define_path?(method)
+      # end
+      # define_type_path_shortcuts(sub: 'template')
 
       def type_template_model(type)
         public_send("#{type}_template_model")
@@ -134,57 +134,57 @@ module FlightMetal
         File.join(Config.dhcpd_dir, name + '.conf')
       end
 
-      define_type_path_shortcuts(sub: 'system')
+      # define_type_path_shortcuts(sub: 'system')
 
-      [:kickstart, :pxelinux, :dhcp].each do |type|
-        define_path?(TemplateMap.path_method(type, sub: 'system'))
+      # [:kickstart, :pxelinux, :dhcp].each do |type|
+      #   define_path?(TemplateMap.path_method(type, sub: 'system'))
 
-        define_method("#{type}_status") do |error: true|
-          if type_path?(type) && type_system_path?(type, symlink: true)
-            rendered = Pathname.new(type_path(type))
-            system = Pathname.new(type_system_path(type))
-            if system.symlink? && File.identical?(system.readlink, rendered)
-              :installed
-            elsif error && system.symlink?
-              raise InvalidModel, <<~ERROR.chomp
-                '#{name}' system file is linked incorrectly. Fix the link and try again
-                Link Source: #{system}
-                Correct:     #{system.readlink}
-                Incorrect:   #{rendered}
-              ERROR
-            elsif error
-              raise InvalidModel, <<~ERROR.chomp
-                '#{name}' system file already exists, please remove it and try again
-                File: #{system}
-              ERROR
-            else
-              :invalid
-            end
-          elsif type_path?(type)
-            :pending
-          elsif type_template_path?(type)
-            :renderable
-          else
-            :missing
-          end
-        end
-      end
+      #   define_method("#{type}_status") do |error: true|
+      #     if type_path?(type) && type_system_path?(type, symlink: true)
+      #       rendered = Pathname.new(type_path(type))
+      #       system = Pathname.new(type_system_path(type))
+      #       if system.symlink? && File.identical?(system.readlink, rendered)
+      #         :installed
+      #       elsif error && system.symlink?
+      #         raise InvalidModel, <<~ERROR.chomp
+      #           '#{name}' system file is linked incorrectly. Fix the link and try again
+      #           Link Source: #{system}
+      #           Correct:     #{system.readlink}
+      #           Incorrect:   #{rendered}
+      #         ERROR
+      #       elsif error
+      #         raise InvalidModel, <<~ERROR.chomp
+      #           '#{name}' system file already exists, please remove it and try again
+      #           File: #{system}
+      #         ERROR
+      #       else
+      #         :invalid
+      #       end
+      #     elsif type_path?(type)
+      #       :pending
+      #     elsif type_template_path?(type)
+      #       :renderable
+      #     else
+      #       :missing
+      #     end
+      #   end
+      # end
 
-      [:ipmi, :power_on, :power_off, :power_status].each do |type|
-        define_method("#{type}_status") do |error: true|
-          if type_path?(type)
-            :installed
-          elsif type_template_path?(type)
-            :renderable
-          else
-            :missing
-          end
-        end
-      end
+      # [:ipmi, :power_on, :power_off, :power_status].each do |type|
+      #   define_method("#{type}_status") do |error: true|
+      #     if type_path?(type)
+      #       :installed
+      #     elsif type_template_path?(type)
+      #       :renderable
+      #     else
+      #       :missing
+      #     end
+      #   end
+      # end
 
-      def type_status(type, error: true)
-        public_send("#{type}_status", error: error)
-      end
+      # def type_status(type, error: true)
+      #   public_send("#{type}_status", error: error)
+      # end
 
       def mac?
         !mac.nil?
@@ -200,16 +200,16 @@ module FlightMetal
         end.reduce { |memo, bool| memo && bool }
       end
 
-      def type_buildable?(type)
-        case type_status(type, error: false)
-        when :installed
-          true
-        when :pending
-          true
-        else
-          false
-        end
-      end
+      # def type_buildable?(type)
+      #   case type_status(type, error: false)
+      #   when :installed
+      #     true
+      #   when :pending
+      #     true
+      #   else
+      #     false
+      #   end
+      # end
 
       # TODO: Remove render_params as it is now equivalent to params
       def render_params

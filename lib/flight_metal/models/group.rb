@@ -56,30 +56,6 @@ module FlightMetal
       end
       define_input_methods_from_path_parameters
 
-      TemplateMap.path_methods.each do |method, key|
-        define_method(method) { join('libexec', TemplateMap.find_filename(key)) }
-        define_path?(method)
-
-        define_method("#{key}_status") { type_status(key) }
-      end
-      define_type_path_shortcuts
-
-      TemplateMap.path_methods(sub: 'template').each do |method, key|
-        define_method(method) { read_cluster.type_path(key) }
-        define_path?(method)
-      end
-      define_type_path_shortcuts(sub: 'template')
-
-      def type_status(type)
-        if type_path?(type)
-          :ready
-        elsif type_template_path?(type)
-          :renderable
-        else
-          :missing
-        end
-      end
-
       def read_cluster
        Models::Cluster.read(cluster, registry: __registry__)
       end

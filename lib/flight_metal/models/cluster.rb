@@ -56,15 +56,6 @@ module FlightMetal
       data_reader :gateway_ip
       data_writer :gateway_ip
 
-      TemplateMap.path_methods.each do |method, type|
-        define_method(method) do
-          join('libexec', TemplateMap.find_filename(type))
-        end
-
-        define_path?(method)
-      end
-      define_type_path_shortcuts
-
       def read_nodes
         Models::Node.glob_read(identifier, '*', registry: __registry__)
       end
