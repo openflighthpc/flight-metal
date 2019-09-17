@@ -46,6 +46,7 @@ require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
+require 'flight_metal/commands/template'
 require 'flight_metal/commands/update'
 require 'flight_metal/commands/render'
 
@@ -439,6 +440,18 @@ module FlightMetal
           c.action(&Commands::Miscellaneous.named_commander_proxy(level.to_sym, method: :cat))
         end
       end
+    end
+
+    command 'node template' do |c|
+      syntax(c)
+      c.summary = 'View and manage the source template'
+      c.sub_command_group = true
+    end
+
+    command 'node template show' do |c|
+      syntax(c, 'NODE TYPE')
+      c.summary = 'View the node source template'
+      c.action(&Commands::Template.named_commander_proxy(:node, method: :show ))
     end
   end
 end

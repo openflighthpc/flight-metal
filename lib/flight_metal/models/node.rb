@@ -101,6 +101,10 @@ module FlightMetal
         File.exists? template_path(type)
       end
 
+      def read_template(type)
+        File.read template_path(type)
+      end
+
       # TemplateMap.path_methods.each do |method, type|
       #   define_method(method) do
       #     join('libexec', TemplateMap.find_filename(type))
