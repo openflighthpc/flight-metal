@@ -323,6 +323,12 @@ module FlightMetal
       c.action(&Commands::Update.named_commander_proxy(:node))
     end
 
+    command 'node show' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'View the details about the node'
+      c.action(&Commands::ListNodes.named_commander_proxy(:node, method: :shared_verbose))
+    end
+
     command 'node list' do |c|
       syntax(c)
       c.summary = 'Display all the nodes in the cluster'

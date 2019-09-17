@@ -40,6 +40,7 @@ module FlightMetal
       end
 
       LIST_TEMPLATE = <<~ERB
+        <% machine = read_machine -%>
         # Node: '<%= name %>'
         *Built*: <%= built? ? built_time : 'Never' %>
         *<%= built? ? 'Reb' : 'B' %>uild*: <%= if buildable?
@@ -51,46 +52,31 @@ module FlightMetal
                                                end %>
 
         <% first_status = true -%>
-        <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        <%
-             status = type_status(type, error: false)
-             text = case status
-                    when :invalid
-                      'Invalid - check link: ' + type_system_path(type)
-                    else
-                      status.capitalize
-                    end
+        ## File Status
+        <%  FlightMetal::TemplateMap.flag_hash.each do |type, flag|
+              ready_status = machine.file?(type) ? 'Ready' : 'Missing'
+              is_updatable = machine.source?(type)
         -%>
-        <%   if verbose || ![:pending, :installed].include?(status) -%>
-        <%=
-               if first_status
-                 first_status = false
-                 '## File Status'
-               end
-        %>
-        - *<%= flag %>*: <%= text %>
-        <%   end -%>
-        <% end -%>
+        - *<%= flag %>*: <%= ready_status %> <%= '(Updatable)' if is_updatable %>
+        <%  end -%>
 
-        <% if verbose -%>
-        ## File Template Source
-        <%   FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        <%
-               bool = type_template_model(type).is_a?(FlightMetal::Models::Cluster)
-               source = (bool ? 'Domain' : "Primary Group")
-        -%>
+        <%  if verbose -%>
+        ## Template Source
+        <%    FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
         - *<%= flag %>*: <%=
-          case type_template_model(type)
+          case machine.source_model(type)
           when FlightMetal::Models::Cluster
-            'Domain'
+            'Cluster'
           when FlightMetal::Models::Group
             'Primary Group'
+          when FlightMetal::Models::Node
+            'Node'
           else
             'Missing'
           end
         %>
-        <%   end -%>
-        <% end -%>
+        <%    end -%>
+        <%  end -%>
 
 
         ## Reserved Parameters
@@ -108,6 +94,10 @@ module FlightMetal
       ERB
 
       command_require('flight_metal/buildable_nodes', 'flight_metal/templator')
+
+      def shared_verbose
+        shared(verbose: true)
+      end
 
       def shared(verbose: nil)
         nodes = read_nodes.sort_by(&:name)
