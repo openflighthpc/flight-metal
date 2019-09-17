@@ -33,6 +33,7 @@ require 'flight_metal/models/group'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
 require 'flight_metal/models/concerns/has_params'
+require 'flight_metal/renderer'
 
 module FlightMetal
   module Models
@@ -103,6 +104,11 @@ module FlightMetal
 
       def read_template(type)
         File.read template_path(type)
+      end
+
+      def renderer(type, source: nil)
+        path = (source || self).template_path(type)
+        Renderer.new(self, path)
       end
 
       # TemplateMap.path_methods.each do |method, type|

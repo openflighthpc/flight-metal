@@ -23,46 +23,31 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
 module FlightMetal
-  module Commands
-    class Template < ScopedCommand
-      command_require 'flight_metal/template_map',
-                      'tty-editor'
+  Renderer = Struct.new(:model, :template_path) do
+    RENDER_KEY = /\w*\.?\w+/
+    RENDER_TAG = Regexp.new("%#{RENDER_KEY}%")
 
-      def show(cli_type)
-        runner(cli_type) { |m, t| puts m.read_template(t) }
+    def template
+      @template ||= File.read template_path
+    end
+
+    def params
+      @params ||= model.params
+    end
+
+    def rendered
+      @rendered ||= params.reduce(template) do |memo, (key, value)|
+        memo.gsub("%#{key}%", value.to_s)
       end
+    end
 
-      def edit(cli_type)
-        runner(cli_type) do |model, type|
-          TTY::Editor.open(model.template_path(type))
-        end
-      end
-
-      def render(cli_type)
-        runner(cli_type) do |model, type|
-          puts model.renderer(type).rendered
-        end
-      end
-
-      private
-
-      def runner(cli_type)
-        type = TemplateMap.lookup_key(cli_type)
-        model = read_model
-
-        if model.template?(type)
-          yield model, type if block_given?
-        else
-          raise InvalidAction, <<~ERROR.chomp
-            '#{model_name_or_error}' does not have a #{cli_type} source template
-          ERROR
-        end
-      end
+    def missing_tags
+      rendered.scan(RENDER_TAG).uniq.sort.map { |s| RENDER_KEY.match(s).to_s }
     end
   end
 end
