@@ -33,6 +33,20 @@ module FlightMetal
       command_require 'flight_metal/template_map',
                       'tty-editor'
 
+      def add(cli_type, rel_path)
+        model = read_model
+        type = TemplateMap.lookup_key(cli_type)
+        path = File.expand_path(rel_path)
+        if model.template?(type)
+          raise InvalidAction, <<~ERROR.squish
+            Can not add a #{cli_type} template to #{model.name} as it already
+            exists
+          ERROR
+        else
+          FileUtils.cp path, model.template_path(type)
+        end
+      end
+
       def show(cli_type)
         runner(cli_type) { |m, t| puts m.read_template(t) }
       end
