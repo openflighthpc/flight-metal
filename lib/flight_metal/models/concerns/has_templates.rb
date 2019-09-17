@@ -39,7 +39,7 @@ module FlightMetal
         def template_path(type, to:)
           TemplateMap.raise_unless_valid_type(type)
           raise_unless_valid_template_target(to)
-          build_template_path(type, to: to)
+          join(to.to_s, 'templates', TemplateMap.find_filename(type))
         end
 
         def template?(*a)
@@ -58,10 +58,6 @@ module FlightMetal
         private
 
         def raise_unless_valid_template_target(_to)
-          raise NotImplementedError
-        end
-
-        def build_template_path(_type, to:)
           raise NotImplementedError
         end
       end

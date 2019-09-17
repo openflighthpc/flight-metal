@@ -237,10 +237,6 @@ module FlightMetal
 
       private
 
-      def build_template_path(type, to:)
-        join(to.to_s, 'templates', TemplateMap.find_filename(type))
-      end
-
       def raise_unless_valid_template_target(value)
         return if value == :machine
         raise InvalidInput, <<~ERROR.squish

@@ -142,7 +142,10 @@ module FlightMetal
     end
 
     def model_name_or_error
-      if model_name.nil? || model_name.empty?
+      is_missing = (model_name.nil? || model_name.empty?)
+      if is_missing && [:cluster, 'cluster'].include?(level)
+        Config.cluster
+      elsif is_missing
         raise InternalError, <<~ERROR.chomp
           The #{level.to_s} name has not been set
         ERROR

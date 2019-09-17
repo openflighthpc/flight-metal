@@ -28,10 +28,13 @@
 #===============================================================================
 
 require 'flight_metal/model'
+require 'flight_metal/models/concerns/has_templates'
 
 module FlightMetal
   module Models
     class Cluster < Model
+      include Concerns::HasTemplates
+
       def self.join(identifier, *rest)
         Pathname.new(Config.content_dir).join('clusters', identifier, *rest)
       end
@@ -62,6 +65,15 @@ module FlightMetal
 
       def read_groups
         Models::Group.glob_read(identifier, '*', registry: __registry__)
+      end
+
+      private
+
+      def raise_unless_valid_template_target(to)
+        return if to == :machine
+        raise InvalidInput, <<~ERROR.chomp
+          The Cluster currently only supports machine templates
+        ERROR
       end
     end
   end
