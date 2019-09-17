@@ -41,6 +41,7 @@ require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/create'
 require 'flight_metal/commands/delete'
 require 'flight_metal/commands/edit'
+require 'flight_metal/commands/file_command'
 require 'flight_metal/commands/group_nodes'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
@@ -211,29 +212,6 @@ module FlightMetal
       c.action(Commands::Delete.named_commander_proxy(:node))
     end
 
-    # NOTE: Disable group level file editing for the time being. Needs refactoring
-    # ['cluster', 'node', 'group'].each do |level|
-    ['cluster', 'node'].each do |level|
-      command "#{level} file edit" do |c|
-        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
-        c.summary = 'Open a managed node file in the editor'
-        c.description = <<~DESC.chomp
-          Open a template/script/build file in the editor. This is used to manage
-          the build process and power commands. Specify which file is to be edited
-          with TYPE field. The supported types are listed below.
-
-          Valid TYPE arguments:
-            - #{TemplateMap.flag_hash.values.join("\n  - ")}
-        DESC
-        c.option '--replace FILE', 'Copy the given FILE content instead of editing'
-        if level == 'cluster'
-          c.action(&Commands::Edit.unnamed_commander_proxy(:cluster, method: :run))
-        else
-          c.action(&Commands::Edit.named_commander_proxy(level.to_sym, method: :run))
-        end
-      end
-    end
-
     # NOTE: Disable parameter modification at the group level. Needs refactoring
     # ['node', 'group'].each do |level|
     ['node'].each do |level|
@@ -400,60 +378,6 @@ module FlightMetal
 
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
-    # Define the nodes rendering commands
-    # NOTE: Disable cluster/group render-nodes methods
-    # Consider refactoring
-    # ['cluster', 'group', 'node'].each do |level|
-    ['node'].each do |level|
-      command "#{level} file render#{ '-nodes' unless level == 'node'}" do |c|
-        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
-        c.summary = 'Render the template against the node parameters'
-        c.option '--force', 'Allow missing tags when writing the file'
-        case level
-        when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :nodes))
-        when 'group'
-          # NOTE: Using --primary mutates :group to :primary_group within the proxy
-          c.option '--primary', 'Only render nodes within the primary group'
-         c.action(&Commands::Render.named_commander_proxy(:group, index: :nodes))
-        when 'node'
-          c.action(&Commands::Render.named_commander_proxy(:node, index: :nodes))
-        end
-      end
-    end
-
-    # NOTE: Disabled group level rendering for now. It will need to be redone in the
-    # new design pattern TBA
-    ['cluster', 'group'].each do |level|
-      xcommand "#{level} file render#{ '-groups' unless level == 'group' }" do |c|
-        syntax(c, "#{ level.upcase + ' ' unless level == 'cluster' }TYPE")
-        c.summary = 'Render the template against the group parameters'
-        case level
-        when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :groups))
-        when 'group'
-          c.action(&Commands::Render.named_commander_proxy(:group, index: :groups))
-        end
-      end
-    end
-
-    # NOTE: Disable the file show command for the group level for the time being. Needs refactoring
-    # ['cluster', 'group', 'node'].each do |level|
-    ['cluster', 'node'].each do |level|
-      command "#{level} file show" do |c|
-        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
-        reference = (level == 'cluster' ? 'the cluster' : "a #{level}")
-        c.summary = "View the render file for #{reference}"
-        case level
-        when 'cluster'
-          c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :cat))
-        else
-          c.option '--template', "View the #{level}'s template"
-          c.action(&Commands::Miscellaneous.named_commander_proxy(level.to_sym, method: :cat))
-        end
-      end
-    end
-
     command 'cluster node-template' do |c|
       syntax(c)
       c.summary = 'Manage the cluster wide default node templates'
@@ -510,6 +434,30 @@ module FlightMetal
             c.action(&Commands::Template.named_commander_proxy(level, method: method))
           end
         end
+      end
+    end
+
+    [:add, :remove, :touch, :show, :edit].each do |cmd|
+      command "node file #{cmd}" do |c|
+        if cmd == :add
+          syntax(c, "NODE TYPE TEMPLATE_PATH")
+        else
+          syntax(c, "NODE TYPE")
+        end
+
+        case cmd
+        when :add
+          c.summary = 'Add a file directly from the file system'
+        when :remove
+          c.summary = 'Permanently delete a file'
+        when :touch
+          c.summary = 'Create an empty file read for editing'
+        when :show
+          c.summary = 'Print the file to stdout'
+        when :edit
+          c.summary = 'Update the file via the system editor'
+        end
+        c.action(&Commands::FileCommand.named_commander_proxy(:machine, method: cmd))
       end
     end
   end

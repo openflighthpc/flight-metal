@@ -39,7 +39,7 @@ module FlightMetal
         join(cluster, name, 'etc', 'config.yaml')
       end
 
-      def self.join(cluster, name)
+      def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'nodes', name, 'machine', *a)
       end
 
@@ -54,6 +54,10 @@ module FlightMetal
 
       def file?(type)
         File.exists? file_path(type)
+      end
+
+      def read_file(type)
+        File.read file_path(type)
       end
 
       def source_model(type)

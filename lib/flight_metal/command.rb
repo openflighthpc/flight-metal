@@ -130,6 +130,9 @@ module FlightMetal
       when :node, 'node'
         require 'flight_metal/models/node'
         Models::Node
+      when :machine
+        require 'flight_metal/models/machine'
+        Models::Machine
       else
         raise InternalError, <<~ERROR.chomp
           Unrecognised command level #{level}
@@ -161,6 +164,8 @@ module FlightMetal
         read_group
       elsif model_class == Models::Node
         read_node
+      elsif model_class == Models::Machine
+        read_machine
       else
         raise InternalError
       end
@@ -176,6 +181,10 @@ module FlightMetal
 
     def read_node
       Models::Node.read(Config.cluster, model_name_or_error)
+    end
+
+    def read_machine
+      Models::Machine.read(Config.cluster, model_name_or_error)
     end
 
     def read_nodes
