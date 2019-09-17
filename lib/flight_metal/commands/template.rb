@@ -34,16 +34,25 @@ module FlightMetal
                       'tty-editor'
 
       def add(cli_type, rel_path)
-        model = read_model
-        type = TemplateMap.lookup_key(cli_type)
         path = File.expand_path(rel_path)
-        if model.template?(type)
-          raise InvalidAction, <<~ERROR.squish
-            Can not add a #{cli_type} template to #{model.name} as it already
-            exists
-          ERROR
-        else
-          FileUtils.cp path, model.template_path(type)
+        runner(cli_type, missing: true) do |model, type|
+          dst_path = model.template_path(type)
+          FileUtils.mkdir_p File.dirname(dst_path)
+          FileUtils.cp path, dst_path
+        end
+      end
+
+      def remove(cli_type)
+        runner(cli_type) do |model, type|
+          FileUtils.rm_f model.template_path(type)
+        end
+      end
+
+      def touch(cli_type)
+        runner(cli_type, missing: true) do |model, type|
+          dst_path = model.template_path(type)
+          FileUtils.mkdir_p File.dirname(dst_path)
+          FileUtils.touch dst_path
         end
       end
 
@@ -65,11 +74,16 @@ module FlightMetal
 
       private
 
-      def runner(cli_type)
+      def runner(cli_type, missing: false)
         type = TemplateMap.lookup_key(cli_type)
         model = read_model
+        has_template = model.template?(type)
 
-        if model.template?(type)
+        if has_template && missing
+          raise InvalidAction, <<~ERROR.chomp
+            Can not continue as the #{cli_type} template already exists
+          ERROR
+        elsif has_template || missing
           yield model, type if block_given?
         else
           raise InvalidAction, <<~ERROR.chomp

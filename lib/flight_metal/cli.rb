@@ -448,7 +448,7 @@ module FlightMetal
       c.sub_command_group = true
     end
 
-    [:add, :show, :edit, :render].each do |method|
+    [:add, :remove, :touch, :show, :edit, :render].each do |method|
       command "node template #{method}" do |c|
         if method == :add
           syntax(c, 'NODE TYPE TEMPLATE_PATH')
@@ -458,6 +458,10 @@ module FlightMetal
         case method
         when :add
           c.summary = 'Define a new template from the file system'
+        when :remove
+          c.summary = 'Delete the template from the node level'
+        when :touch
+          c.summary = 'Create an empty template ready to be edited'
         when :show
           c.summary = 'View the node level template'
         when :edit
