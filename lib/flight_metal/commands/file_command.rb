@@ -68,8 +68,8 @@ module FlightMetal
       def source(cli_type)
         model = read_model
         type = TemplateMap.lookup_key(cli_type)
-        source = model.source_model(type)
-        if source
+        if model.source?(type)
+          source = model.source_model(type)
           level = case source
                   when Models::Node
                     'Node'
@@ -80,9 +80,19 @@ module FlightMetal
                   end
           puts "Level: #{level}"
           puts " Name: #{source.is_a?(Models::Node) ? source.name : '-'}"
-          puts " Path: #{source.template_path(type, to: deployable_type)}"
+          puts " Path: #{model.source_path(type)}"
         else
           Log.warn_puts "Could not locate a #{cli_type} source template for #{model.name}"
+        end
+      end
+
+      def render(cli_type)
+        runner(cli_type) do |model, type|
+          if model.source?(type)
+            puts model.renderer(type).rendered
+          else
+            Log.warn_puts "Could not locate a #{cli_type} source template for #{model.name}"
+          end
         end
       end
 

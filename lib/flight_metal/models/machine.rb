@@ -81,7 +81,17 @@ module FlightMetal
 
       def source_path(type)
         if model = source_model(type)
-          model.template_path(type)
+          model.template_path(type, to: :machine)
+        else
+          raise InvalidModel, <<~ERROR
+            Could not locate the source template for '#{name}' #{type} file
+          ERROR
+        end
+      end
+
+      def renderer(type)
+        if source = source_model(type)
+          read_node.renderer(type, source: source)
         else
           raise InvalidModel, <<~ERROR
             Could not locate the source template for '#{name}' #{type} file
