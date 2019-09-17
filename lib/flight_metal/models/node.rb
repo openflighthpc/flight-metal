@@ -56,7 +56,7 @@ module FlightMetal
 
       def self.delete!(*a)
         delete(*a) do |node|
-          FileUtils.rm_rf node.join('lib')
+          FileUtils.rm_rf node.join('machine')
           true
         end
       end
