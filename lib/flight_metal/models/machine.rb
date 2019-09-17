@@ -27,60 +27,26 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/model'
 require 'flight_metal/models/cluster'
-require 'flight_metal/models/node'
-require 'flight_metal/models/concerns/has_params'
-require 'flight_metal/indices/group_and_node'
 
 module FlightMetal
   module Models
-    class Group < Model
-      include Concerns::HasParams
-
+    class Machine < Model
       allow_missing_read
 
-      reserved_param_reader(:name)
-      reserved_param_reader(:cluster)
-      reserved_param_reader(:nodes) { |nodes| nodes.join(',') }
-      reserved_param_reader(:primary_nodes) { |nodes| nodes.join(',') }
-
-      def self.join(cluster, name, *a)
-        Models::Cluster.join(cluster, 'var', 'groups', name, *a)
-      end
-
-      def self.cache_join(cluster, name, *a)
-        Models::Cluster.cache_join(cluster, 'groups', name, *a)
-      end
-
       def self.path(cluster, name)
-        join(cluster, name, 'etc', 'config.yaml')
-      end
-      define_input_methods_from_path_parameters
-
-      def read_cluster
-       Models::Cluster.read(cluster, registry: __registry__)
+        join(cluster, name, 'etc', 'machine.yaml')
       end
 
-      def read_nodes
-        [*read_primary_nodes, *read_other_nodes].uniq(&:__inputs__)
+      def self.join(cluster, name)
+        Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
       end
 
-      def read_other_nodes
-        Indices::OtherGroupAndNode.glob_read(cluster, name, '*').map(&:read_node)
-      end
-
-      def read_primary_nodes
-        Indices::PrimaryGroupAndNode.glob_read(cluster, name, '*').map(&:read_node)
-      end
-
-      def nodes
-        read_nodes.map(&:name)
-      end
-
-      def primary_nodes
-        read_primary_nodes.map(&:name)
+      def read_node
+        Models::Node.read(*__inputs__, registry: __registry__)
       end
     end
   end
 end
+
+require 'flight_metal/models/node'

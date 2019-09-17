@@ -27,6 +27,7 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/models/machine'
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
 require 'flight_metal/macs'
@@ -218,6 +219,10 @@ module FlightMetal
 
       def read_cluster
         Models::Cluster.read(cluster, registry: __registry__)
+      end
+
+      def read_machine
+        Models::Machine.read(*__inputs__, registry: __registry__)
       end
 
       # TODO: Look how this integrates into FlightConfig
