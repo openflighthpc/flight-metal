@@ -115,7 +115,10 @@ module FlightMetal
         end
         c.sub_command_group = true
       end
+    end
 
+    # NOTE: There are currently no group level file commands. Needs refactoring
+    ['cluster', 'node'].each do |level|
       command "#{level} file" do |c|
         syntax(c)
         c.summary = "View and update the content files for the #{level}"
@@ -196,7 +199,9 @@ module FlightMetal
       c.action(Commands::Delete.named_commander_proxy(:node))
     end
 
-    ['cluster', 'node', 'group'].each do |level|
+    # NOTE: Disable group level file editing for the time being. Needs refactoring
+    # ['cluster', 'node', 'group'].each do |level|
+    ['cluster', 'node'].each do |level|
       command "#{level} file edit" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         c.summary = 'Open a managed node file in the editor'
@@ -217,7 +222,9 @@ module FlightMetal
       end
     end
 
-    ['node', 'group'].each do |level|
+    # NOTE: Disable parameter modification at the group level. Needs refactoring
+    # ['node', 'group'].each do |level|
+    ['node'].each do |level|
       command "#{level} parameters" do |c|
         syntax(c)
         c.summary = "Manage the parameters for a #{level}"
@@ -414,12 +421,10 @@ module FlightMetal
       end
     end
 
-    # Define the groups rendering commands
-    # NOTE: Disable the 'cluster render-groups' command for the time being
-    # Consider refactoring if it is permanently commented out
-    # ['cluster', 'group'].each do |level|
-    ['group'].each do |level|
-      command "#{level} file render#{ '-groups' unless level == 'group' }" do |c|
+    # NOTE: Disabled group level rendering for now. It will need to be redone in the
+    # new design pattern TBA
+    ['cluster', 'group'].each do |level|
+      xcommand "#{level} file render#{ '-groups' unless level == 'group' }" do |c|
         syntax(c, "#{ level.upcase + ' ' unless level == 'cluster' }TYPE")
         c.summary = 'Render the template against the group parameters'
         case level
@@ -431,7 +436,9 @@ module FlightMetal
       end
     end
 
-    ['cluster', 'group', 'node'].each do |level|
+    # NOTE: Disable the file show command for the group level for the time being. Needs refactoring
+    # ['cluster', 'group', 'node'].each do |level|
+    ['cluster', 'node'].each do |level|
       command "#{level} file show" do |c|
         syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
         reference = (level == 'cluster' ? 'the cluster' : "a #{level}")
