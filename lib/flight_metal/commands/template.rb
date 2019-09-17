@@ -35,56 +35,67 @@ module FlightMetal
 
       def add(cli_type, rel_path)
         path = File.expand_path(rel_path)
-        runner(cli_type, missing: true) do |model, type|
-          dst_path = model.template_path(type)
+        runner(cli_type, missing: true) do |_a, _b, dst_path|
           FileUtils.mkdir_p File.dirname(dst_path)
           FileUtils.cp path, dst_path
         end
       end
 
       def remove(cli_type)
-        runner(cli_type) do |model, type|
-          FileUtils.rm_f model.template_path(type)
+        runner(cli_type) do |_a, _b, path|
+          FileUtils.rm_f path
         end
       end
 
       def touch(cli_type)
-        runner(cli_type, missing: true) do |model, type|
-          dst_path = model.template_path(type)
+        runner(cli_type, missing: true) do |_a, _b, dst_path|
           FileUtils.mkdir_p File.dirname(dst_path)
           FileUtils.touch dst_path
         end
       end
 
       def show(cli_type)
-        runner(cli_type) { |m, t| puts m.read_template(t) }
+        runner(cli_type) { |m, t| puts m.read_template(t, to: template_scope) }
       end
 
       def edit(cli_type)
-        runner(cli_type) do |model, type|
-          TTY::Editor.open(model.template_path(type))
+        runner(cli_type) do |_a, _b, dst_path|
+          TTY::Editor.open(dst_path)
         end
       end
 
       def render(cli_type)
         runner(cli_type) do |model, type|
-          puts model.renderer(type).rendered
+          puts model.renderer(type, source: model, to: template_scope).rendered
         end
       end
 
       private
 
+      def template_scope
+        if model_class == Models::Node
+          :machine
+        elsif index == :nodes
+          :machine
+        else
+          raise InternalError, <<~ERROR
+            Could not resolve the template source
+          ERROR
+        end
+      end
+
       def runner(cli_type, missing: false)
         type = TemplateMap.lookup_key(cli_type)
         model = read_model
-        has_template = model.template?(type)
+        has_template = model.template?(type, to: template_scope)
 
         if has_template && missing
           raise InvalidAction, <<~ERROR.chomp
             Can not continue as the #{cli_type} template already exists
           ERROR
         elsif has_template || missing
-          yield model, type if block_given?
+          path = model.template_path(type, to: template_scope)
+          yield model, type, path if block_given?
         else
           raise InvalidAction, <<~ERROR.chomp
             '#{model_name_or_error}' does not have a #{cli_type} source template

@@ -93,21 +93,25 @@ module FlightMetal
         end
       end
 
-      def template_path(type)
+      def template_path(type, to:)
         TemplateMap.raise_unless_valid_type(type)
-        join('templates', TemplateMap.find_filename(type))
+        raise_unless_machine(to)
+        join(to.to_s, 'templates', TemplateMap.find_filename(type))
       end
 
-      def template?(type)
-        File.exists? template_path(type)
+      def template?(type, to:)
+        raise_unless_machine(to)
+        File.exists? template_path(type, to: to)
       end
 
-      def read_template(type)
-        File.read template_path(type)
+      def read_template(type, to:)
+        raise_unless_machine(to)
+        File.read template_path(type, to: to)
       end
 
-      def renderer(type, source: nil)
-        path = (source || self).template_path(type)
+      def renderer(type, source:, to:)
+        raise_unless_machine(to)
+        path = source.template_path(type, to: to)
         Renderer.new(self, path)
       end
 
@@ -250,6 +254,15 @@ module FlightMetal
       def update(&b)
         new_node = self.class.update(*__inputs__, &b)
         self.instance_variable_set(:@__data__, new_node.__data__)
+      end
+
+      private
+
+      def raise_unless_machine(value)
+        return if value == :machine
+        raise InvalidInput, <<~ERROR.squish
+          Nodes do not store templates for a #{value}
+        ERROR
       end
     end
   end

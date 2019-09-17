@@ -36,11 +36,11 @@ module FlightMetal
       allow_missing_read
 
       def self.path(cluster, name)
-        join(cluster, name, 'etc', 'machine.yaml')
+        join(cluster, name, 'etc', 'config.yaml')
       end
 
       def self.join(cluster, name)
-        Models::Cluster.join(cluster, 'var', 'nodes', name, *a)
+        Models::Cluster.join(cluster, 'var', 'nodes', name, 'machine', *a)
       end
 
       def read_node
