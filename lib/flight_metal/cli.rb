@@ -120,7 +120,7 @@ module FlightMetal
         c.sub_command_group = true
       end
 
-      command "#{level} run" do |c|
+      command "#{level} action" do |c|
         syntax(c)
         if level == 'node'
           c.summary = 'Execute an action on the node'
@@ -141,7 +141,7 @@ module FlightMetal
     end
 
     ['cluster', 'group', 'node'].each do |level|
-      command "#{level} run build" do |c|
+      command "#{level} action build" do |c|
         level == 'cluster' ? syntax(c) : syntax(c, level.upcase)
         c.summary = 'Run the pxelinux build server'
         c.description = <<~DESC
@@ -338,7 +338,7 @@ module FlightMetal
     def self.plugin_command(name)
       method = name.gsub('-', '_').to_sym
       ['cluster', 'group', 'node'].each do |level|
-        command "#{level} run #{name}" do |c|
+        command "#{level} action #{name}" do |c|
           syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}[SHELL_ARGS...]")
           c.summary = "Run the #{c.name} script"
           case level
