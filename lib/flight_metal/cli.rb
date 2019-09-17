@@ -437,7 +437,7 @@ module FlightMetal
       end
     end
 
-    [:add, :remove, :touch, :show, :edit, :source, :render].each do |cmd|
+    [:add, :remove, :touch, :show, :edit, :source, :render, :update].each do |cmd|
       command "node file #{cmd}" do |c|
         if cmd == :add
           syntax(c, "NODE TYPE TEMPLATE_PATH")
@@ -457,9 +457,11 @@ module FlightMetal
         when :edit
           c.summary = 'Update the file via the system editor'
         when :source
-          c.summary = 'Display template source information for file'
+          c.summary = 'Display template source information for the file'
         when :render
-          c.summary = 'Render the source template aginst the node to stdout'
+          c.summary = 'Render the source template against the node to stdout'
+        when :update
+          c.summary = 'Render the source template against the node and save the result'
         end
         c.action(&Commands::FileCommand.named_commander_proxy(:machine, method: cmd))
       end

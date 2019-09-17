@@ -87,12 +87,24 @@ module FlightMetal
       end
 
       def render(cli_type)
-        runner(cli_type) do |model, type|
-          if model.source?(type)
-            puts model.renderer(type).rendered
-          else
-            Log.warn_puts "Could not locate a #{cli_type} source template for #{model.name}"
-          end
+        model = read_model
+        type = TemplateMap.lookup_key(cli_type)
+        if model.source?(type)
+          puts model.renderer(type).rendered
+        else
+          Log.warn_puts "Could not locate a #{cli_type} source template for #{model.name}"
+        end
+      end
+
+      def update(cli_type)
+        model = read_model
+        type = TemplateMap.lookup_key(cli_type)
+        path = model.file_path(type)
+        if model.source?(type)
+          FileUtils.mkdir_p File.dirname(path)
+          File.write(path, model.renderer(type).rendered)
+        else
+          Log.warn_puts "Could not locate a #{cli_type} source template for #{model.name}"
         end
       end
 
