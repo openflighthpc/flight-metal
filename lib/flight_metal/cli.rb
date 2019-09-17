@@ -42,7 +42,6 @@ require 'flight_metal/commands/create'
 require 'flight_metal/commands/delete'
 require 'flight_metal/commands/edit'
 require 'flight_metal/commands/group_nodes'
-require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
 require 'flight_metal/commands/list_nodes'
@@ -250,17 +249,6 @@ module FlightMetal
         c.summary = "Modify the parameters via the editor"
         c.action(&Commands::Update.named_commander_proxy(level, method: :params_editor))
       end
-    end
-
-    command 'hunt' do |c|
-      syntax(c, hidden: false)
-      c.summary = 'Collect node mac addesses from DHCP Discover'
-      c.description = <<~DESC
-        Listens for DHCP DISCOVER packets containing PXEClient as its vendor
-        class ID. The MAC address will be extracted from the discover and can
-        be assigned to a node.
-      DESC
-      action(c, FlightMetal::Commands::Hunt)
     end
 
     xcommand 'import' do |c|
