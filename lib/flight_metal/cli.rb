@@ -454,13 +454,7 @@ module FlightMetal
       end
     end
 
-    command 'cluster nodes' do |c|
-      syntax(c)
-      c.summary = 'Manage all the nodes within the cluster'
-      c.sub_command_group = true
-    end
-
-    command 'cluster nodes template' do |c|
+    command 'cluster node-template' do |c|
       syntax(c)
       c.summary = 'Manage the cluster wide default node templates'
       c.sub_command_group = true
@@ -473,16 +467,19 @@ module FlightMetal
     end
 
     [:cluster, :node].each do |level|
-      cli_prefix = (level == :node ? 'node' : 'cluster nodes')
+      cli_prefix = (level == :node ? 'node template' : 'cluster node-template')
 
-      [:add, :remove, :touch, :show, :edit, :render].each do |method|
-        command "#{cli_prefix} template #{method}" do |c|
-          if method == :add
+      [:add, :remove, :touch, :show, :edit, :render].each do |cmd|
+        command "#{cli_prefix} #{cmd}" do |c|
+          if cmd == :add
             multilevel_cli_syntax(c, level, 'TYPE TEMPLATE_PATH')
+          elsif cmd == :render && level == :cluster
+            multilevel_cli_syntax(c, level, 'NODE TYPE')
           else
             multilevel_cli_syntax(c, level, 'TYPE')
           end
-          case method
+
+          case cmd
           when :add
             c.summary = 'Define a new template from the file system'
           when :remove
@@ -504,6 +501,9 @@ module FlightMetal
           when :render
             c.summary = 'Render the template to stdout'
           end
+
+          method = (cmd == :render && level == :cluster ? :render_node : cmd)
+
           if level == :cluster
             c.action(&Commands::Template.unnamed_commander_proxy(:cluster, method: method, index: :nodes))
           else
