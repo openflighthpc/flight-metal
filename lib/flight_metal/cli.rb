@@ -448,10 +448,19 @@ module FlightMetal
       c.sub_command_group = true
     end
 
-    command 'node template show' do |c|
-      syntax(c, 'NODE TYPE')
-      c.summary = 'View the node source template'
-      c.action(&Commands::Template.named_commander_proxy(:node, method: :show ))
+    [:show, :edit, :render].each do |method|
+      command "node template #{method}" do |c|
+        syntax(c, 'NODE TYPE')
+        case method
+        when :show
+          c.summary = 'View the node level template'
+        when :edit
+          c.summary = 'Edit the node level template'
+        when :render
+          c.summary = 'Render the node level template to stdout'
+        end
+        c.action(&Commands::Template.named_commander_proxy(:node, method: method))
+      end
     end
   end
 end

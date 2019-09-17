@@ -30,14 +30,31 @@
 module FlightMetal
   module Commands
     class Template < ScopedCommand
-      command_require 'flight_metal/template_map'
+      command_require 'flight_metal/template_map',
+                      'tty-editor'
 
       def show(cli_type)
+        runner(cli_type) { |m, t| puts m.read_template(t) }
+      end
+
+      def edit(cli_type)
+        runner(cli_type) do |model, type|
+          TTY::Editor.open(model.template_path(type))
+        end
+      end
+
+      def render(cli_type)
+        raise NotImplementedError
+      end
+
+      private
+
+      def runner(cli_type)
         type = TemplateMap.lookup_key(cli_type)
         model = read_model
 
         if model.template?(type)
-          puts model.read_template(type)
+          yield model, type if block_given?
         else
           raise InvalidAction, <<~ERROR.chomp
             '#{model_name_or_error}' does not have a #{cli_type} source template
