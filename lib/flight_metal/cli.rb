@@ -94,6 +94,18 @@ module FlightMetal
       command.hidden = hidden
     end
 
+    def self.multilevel_cli_syntax(command, level, args_str)
+      combined_args = if level == :cluster
+                        args_str
+                      else
+                        "#{level.to_s.upcase} #{args_str}"
+                      end
+      command.syntax = <<~SYNTAX.squish
+        #{program(:name)} #{command.name} #{combined_args}
+      SYNTAX
+      command.hidden = true
+    end
+
     # TODO: Remove me when refactoring is done
     def self.xcommand(*_a); end
 
@@ -442,34 +454,58 @@ module FlightMetal
       end
     end
 
+    command 'cluster nodes' do |c|
+      syntax(c)
+      c.summary = 'Manage all the nodes within the cluster'
+      c.sub_command_group = true
+    end
+
+    command 'cluster nodes template' do |c|
+      syntax(c)
+      c.summary = 'Manage the cluster wide default node templates'
+      c.sub_command_group = true
+    end
+
     command 'node template' do |c|
       syntax(c)
       c.summary = 'View and manage the source template'
       c.sub_command_group = true
     end
 
-    [:add, :remove, :touch, :show, :edit, :render].each do |method|
-      command "node template #{method}" do |c|
-        if method == :add
-          syntax(c, 'NODE TYPE TEMPLATE_PATH')
-        else
-          syntax(c, 'NODE TYPE')
+    [:cluster, :node].each do |level|
+      cli_prefix = (level == :node ? 'node' : 'cluster nodes')
+
+      [:add, :remove, :touch, :show, :edit, :render].each do |method|
+        command "#{cli_prefix} template #{method}" do |c|
+          if method == :add
+            multilevel_cli_syntax(c, level, 'TYPE TEMPLATE_PATH')
+          else
+            multilevel_cli_syntax(c, level, 'TYPE')
+          end
+          case method
+          when :add
+            c.summary = 'Define a new template from the file system'
+          when :remove
+            if level == :node
+              c.summary = 'Delete the node level template'
+            else
+              c.summary = 'Delete the cluster wide node default template'
+            end
+          when :touch
+            c.summary = 'Create an empty template ready to be edited'
+          when :show
+            if level == :node
+              c.summary = 'View the node level template'
+            else
+              c.summary = 'View the cluster wide node default template'
+            end
+          when :edit
+            c.summary = 'Update the template through the system editor'
+          when :render
+            c.summary = 'Render the template to stdout'
+          end
+          c.action(&Commands::Template.named_commander_proxy(:node, method: method))
         end
-        case method
-        when :add
-          c.summary = 'Define a new template from the file system'
-        when :remove
-          c.summary = 'Delete the template from the node level'
-        when :touch
-          c.summary = 'Create an empty template ready to be edited'
-        when :show
-          c.summary = 'View the node level template'
-        when :edit
-          c.summary = 'Edit the node level template'
-        when :render
-          c.summary = 'Render the node level template to stdout'
-        end
-        c.action(&Commands::Template.named_commander_proxy(:node, method: method))
       end
     end
   end
