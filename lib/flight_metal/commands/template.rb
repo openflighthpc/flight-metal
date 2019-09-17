@@ -31,6 +31,7 @@ module FlightMetal
   module Commands
     class Template < ScopedCommand
       command_require 'flight_metal/template_map',
+                      'flight_metal/models/node',
                       'tty-editor'
 
       def add(cli_type, rel_path)

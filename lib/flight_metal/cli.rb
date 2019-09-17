@@ -504,7 +504,11 @@ module FlightMetal
           when :render
             c.summary = 'Render the template to stdout'
           end
-          c.action(&Commands::Template.named_commander_proxy(:node, method: method))
+          if level == :cluster
+            c.action(&Commands::Template.unnamed_commander_proxy(:cluster, method: method, index: :nodes))
+          else
+            c.action(&Commands::Template.named_commander_proxy(level, method: method))
+          end
         end
       end
     end
