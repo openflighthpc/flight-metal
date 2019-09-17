@@ -199,6 +199,10 @@ module FlightMetal
       end
     end
 
+    def read_machines
+      read_nodes.map(&:read_machine)
+    end
+
     def read_groups
       require 'flight_metal/models/group'
       case model = read_model
