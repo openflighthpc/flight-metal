@@ -72,13 +72,14 @@ module FlightMetal
         if source
           level = case source
                   when Models::Node
-                    'node'
+                    'Node'
                   when Models::Cluster
-                    'cluster'
+                    'Cluster'
                   else
                     raise InternalError, 'An unexpected error has occurred'
                   end
           puts "Level: #{level}"
+          puts " Name: #{source.is_a?(Models::Node) ? source.name : '-'}"
           puts " Path: #{source.template_path(type, to: deployable_type)}"
         else
           Log.warn_puts "Could not locate a #{cli_type} source template for #{model.name}"

@@ -44,6 +44,10 @@ module FlightMetal
         Models::Cluster.join(cluster, 'var', 'nodes', name, 'machine', *a)
       end
 
+      def read_cluster
+        Models::Cluster.read(cluster, registry: __registry__)
+      end
+
       def read_node
         Models::Node.read(*__inputs__, registry: __registry__)
       end
@@ -64,6 +68,8 @@ module FlightMetal
       def source_model(type)
         if (node = read_node).template?(type, to: :machine)
           node
+        elsif (cluster_model = read_cluster).template?(type, to: :machine)
+          cluster_model
         else
           nil
         end
