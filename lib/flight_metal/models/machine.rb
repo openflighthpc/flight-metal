@@ -33,6 +33,8 @@ require 'flight_metal/models/cluster'
 module FlightMetal
   module Models
     class Machine < Model
+      BUILD_TYPES = [:kickstart, :dhcp, :pxelinux].freeze
+
       allow_missing_read
 
       def self.path(cluster, name)
@@ -49,7 +51,7 @@ module FlightMetal
       end
 
       def missing_build_types
-        [:kickstart, :pxelinux, :dhcp].reject { |t| file?(t) }
+        BUILD_TYPES.reject { |t| file?(t) }
       end
 
       def read_cluster
@@ -71,6 +73,49 @@ module FlightMetal
 
       def read_file(type)
         File.read file_path(type)
+      end
+
+      def system_file_path(type)
+        if BUILD_TYPES.include?(type)
+          case type
+          when :pxelinux
+            File.join(
+              Config.tftpboot_dir,
+              'pxelinux.cfg',
+              '01-' + read_node.mac.downcase.gsub(':', '-')
+            )
+          when :kickstart
+            File.join(Config.kickstart_dir, name + '.ks')
+          when :dhcp
+            File.join(Config.dhcpd_dir, name + '.conf')
+          else
+            raise InternalError
+          end
+        else
+          raise InvalidInput, <<~ERROR
+            '#{type}' is not a build file and does not have a system location
+          ERROR
+        end
+      end
+
+      def system_file?(type)
+        path = Pathname.new(system_file_path(type))
+        path.symlink? || path.exists?
+      end
+
+      def system_file_correctly_linked?(type)
+        path = Pathname.new(system_file_path(type))
+        path.symlink? && path.readlink == file_path(type)
+      end
+
+      def system_file_installed?(type)
+        system_file_correctly_linked?(type) && file?(type)
+      end
+
+      def link_system_file(type)
+        sys = system_file_path(type)
+        FileUtils.mkdir_p File.dirname(sys)
+        FileUtils.ln_s file_path(type), sys
       end
 
       def source_model(type)
