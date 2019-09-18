@@ -33,6 +33,10 @@ module FlightMetal
       def nodes
         puts read_nodes.map(&:name)
       end
+
+      def groups
+        puts read_groups.map(&:name)
+      end
     end
   end
 end

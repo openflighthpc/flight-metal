@@ -228,15 +228,10 @@ module FlightMetal
       c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
     end
 
-    # NOTE: Disable the cluster list-groups command as a duplicate
-    # Consider refactoring if it is permanently removed
-    # ['cluster list-groups', 'group list'].each do |name|
-    ['group list'].each do |name|
-      command name do |c|
-        syntax(c)
-        c.summary = "Display the list of groups"
-        c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_groups))
-      end
+    command 'group list' do |c|
+      syntax(c)
+      c.summary = "Display the list of groups"
+      c.action(&Commands::List.unnamed_commander_proxy(:cluster, index: :groups))
     end
 
     command 'group show' do |c|
