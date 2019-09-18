@@ -31,7 +31,7 @@ module FlightMetal
   module Commands
     class Miscellaneous < ScopedCommand
       def switch_cluster
-        cluster = Models::Cluster.read(model_name_or_error)
+        cluster = Models::Cluster.read(model_name_or_error).tap(&:__data__)
         Config.create_or_update { |c| c.cluster = cluster.identifier }
         puts "Switched cluster: #{cluster.identifier}"
       end
