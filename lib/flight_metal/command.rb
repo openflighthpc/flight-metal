@@ -204,10 +204,12 @@ module FlightMetal
     end
 
     def read_groups
-      require 'flight_metal/models/group'
+      require 'flight_metal/indices/group_and_node'
       case model = read_model
       when Models::Cluster
-        model.read_groups
+        Indices::GroupAndNode.glob_read(Config.cluster, '*', '*', '*')
+                             .map(&:read_group)
+                             .uniq
       when Models::Group
         [model]
       when Models::Node

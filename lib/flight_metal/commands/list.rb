@@ -31,11 +31,15 @@ module FlightMetal
   module Commands
     class List < ScopedCommand
       def nodes
-        puts read_nodes.map(&:name)
+        nodes = read_nodes
+        puts nodes.map(&:name)
+        nodes.each(&:generate_indices)
       end
 
       def groups
-        puts read_groups.map(&:name)
+        groups = read_groups
+        puts groups.map(&:name)
+        groups.each(&:generate_indices)
       end
     end
   end

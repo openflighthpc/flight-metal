@@ -59,3 +59,6 @@ module FlightMetal
   end
 end
 
+require 'flight_metal/models/node'
+require 'flight_metal/models/group'
+
