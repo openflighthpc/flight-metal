@@ -43,9 +43,10 @@ module FlightMetal
         Log.info_puts "Created: #{group.name}"
       end
 
-      def node
+      def node(mac)
         node = Models::Node.create(Config.cluster, model_name_or_error) do |n|
           n.rebuild = true
+          n.mac = mac
         end
         Log.info_puts "Created: #{node.name}"
       end

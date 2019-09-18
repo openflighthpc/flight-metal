@@ -190,7 +190,7 @@ module FlightMetal
     end
 
     command 'node create' do |c|
-      syntax(c, 'NODE')
+      syntax(c, 'NODE MAC')
       c.summary = 'Add a new node to the cluster'
       c.action(&FlightMetal::Commands::Create.named_commander_proxy(:node))
     end
