@@ -32,7 +32,6 @@ require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
-require 'flight_metal/models/concerns/has_params'
 require 'flight_metal/models/concerns/has_templates'
 
 module FlightMetal
@@ -41,7 +40,6 @@ module FlightMetal
       # Must be required after the class declaration
       require 'flight_metal/models/node/has_groups'
 
-      include Concerns::HasParams
       include Concerns::HasTemplates
       include HasGroups
 
@@ -59,19 +57,6 @@ module FlightMetal
           FileUtils.rm_rf node.join('machine')
           true
         end
-      end
-
-      reserved_param_reader(:mac)
-
-      reserved_param_reader(:other_groups) do |groups|
-        groups.empty? ? nil : groups.join(',')
-      end
-      reserved_param_reader(:primary_group)
-
-      reserved_param_reader(:name)
-      reserved_param_reader(:cluster)
-      reserved_param_reader(:groups) do |groups|
-        groups.join(',')
       end
 
       flag :built
@@ -94,108 +79,8 @@ module FlightMetal
         end
       end
 
-      # TemplateMap.path_methods.each do |method, type|
-      #   define_method(method) do
-      #     join('libexec', TemplateMap.find_filename(type))
-      #   end
-      #   define_path?(method)
-      # end
-      # define_type_path_shortcuts
-
-      # TemplateMap.path_methods(sub: 'template').each do |method, type|
-      #   define_method("#{type}_template_model") do
-      #     return read_primary_group if read_primary_group.type_path?(type)
-      #     return read_cluster if read_cluster.type_path?(type)
-      #   end
-
-      #   define_method(method) do
-      #     type_template_model(type)&.type_path(type)
-      #   end
-      #   define_path?(method)
-      # end
-      # define_type_path_shortcuts(sub: 'template')
-
-      # def type_template_model(type)
-      #   public_send("#{type}_template_model")
-      # end
-
-      # def pxelinux_system_path
-      #   if mac
-      #     File.join(Config.tftpboot_dir,
-      #               'pxelinux.cfg',
-      #               '01-' + mac.downcase.gsub(':', '-'))
-      #   else
-      #     nil
-      #   end
-      # end
-
-      # def kickstart_system_path
-      #   File.join(Config.kickstart_dir, name + '.ks')
-      # end
-
-      # def dhcp_system_path
-      #   File.join(Config.dhcpd_dir, name + '.conf')
-      # end
-
-      # define_type_path_shortcuts(sub: 'system')
-
-      # [:kickstart, :pxelinux, :dhcp].each do |type|
-      #   define_path?(TemplateMap.path_method(type, sub: 'system'))
-
-      #   define_method("#{type}_status") do |error: true|
-      #     if type_path?(type) && type_system_path?(type, symlink: true)
-      #       rendered = Pathname.new(type_path(type))
-      #       system = Pathname.new(type_system_path(type))
-      #       if system.symlink? && File.identical?(system.readlink, rendered)
-      #         :installed
-      #       elsif error && system.symlink?
-      #         raise InvalidModel, <<~ERROR.chomp
-      #           '#{name}' system file is linked incorrectly. Fix the link and try again
-      #           Link Source: #{system}
-      #           Correct:     #{system.readlink}
-      #           Incorrect:   #{rendered}
-      #         ERROR
-      #       elsif error
-      #         raise InvalidModel, <<~ERROR.chomp
-      #           '#{name}' system file already exists, please remove it and try again
-      #           File: #{system}
-      #         ERROR
-      #       else
-      #         :invalid
-      #       end
-      #     elsif type_path?(type)
-      #       :pending
-      #     elsif type_template_path?(type)
-      #       :renderable
-      #     else
-      #       :missing
-      #     end
-      #   end
-      # end
-
-      # [:ipmi, :power_on, :power_off, :power_status].each do |type|
-      #   define_method("#{type}_status") do |error: true|
-      #     if type_path?(type)
-      #       :installed
-      #     elsif type_template_path?(type)
-      #       :renderable
-      #     else
-      #       :missing
-      #     end
-      #   end
-      # end
-
-      # def type_status(type, error: true)
-      #   public_send("#{type}_status", error: error)
-      # end
-
       def mac?
         !mac.nil?
-      end
-
-      # TODO: Remove render_params as it is now equivalent to params
-      def render_params
-        params
       end
 
       def read_cluster

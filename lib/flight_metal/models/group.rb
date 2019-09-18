@@ -30,20 +30,12 @@
 require 'flight_metal/model'
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/node'
-require 'flight_metal/models/concerns/has_params'
 require 'flight_metal/indices/group_and_node'
 
 module FlightMetal
   module Models
     class Group < Model
-      include Concerns::HasParams
-
       allow_missing_read
-
-      reserved_param_reader(:name)
-      reserved_param_reader(:cluster)
-      reserved_param_reader(:nodes) { |nodes| nodes.join(',') }
-      reserved_param_reader(:primary_nodes) { |nodes| nodes.join(',') }
 
       def self.join(cluster, name, *a)
         Models::Cluster.join(cluster, 'var', 'groups', name, *a)
