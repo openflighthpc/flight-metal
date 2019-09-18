@@ -43,16 +43,21 @@ module FlightMetal
                 .map { |p| p[0..-2].to_sym }
         end
 
-        def update_model(model)
-          model.params = model.params.dup.tap do |hash|
-            hash.merge!(merge_hash)
-            delete_keys.each { |k| hash.delete(k) }
-          end
+        def update!(hash)
+          hash.merge!(merge_hash)
+          delete_keys.each { |k| hash.delete(k) }
+          hash
         end
       end
 
       command_require 'flight_metal/models/node', 'tty-editor'
 
+      def node(*param_strs)
+        Models::Node.update(*read_node.__inputs__) do |node|
+          builder = Params.new(param_strs)
+          node.other_params = builder.update!(node.other_params.dup)
+        end
+      end
     end
   end
 end

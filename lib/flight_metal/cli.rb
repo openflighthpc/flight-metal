@@ -273,12 +273,16 @@ module FlightMetal
     end
 
     command 'node update' do |c|
-      syntax(c, 'NODE')
-      c.summary = 'Modify the metadata associated with a node'
-      c.option '--rebuild [false]', 'Flag the node to be rebuild. Unset by including false'
-      c.option '--mac ADDRESS', 'Specify the hardware address for the node'
-      c.option '--primary-group GROUP', 'Specify the new primary group for the node'
-      c.option '--other-groups GROUPS', 'A comma separated list of other groups for the node'
+      syntax(c, 'NODE [PARAMS...]')
+      c.summary = 'Set the other parameters associated with the node'
+      c.description = <<~DESC
+        Set, modify, and delete other parameters for the node. The parameter
+        keys must be an alphanumeric string which may contain underscores.
+
+        Parameters can set or modify keys by using `key=value` notation. The key can
+        be hard set to an empty string by omitting the value: `key=`. Keys are
+        permanently deleted when suffixed with an exclamation: `key!`.
+      DESC
       c.action(&Commands::Update.named_commander_proxy(:node))
     end
 
