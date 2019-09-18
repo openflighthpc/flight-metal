@@ -89,14 +89,16 @@ module FlightMetal
         <%  end -%>
 
 
-        ## Reserved Parameters
-        <% reserved_params.each do |key, value| -%>
+        ## Static Parameters
+        <% static_params.each do |key, value| -%>
         - _<%= key %>_: <%= value %>
         <% end -%>
 
-        <% unless non_reserved_params.empty? -%>
         ## Other Parameters
-        <%   non_reserved_params.each do |key, value| -%>
+        <% if other_params.empty? -%>
+        No other parameters have been set
+        <% else -%>
+        <%   other_params.each do |key, value| -%>
         - *<%= key %>*: <%= value %>
         <%   end -%>
         <% end -%>

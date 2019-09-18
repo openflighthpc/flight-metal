@@ -107,8 +107,8 @@ module FlightMetal
         {
           name: name,
           cluster: cluster,
-          groups: groups,
-          other_groups: other_groups,
+          groups: groups.join(','),
+          other_groups: other_groups.join(','),
           primary_group: primary_group,
           mac: mac
         }
