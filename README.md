@@ -4,9 +4,6 @@
 
 This app can be installed via:
 ```
-yum group install "Development Tools"
-yum install libpcap-devel
-
 git clone https://github.com/alces-software/flight-metal
 cd flight-metal 
 bundle install
@@ -36,78 +33,44 @@ The following will create a new cluster with three basic nodes and three gpus no
 > metal cluster create foo
 
 # Create the first three nodes
-> metal node create node1
-> metal node create node2
-> metal node create node3
+> metal node create node1 FF:FF:FF:FF:FF:01
+> metal node create node2 FF:FF:FF:FF:FF:02
+> metal node create node3 FF:FF:FF:FF:FF:03
 
-> metal node create gpu1
-> metal node create gpu2
-> metal node create gpu3
+> metal node create gpu1 FF:FF:FF:FF:FF:04
+> metal node create gpu2 FF:FF:FF:FF:FF:05
+> metal node create gpu3 FF:FF:FF:FF:FF:06
 ```
 
-Next create and add the nodes to the relevant primary group
+Next add the nodes to the relevant primary group
 
 ```
-> metal group create nodes
-> metal update node1 primary_group=nodes
-> metal update node2 primary_group=nodes
-> metal update node3 primary_group=nodes
-
-> metal group create gpus
-> metal update gpu1 primary_group=gpus other_groups=nodes
-> metal update gpu2 primary_group=gpus other_groups=nodes
-> metal update gpu3 primary_group=gpus other_groups=nodes
+> metal group nodes add nodes node1 node2 node03 gpu1 gpu2 gpu3
+> metal group nodes add gpus gpu1 gpu2 gpu3
 ```
 
-In order to build the nodes, they need a mac address and build files. The `metal hunt` command will collect the `mac` as the nodes pxeboot. Alternatively, the mac can be set using an update.
+Now the `pxelinux`, `kickstart`, and `dhcp` files need to created. The following will create the `pxelinux` files manually by opening them in the editor.
 
 ```
-> metal hunt
-Waiting for new nodes to appear on the network, please network boot them now...,
-(Ctrl-C to terminate)
-Detected a machine on the network (52:54:00:F2:DA:F0). Please enter the hostname:  |node1|
-Saved node1 : ...
+> metal node file touch node1 pxelinux
+> metal node file touch node2 pxelinux
+> metal node file touch node3 pxelinux
 
-^CReceived Interrupt!
-
-> metal update node2 mac=...
-> metal update node3 mac=...
+> metal node file edit node1 pxelinux
+> metal node file edit node2 pxelinux
+> metal node file edit node3 pxelinux
 ```
 
-Now the `pxelinux`, `kickstart`, and `dhcp` files need to created. The following will create the `pxelinux` files manually by opening them in the editor. The `--touch` flag is only required when creating a new file, otherwise it is ignored
+Alternatively they can render based on a cluster level template.
 
 ```
-> metal node edit node1 pxelinux
-> metal node edit node2 pxelinux
-> metal node edit node3 pxelinux
-```
-
-Alternatively they can render based on a cluster level template. The template must be created first using `metal edit`.
-
-```
-> metal cluster edit kickstart
+> metal cluster node-template edit kickstart
 
 # Render the nodes individually
-> metal node render node1 kickstart
-> metal node render node2 kickstart
+> metal node file update node1 kickstart
+> metal node file update node2 kickstart
 ...
 
-# Render all the nodes (including the gpus)
-> metal group render-nodes nodes kickstart
-```
-
-Finally it is also possible to render nodes based on a particular group template
-
-```
-# Render the group template based off the cluster
-> metal group render nodes dhcp
-# This will only render node[1-3] as the gpu's are not in the primary group
-> metal group render --primary nodes dhcp
-
-# NOTE: The following command will render both node[1-3] and gpu[1-3]
-#       The regular nodes will use the group template where the gpus will use the domain
-> metal cluster edit dhcp --touch
-> metal group render-nodes nodes dhcp
 ```
 
 #### Getting Started with Import
@@ -136,44 +99,11 @@ The full details of the configured nodes can be retrieved with the `list` comman
 ```
 # View the important details about the nodes
 > metal node list
-
-# View all the details about the nodes
-> metal node list --verbose
 ```
 
 ### The rendering system
 
-Each cluster/group/node (aka model) can store its own copy of each content file (kickstart/dhcp/power-on etc.). The cluster and group versions are used as templates to generate the node's version. Only the node's version is used by the commands and build process.
-
-The `cluster edit` and `group edit` commands can be used to generate the initial templates. After this, the `node render` will try and use the node's primary group file as a template. The cluster is then used as a fall back if the primary group file is missing. Groups files can also be rendered against the cluster instead of editing them.
-
-The templating engine replaces tags with values from the model's parameter hash. The tag format must be one of the following: `%<key>%` or `%<prefix>.<key>%`. The `<key>` may represent any key within the model's parameter hash, and will trigger the tag to be replaced with the value. The optional `<prefix>` maybe either `group` or `node`, and is used to specify which level the tag should be rendered at. This is useful if their is duplicate tags (e.g. `name`) at both the group
-and node levels.
-
-### Collecting MAC Addresses and Updating DHCP
-#### Hunting for MAC
-
-There is a dedicated command for collecting MAC addresses of nodes: `hunt`. It works by listening out for `DHCP DISCOVER` messages on a network interface. The interface defaults to `eth0` but can be changed in the core application configuration file.
-See: `etc/config.yaml.example` for how to set the `interface`
-
-The `hunt` command only listens for `DHCP DISCOVER` where a Vendor Class Identifier has been set to `PXEClient`. When it has detected a valid discover, it will prompt for the node it should be assigned to. The `node` does not need to exist in order to `hunt` it, however this may cause issues with `import` as the node will now exist (as discussed above).
-
-The `hunt` command can be exited by sending an `interrupt`. No other pxelinux configuration is required at this stage.
-
-```
-# Hunts for the nodes
-> bin/metal hunt
-Waiting for new nodes to appear on the network, please network boot them now...,
-(Ctrl-C to terminate)
-
-# After pxebooting a node
-Detected a machine on the network (**:**:**:**:**:**). Please enter the hostname:  |node01|
-...
-```
-
-The prompt will auto increment the suffix for each MAC address it does recognise. This is to allow new nodes to be added quickly by booting them in alphanumeric order. The prompt will preserve the name for existing MAC addresses. This prevents nodes from being renamed without explicitly setting it.
-
-A MAC address can only be hunted once per call of the command. This filters out any spam from nodes that are stuck in a pxe boot loop. To re-hunt an existing node, the command must be called again.
+TBA
 
 ### Building the nodes
 
