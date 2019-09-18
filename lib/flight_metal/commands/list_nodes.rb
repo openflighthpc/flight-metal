@@ -105,7 +105,7 @@ module FlightMetal
 
       ERB
 
-      command_require('flight_metal/buildable_nodes', 'flight_metal/templator')
+      command_require 'flight_metal/templator'
 
       def shared_verbose
         shared(verbose: true)

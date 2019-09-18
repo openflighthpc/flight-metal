@@ -27,21 +27,21 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/models/node'
+require 'flight_metal/models/machine'
 
 module FlightMetal
-  class BuildableNodes < Array
-    def initialize(nodes)
-      buildable_nodes = nodes.reject do |node|
-        next if node.buildable?
-        if node.rebuild?
+  class BuildableMachines < Array
+    def initialize(machines)
+      buildable_machines = machines.reject do |machine|
+        next if machine.buildable?
+        if machine.rebuild?
           Log.warn_puts <<~WARN.chomp
-            Skipping #{node.name}: It can not be built at this time
+            Skipping #{machine.name}: It can not be built at this time
           WARN
         end
         true
       end
-      super(buildable_nodes)
+      super(buildable_machines)
     end
 
     def buildable?(name)
@@ -49,25 +49,25 @@ module FlightMetal
     end
 
     def install_build_files
-      each do |node|
+      each do |machine|
         [:kickstart, :pxelinux, :dhcp].each do |type|
-          next unless node.type_status(type) == :pending
-          sys = node.type_system_path(type)
+          next unless machine.type_status(type) == :pending
+          sys = machine.type_system_path(type)
           FileUtils.mkdir_p File.dirname(sys)
-          FileUtils.ln_s node.type_path(type), sys
+          FileUtils.ln_s machine.type_path(type), sys
         end
       end
     end
 
     def process_built(name)
-      node = find_name(name)
-      Models::Node.update(*node.__inputs__) do |n|
-        FileUtils.rm_f n.pxelinux_system_path
-        FileUtils.rm_f n.kickstart_system_path
+      machine = find_name(name)
+      Models::Node.update(*machine.__inputs__) do |n|
+        FileUtils.rm_f machine.pxelinux_system_path
+        FileUtils.rm_f machine.kickstart_system_path
         n.rebuild = false
         n.built = true
       end
-      delete(node)
+      delete(machine)
     end
 
     def find_name(name)
