@@ -44,6 +44,14 @@ module FlightMetal
         Models::Cluster.join(cluster, 'var', 'nodes', name, 'machine', *a)
       end
 
+      def buildable?
+        missing_build_types.empty?
+      end
+
+      def missing_build_types
+        [:kickstart, :pxelinux, :dhcp].reject { |t| file?(t) }
+      end
+
       def read_cluster
         Models::Cluster.read(cluster, registry: __registry__)
       end

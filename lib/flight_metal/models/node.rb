@@ -193,27 +193,6 @@ module FlightMetal
         !mac.nil?
       end
 
-      def buildable?
-        mac? && rebuild? && all_types_buildable?
-      end
-
-      def all_types_buildable?
-        [:kickstart, :pxelinux, :dhcp].map do |type|
-          type_buildable?(type)
-        end.reduce { |memo, bool| memo && bool }
-      end
-
-      # def type_buildable?(type)
-      #   case type_status(type, error: false)
-      #   when :installed
-      #     true
-      #   when :pending
-      #     true
-      #   else
-      #     false
-      #   end
-      # end
-
       # TODO: Remove render_params as it is now equivalent to params
       def render_params
         params

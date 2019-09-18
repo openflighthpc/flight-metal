@@ -42,14 +42,26 @@ module FlightMetal
       LIST_TEMPLATE = <<~ERB
         <% machine = read_machine -%>
         # Node: '<%= name %>'
-        *Built*: <%= built? ? built_time : 'Never' %>
-        *<%= built? ? 'Reb' : 'B' %>uild*: <%= if buildable?
-                                                 'Scheduled'
-                                               elsif rebuild?
-                                                 'Skipping'
-                                               else
-                                                 'No'
-                                               end %>
+
+        ## Build Status
+        - *Built*: <%= built? ? built_time : 'Never' %>
+        - *<%= built? ? 'Rebuild' : 'Build'-%>*: <% if machine.buildable? -%>
+        Scheduled
+        <% elsif rebuild? -%>
+        Skipping - Missing the <%=
+          types = machine.missing_build_types.dup
+          last_type = types.pop
+          if types.empty?
+            last_type
+          elsif types.length > 1
+            types.join(', ') + ', and ' + last_type.to_s
+          else
+            types.first.to_s + ' and ' + last_type.to_s
+          end
+        -%> file<%= 's' if machine.missing_build_types.length > 1 %>
+        <% else -%>
+        No
+        <% end -%>
 
         <% first_status = true -%>
         ## File Status
