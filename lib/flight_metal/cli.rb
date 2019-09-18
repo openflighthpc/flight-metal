@@ -313,7 +313,7 @@ module FlightMetal
 
     command 'node edit' do |c|
       syntax(c, 'NODE')
-      c.summary = "Modify the node's metadata via the editor"
+      c.summary = "Modify the node's other parameters via the editor"
       c.action(&Commands::Update.named_commander_proxy(:node, method: :node_editor))
     end
 

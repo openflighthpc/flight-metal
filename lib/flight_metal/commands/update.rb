@@ -50,7 +50,44 @@ module FlightMetal
         end
       end
 
-      command_require 'flight_metal/models/node', 'tty-editor'
+      command_require 'flight_metal/models/node', 'tty-editor', 'tempfile'
+
+      def node_editor
+        Models::Node.update(*read_node.__inputs__) do |node|
+          # NOTE: In both cases the yaml keys are "converted" to string format
+          # The leading : is a rubyish thing that makes them a symbol. However
+          # this is not formally part of the YAML spec. YAY RUBY
+          static_yaml = YAML.dump(node.static_params)
+                            .split("\n")[1..-1] # Remove the header line
+                            .map { |y| y.sub(/\A:?/, '# ') } # Make it a comment
+                            .join("\n")
+          other_yaml = YAML.dump(node.other_params)
+                           .split("\n")[1..-1]
+                           .map { |y| y.sub(/\A:?/, '') }
+                           .join("\n")
+          Tempfile.open("edit-#{node.name}-other-parameters", '/tmp') do |file|
+            file.write <<~YAML.chomp
+              # Edit the file to update the other parameters for node #{node.name}
+
+              # The following parameters are static to the node and can not be
+              # modified by 'node edit':
+
+              # STATIC PARAMETERS:
+              #{static_yaml}
+
+              # The following are the existing parameters
+              # Adding additional keys will add them as parameters
+              # Similarly, removing keys will permanently delete the parameter
+
+              # OTHER PARAMETERS
+              #{other_yaml.empty? ? "# No other parameters found" : other_yaml}
+            YAML
+            file.rewind
+            TTY::Editor.open(file.path)
+            node.other_params = YAML.safe_load(file.read, permitted_classes: [Symbol])
+          end
+        end
+      end
 
       def node(*param_strs, mac: nil, rebuild: nil)
         # Allow the rebuild flag to be string 'false'
