@@ -46,19 +46,17 @@ module FlightMetal
         ## Build Status
         - *Built*: <%= built? ? built_time : 'Never' %>
         - *<%= built? ? 'Rebuild' : 'Build'-%>*: <% if machine.buildable? -%>
-        Scheduled
+        Ready
         <% elsif rebuild? -%>
-        Skipping - Missing the <%=
-          types = machine.missing_build_types.dup
-          last_type = types.pop
-          if types.empty?
-            last_type
-          elsif types.length > 1
-            types.join(', ') + ', and ' + last_type.to_s
-          else
-            types.first.to_s + ' and ' + last_type.to_s
-          end
-        -%> file<%= 's' if machine.missing_build_types.length > 1 %>
+        Skipping
+
+        ## Build Issues
+        <%=
+          [
+            machine.missing_files_description,
+            machine.incorrectly_linked_description
+          ].reject(&:nil?).join("\n\n")
+        %>
         <% else -%>
         No
         <% end -%>

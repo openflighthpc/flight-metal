@@ -47,11 +47,54 @@ module FlightMetal
       end
 
       def buildable?
-        missing_build_types.empty?
+        missing_build_types.empty? && incorrectly_linked_build_types.empty?
       end
 
       def missing_build_types
         BUILD_TYPES.reject { |t| file?(t) }
+      end
+
+      def missing_files_description
+        types = missing_build_types.dup
+        append_msg = <<~MSG.squish
+          Adding, touching, or updating the file#{'s' if types.length > 1 }
+          will clear this error.
+        MSG
+        if types.empty?
+          # noop
+        elsif types.length == 1
+          "Missing the #{types.first} file.\n#{append_msg}"
+        elsif types.length == 2
+          "Missing the #{types.join(' and ')} files.\n#{append_msg}"
+        else
+          last = types.pop
+          "Missing the #{types.join(', ')}, and #{last} files.\n#{append_msg}"
+        end
+      end
+
+      def incorrectly_linked_build_types
+        BUILD_TYPES.select do |type|
+          system_file?(type) && !system_file_correctly_linked?(type)
+        end
+      end
+
+      def incorrectly_linked_description
+        types = incorrectly_linked_build_types.dup
+        plural = (types.length > 1)
+        if types.empty?
+          # noop
+        else
+          plural_bit = if plural
+                         'paths do'
+                       else
+                         'path does'
+                       end
+          <<~DESC.chomp
+            The following system #{plural_bit} not correctly symlink to the node:
+            #{incorrectly_linked_build_types.map { |t| system_file_path(t) }.join("\n")}
+            Deleting the file#{'s' if plural} will clear this error.
+          DESC
+        end
       end
 
       def read_cluster
@@ -100,7 +143,7 @@ module FlightMetal
 
       def system_file?(type)
         path = Pathname.new(system_file_path(type))
-        path.symlink? || path.exists?
+        path.symlink? || path.exist?
       end
 
       def system_file_correctly_linked?(type)
