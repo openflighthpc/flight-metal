@@ -53,25 +53,8 @@ module FlightMetal
         [:kickstart, :pxelinux, :dhcp].each do |type|
           if machine.system_file_installed?(type)
             # noop
-          elsif machine.system_file_correctly_linked?(type)
-            raise InternalError, <<~ERROR.squish
-              Encounted an error state where #{machine.name} #{type} file is
-              missing
-            ERROR
-          elsif machine.system_file?(type)
-            msg = <<~ERROR.squish
-              A file already exists in #{machine.name} #{type} system file
-              location. Please remove this file and restart the build:
-            ERROR
-            msg += "\n#{machine.system_file_path(type)}"
-            raise InvalidAction, msg
-          elsif machine.file?(type)
+          else machine.file?(type)
             machine.link_system_file(type)
-          else
-            raise InternalError, <<~ERROR.squish
-              Encounted an error state where #{machine.name} #{type} file is
-              missing
-            ERROR
           end
         end
       end
