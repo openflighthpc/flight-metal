@@ -83,7 +83,7 @@ module FlightMetal
 
       data_reader(:other_params) { |p| (p || {}).symbolize_keys }
       data_writer(:other_params) do |raw|
-        parsed = raw.to_h.select do |key, value|
+        raw.to_h.symbolize_keys.select do |key, value|
           next true unless static_params.keys.include?(key)
           if GROUP_STATIC_KEYS.include?(key)
             msg = <<~WARN.squish
@@ -114,7 +114,6 @@ module FlightMetal
           end
           false
         end
-        parsed.symbolize_keys
       end
 
       def static_params
