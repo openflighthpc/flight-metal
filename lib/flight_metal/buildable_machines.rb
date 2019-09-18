@@ -34,7 +34,7 @@ module FlightMetal
     def initialize(machines)
       buildable_machines = machines.reject do |machine|
         next if machine.buildable?
-        if machine.rebuild?
+        if machine.read_node.rebuild?
           Log.warn_puts <<~WARN.chomp
             Skipping #{machine.name}: It can not be built at this time
           WARN
