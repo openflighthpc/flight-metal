@@ -57,6 +57,22 @@ module FlightMetal
     def join(*rest)
       self.class.join(*__inputs__, *rest)
     end
+
+    # The hash and eql? methods are required for uniq to work
+    # To models are considered the same if they have the same inputs
+    # This does not mean the data they store is the same as one could have
+    # been modified or loaded at a different time
+    def hash
+      __inputs__.hash
+    end
+
+    def eql?(other)
+      if self.class == other.class
+        __inputs__.eql?(other.__inputs__)
+      else
+        false
+      end
+    end
   end
 end
 
