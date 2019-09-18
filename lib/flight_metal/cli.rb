@@ -231,7 +231,7 @@ module FlightMetal
     command 'group show' do |c|
       syntax(c, 'GROUP')
       c.summary = "Display a group's details"
-      c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :list_groups))
+      c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :show_group))
     end
 
     command 'group nodes' do |c|

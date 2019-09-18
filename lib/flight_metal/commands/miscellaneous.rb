@@ -35,6 +35,12 @@ module FlightMetal
         Config.create_or_update { |c| c.cluster = cluster.identifier }
         puts "Switched cluster: #{cluster.identifier}"
       end
+
+      def show_group
+        group = read_group
+        puts "Primary Nodes: #{group.read_primary_nodes.map(&:name).join(',')}"
+        puts "  Other Nodes: #{group.read_other_nodes.map(&:name).join(',')}"
+      end
     end
   end
 end

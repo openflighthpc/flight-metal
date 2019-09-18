@@ -172,14 +172,17 @@ module FlightMetal
     end
 
     def read_cluster
+      require 'flight_metal/models/cluster'
       Models::Cluster.read(model_name || Config.cluster)
     end
 
     def read_group
+      require 'flight_metal/models/group'
       Models::Group.read(Config.cluster, model_name_or_error)
     end
 
     def read_node
+      require 'flight_metal/models/node'
       Models::Node.read(Config.cluster, model_name_or_error)
     end
 
