@@ -249,15 +249,15 @@ module FlightMetal
     end
 
     command 'group nodes add' do |c|
-      syntax(c, 'GROUP NODES')
-      c.summary = 'add nodes to the group'
+      syntax(c, 'GROUP NODES...')
+      c.summary = 'Add the nodes to the group'
       c.option '--primary', 'Set the nodes to belong within the primary group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
     end
 
     command 'group nodes remove' do |c|
-      syntax(c, 'GROUP NODES')
-      c.summary = 'remove the nodes from the group'
+      syntax(c, 'GROUP NODES...')
+      c.summary = 'Remove the nodes from the group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
     end
 

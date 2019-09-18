@@ -32,9 +32,9 @@ module FlightMetal
     class GroupNodes < ScopedCommand
       command_require 'flight_metal/models/node'
 
-      def add(nodes_str)
+      def add(*nodes)
         group_name = model_name_or_error
-        nodes = nodes_str.split(',').reject do |node|
+        nodes = nodes.reject do |node|
           next if Models::Node.exists?(Config.cluster, node)
           Log.warn_puts <<~WARN.squish
             Skipping node '#{node}' as it does not exist
@@ -56,9 +56,9 @@ module FlightMetal
         end
       end
 
-      def remove(nodes_str)
+      def remove(*nodes)
         group_name = model_name_or_error
-        nodes = nodes_str.split(',').reject do |node|
+        nodes = nodes.reject do |node|
           next if Models::Node.exists?(Config.cluster, node)
           Log.warn_puts <<~WARN.squish
             Skipping node '#{node}' as it does not exist
