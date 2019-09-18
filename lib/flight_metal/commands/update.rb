@@ -52,10 +52,20 @@ module FlightMetal
 
       command_require 'flight_metal/models/node', 'tty-editor'
 
-      def node(*param_strs)
+      def node(*param_strs, mac: nil, rebuild: nil)
+        # Allow the rebuild flag to be string 'false'
+        rebuild  = if rebuild.nil?
+                     nil
+                   elsif [false, 'false'].include?(rebuild)
+                     false
+                   else
+                     true
+                   end
         Models::Node.update(*read_node.__inputs__) do |node|
           builder = Params.new(param_strs)
           node.other_params = builder.update!(node.other_params.dup)
+          node.mac = mac if mac
+          node.rebuild = rebuild unless rebuild.nil?
         end
       end
     end

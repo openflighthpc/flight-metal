@@ -275,14 +275,27 @@ module FlightMetal
     command 'node update' do |c|
       syntax(c, 'NODE [PARAMS...]')
       c.summary = 'Set the other parameters associated with the node'
-      c.description = <<~DESC
+      c.description = <<~DESC.chomp
         Set, modify, and delete other parameters for the node. The parameter
-        keys must be an alphanumeric string which may contain underscores.
+        keys must be an alphanumeric string which may contain underscores. The rebuild
+        tag and mac address can also be udpated using the optional flags.
+
+        Setting the rebuild tag to false will permanently disable the build command
+        for the node. Alternatively, setting it will trigger it to build next time
+        an appropriate build command is called. Any build issues will still need to
+        be resolved before a rebuild will occurr.
+
+        The mac address is used internally and can not be updated as a parameter.
+        Instead specifiy the new mac address using the '--mac' flag. This may result
+        in the system pxelinux file being abandoned as it is mac address specific.
+        Use with caution!
 
         Parameters can set or modify keys by using `key=value` notation. The key can
         be hard set to an empty string by omitting the value: `key=`. Keys are
         permanently deleted when suffixed with an exclamation: `key!`.
       DESC
+      c.option '--rebuild [false]', 'Flag the node to be rebuild. Unset by including false'
+      c.option '--mac ADDRESS', 'Specify an updated hardware address for the node'
       c.action(&Commands::Update.named_commander_proxy(:node))
     end
 

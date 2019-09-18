@@ -45,7 +45,7 @@ module FlightMetal
 
         ## Build Status
         - *Built*: <%= built? ? built_time : 'Never' %>
-        - *<%= built? ? 'Rebuild' : 'Build'-%>*: <% if machine.buildable? -%>
+        - *<%= built? ? 'Rebuild' : 'Build'-%>*: <% if rebuild? && machine.buildable? -%>
         Ready
         <% elsif rebuild? -%>
         Skipping

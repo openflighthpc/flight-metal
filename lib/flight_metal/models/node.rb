@@ -83,7 +83,7 @@ module FlightMetal
 
       data_reader(:other_params) { |p| (p || {}).symbolize_keys }
       data_writer(:other_params) do |raw|
-        parsed = raw.to_h.select do |key, _|
+        parsed = raw.to_h.select do |key, value|
           next true unless static_params.keys.include?(key)
           if GROUP_STATIC_KEYS.include?(key)
             msg = <<~WARN.squish
@@ -94,10 +94,22 @@ module FlightMetal
               #{msg}
               #{Config.app_name} group nodes --help
             WARN
+          elsif key == :mac
+            msg = <<~WARN.squish
+              Cowardly refusing to update the node's mac address as a parameter.
+              This must be done using the command below. Caution should be used
+              when updating the mac as system paths are dependent on it. This may
+              result in the node's old pxelinux file being abandoned in the file
+              system.
+            WARN
+            Log.warn_puts <<~WARN
+              #{msg}
+              #{Config.app_name} node update #{name} --mac #{value}
+            WARN
           else
             Log.warn_puts <<~WARN.squish
-              Cowardly refusing to set the #{key} parameter as it is static to
-              the node
+              Cowardly refusing to set the #{key} parameter as it is immutable for
+              nodes.
             WARN
           end
           false
