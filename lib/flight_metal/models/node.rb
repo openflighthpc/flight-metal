@@ -37,6 +37,8 @@ require 'flight_metal/models/concerns/has_templates'
 module FlightMetal
   module Models
     class Node < Model
+      GROUP_STATIC_KEYS = [:groups, :other_groups, :primary_group]
+
       # Must be required after the class declaration
       require 'flight_metal/models/node/has_groups'
 
@@ -77,6 +79,43 @@ module FlightMetal
         else
           hwaddr.to_s
         end
+      end
+
+      data_reader(:other_params) { |p| p || {} }
+      data_writer(:other_params) do |raw|
+        raw.to_h.select do |key, _|
+          next true unless static_params.keys.include?(key)
+          if GROUP_STATIC_KEYS.include?(key)
+            msg = <<~WARN.squish
+              Cowardly refusing to update the #{key} parameter for the node.
+              See the following command for updating group membership:
+            WARN
+            Log.warn_puts <<~WARN.chomp
+              #{msg}
+              #{Config.app_name} group nodes --help
+            WARN
+          else
+            Log.warn_puts <<~WARN.squish
+              Cowardly refusing to set the #{key} parameter as it is static to
+              the node
+            WARN
+          end
+        end
+      end
+
+      def static_params
+        {
+          name: name,
+          cluster: cluster,
+          groups: groups,
+          other_groups: other_groups,
+          primary_group: primary_group,
+          mac: mac
+        }
+      end
+
+      def params
+        other_params.merge(static_params)
       end
 
       def mac?
