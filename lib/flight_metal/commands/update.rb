@@ -53,63 +53,6 @@ module FlightMetal
 
       command_require 'flight_metal/models/node', 'tty-editor'
 
-      def params(*params)
-        model_class.update(*read_model.__inputs__) do |model|
-          Params.new(params).update_model(model)
-        end
-      end
-
-      def params_editor
-        model_class.update(*read_model.__inputs__) do |model|
-          yaml = YAML.dump(model.non_reserved_params)
-          Tempfile.open("#{model.name}-parameters", '/tmp') do |file|
-            file.write(yaml)
-            file.rewind
-            TTY::Editor.open(file.path)
-            model.params = YAML.safe_load(file.read, permitted_classes: [Symbol])
-          end
-        end
-      end
-
-      # def group(*params)
-      #   Models::Group.update(Config.cluster, model_name_or_error) do |group|
-      #     Params.new(params).update_model(group)
-      #   end
-      # end
-
-      def node_editor
-        node = read_node
-        keys = [:rebuild, :primary_group, :other_groups, :mac]
-        orginals = keys.map { |k| [k, node.public_send(k)] }.to_h
-        yaml = YAML.dump(orginals)
-        new = nil
-        Tempfile.open("#{node.name}-metadata", '/tmp') do |file|
-          file.write(yaml)
-          file.rewind
-          TTY::Editor.open(file.path)
-          new = YAML.safe_load(file.read, permitted_classes: [Symbol])
-        end
-        new.select! { |k, _| keys.include?(k) }
-        Models::Node.update(*node.__inputs__) do |update|
-          keys.each { |k| update.public_send("#{k}=", new[k]) }
-        end
-      end
-
-      def node(rebuild: nil, primary_group: nil, other_groups: nil, mac: nil)
-        rebuild = if rebuild.nil?
-                    nil
-                  elsif [false, 'false'].include?(rebuild)
-                    false # Treat 'false' as false
-                  else
-                    true
-                  end
-        Models::Node.update(Config.cluster, model_name_or_error) do |node|
-          node.rebuild = rebuild unless rebuild.nil?
-          node.primary_group = primary_group if primary_group
-          node.other_groups = other_groups.split(',') if other_groups
-          node.mac = mac if mac
-        end
-      end
     end
   end
 end

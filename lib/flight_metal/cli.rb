@@ -203,36 +203,6 @@ module FlightMetal
       c.action(Commands::Delete.named_commander_proxy(:node))
     end
 
-    # NOTE: Disable parameter modification at the group level. Needs refactoring
-    # ['node', 'group'].each do |level|
-    ['node'].each do |level|
-      command "#{level} parameters" do |c|
-        syntax(c)
-        c.summary = "Manage the parameters for a #{level}"
-        c.sub_command_group = true
-      end
-
-      command "#{level} parameters update" do |c|
-        syntax(c, "#{level.upcase} [params...]")
-        c.summary = "modify the #{level}'s parameters"
-        c.description = <<~desc
-          set, modify, and delete parameters assigned to the #{level.upcase}. the parameter
-          keys must be an alphanumeric string which may contain underscores.
-
-          params can set or modify keys by using `key=value` notation. the key can
-          be hard set to an empty string by omitting the value: `key=`. keys are
-          permanently deleted when suffixed with a exclamation: `key!`.
-        desc
-        c.action(&Commands::Update.named_commander_proxy(level, method: :params))
-      end
-
-      command "#{level} parameters edit" do |c|
-        syntax(c, "#{level.upcase}")
-        c.summary = "Modify the parameters via the editor"
-        c.action(&Commands::Update.named_commander_proxy(level, method: :params_editor))
-      end
-    end
-
     xcommand 'import' do |c|
       syntax(c, 'MANIFEST_PATH')
       c.summary = 'Add node configuration profiles'
