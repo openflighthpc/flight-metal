@@ -55,15 +55,17 @@ module FlightMetal
       end
 
       def read_nodes
-        [*read_primary_nodes, *read_other_nodes].uniq(&:__inputs__)
+        Indices::GroupAndNode.glob_read(cluster, name, '*', '*')
+                             .map(&:read_node)
+                             .uniq
       end
 
       def read_other_nodes
-        Indices::OtherGroupAndNode.glob_read(cluster, name, '*').map(&:read_node)
+        Indices::GroupAndNode.glob_read(cluster, name, '*', :other).map(&:read_node)
       end
 
       def read_primary_nodes
-        Indices::PrimaryGroupAndNode.glob_read(cluster, name, '*').map(&:read_node)
+        Indices::GroupAndNode.glob_read(cluster, name, '*', :primary).map(&:read_node)
       end
 
       def nodes

@@ -62,12 +62,12 @@ module FlightMetal
           end
           data_writer(:other_groups) { |v| v.to_a.uniq }
 
-          has_indices(Indices::OtherGroupAndNode) do |create|
-            other_groups.each { |group| create.call(cluster, group, name) }
+          has_indices(Indices::GroupAndNode) do |create|
+            other_groups.each { |group| create.call(cluster, group, name, :other) }
           end
 
-          has_indices(Indices::PrimaryGroupAndNode) do |create|
-            create.call(cluster, primary_group, name)
+          has_indices(Indices::GroupAndNode) do |create|
+            create.call(cluster, primary_group, name, :primary)
           end
         end
 
