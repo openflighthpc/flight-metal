@@ -184,12 +184,6 @@ module FlightMetal
       c.action(&FlightMetal::Commands::Create.named_commander_proxy(:node))
     end
 
-    command 'group create' do |c|
-      syntax(c, 'GROUP')
-      c.summary = 'Add a new group to the cluster'
-      c.action(&FlightMetal::Commands::Create.named_commander_proxy(:group))
-    end
-
     command 'cluster create' do |c|
       syntax(c, 'IDENTIFIER')
       c.summary = 'Create a new cluster profile'
