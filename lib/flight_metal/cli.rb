@@ -49,7 +49,6 @@ require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
 require 'flight_metal/commands/template'
 require 'flight_metal/commands/update'
-require 'flight_metal/commands/render'
 
 require 'pry' if FlightMetal::Config.debug
 
