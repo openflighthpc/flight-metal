@@ -37,37 +37,20 @@ module FlightMetal
         extend ActiveSupport::Concern
 
         included do
-          data_reader(:primary_group) do |primary|
-            primary || begin
-              if File.exists? Models::Group.path(cluster, 'orphan')
-                'orphan'
-              else
-                Models::Group.create(cluster, 'orphan').name
-              end
-            end
-          end
-
-          data_writer(:primary_group) do |primary|
-            if File.exists? Models::Group.path(cluster, primary)
-              primary
-            else
-              raise InvalidModel, <<~ERROR.chomp
-                Can not set the primary group as '#{primary}' does not exist
-              ERROR
-            end
-          end
+          data_reader(:primary_group) { |g| g || 'orphan' }
+          data_writer(:primary_group) { |g| g.to_s }
 
           data_reader(:other_groups) do |groups|
             groups || []
           end
           data_writer(:other_groups) { |v| v.to_a.uniq }
 
-          has_indices(Indices::OtherGroupAndNode) do |create|
-            other_groups.each { |group| create.call(cluster, group, name) }
+          has_indices(Indices::GroupAndNode) do |create|
+            other_groups.each { |group| create.call(cluster, group, name, :other) }
           end
 
-          has_indices(Indices::PrimaryGroupAndNode) do |create|
-            create.call(cluster, primary_group, name)
+          has_indices(Indices::GroupAndNode) do |create|
+            create.call(cluster, primary_group, name, :primary)
           end
         end
 

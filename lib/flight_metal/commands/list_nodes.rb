@@ -40,74 +40,76 @@ module FlightMetal
       end
 
       LIST_TEMPLATE = <<~ERB
+        <% machine = read_machine -%>
         # Node: '<%= name %>'
-        *Built*: <%= built? ? built_time : 'Never' %>
-        *<%= built? ? 'Reb' : 'B' %>uild*: <%= if buildable?
-                                                 'Scheduled'
-                                               elsif rebuild?
-                                                 'Skipping'
-                                               else
-                                                 'No'
-                                               end %>
 
-        <% first_status = true -%>
-        <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        <%
-             status = type_status(type, error: false)
-             text = case status
-                    when :invalid
-                      'Invalid - check link: ' + type_system_path(type)
-                    else
-                      status.capitalize
-                    end
-        -%>
-        <%   if verbose || ![:pending, :installed].include?(status) -%>
+        ## Build Status
+        - *Built*: <%= built? ? built_time : 'Never' %>
+        - *<%= built? ? 'Rebuild' : 'Build'-%>*: <% if rebuild? && machine.buildable? -%>
+        Ready
+        <% elsif rebuild? -%>
+        Skipping
+
+        ## Build Issues
         <%=
-               if first_status
-                 first_status = false
-                 '## File Status'
-               end
+          [
+            machine.missing_files_description,
+            machine.incorrectly_linked_description
+          ].reject(&:nil?).join("\n\n")
         %>
-        - *<%= flag %>*: <%= text %>
-        <%   end -%>
+        <% else -%>
+        No
         <% end -%>
 
-        <% if verbose -%>
-        ## File Template Source
-        <%   FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        <%
-               bool = type_template_model(type).is_a?(FlightMetal::Models::Cluster)
-               source = (bool ? 'Domain' : "Primary Group")
+        <% first_status = true -%>
+        ## File Status
+        <%  FlightMetal::TemplateMap.flag_hash.each do |type, flag|
+              ready_status = machine.file?(type) ? 'Ready' : 'Missing'
+              is_updatable = machine.source?(type)
         -%>
+        - *<%= flag %>*: <%= ready_status %> <%= '(Updatable)' if is_updatable %>
+        <%  end -%>
+
+        <%  if verbose -%>
+        ## Template Source
+        <%    FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
         - *<%= flag %>*: <%=
-          case type_template_model(type)
+          case machine.source_model(type)
           when FlightMetal::Models::Cluster
-            'Domain'
+            'Cluster'
           when FlightMetal::Models::Group
             'Primary Group'
+          when FlightMetal::Models::Node
+            'Node'
           else
             'Missing'
           end
         %>
-        <%   end -%>
-        <% end -%>
+        <%    end -%>
+        <%  end -%>
 
 
-        ## Reserved Parameters
-        <% reserved_params.each do |key, value| -%>
+        ## Static Parameters
+        <% static_params.each do |key, value| -%>
         - _<%= key %>_: <%= value %>
         <% end -%>
 
-        <% unless non_reserved_params.empty? -%>
         ## Other Parameters
-        <%   non_reserved_params.each do |key, value| -%>
+        <% if other_params.empty? -%>
+        No other parameters have been set
+        <% else -%>
+        <%   other_params.each do |key, value| -%>
         - *<%= key %>*: <%= value %>
         <%   end -%>
         <% end -%>
 
       ERB
 
-      command_require('flight_metal/buildable_nodes', 'flight_metal/templator')
+      command_require 'flight_metal/templator'
+
+      def shared_verbose
+        shared(verbose: true)
+      end
 
       def shared(verbose: nil)
         nodes = read_nodes.sort_by(&:name)

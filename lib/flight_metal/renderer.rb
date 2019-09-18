@@ -23,29 +23,31 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
 module FlightMetal
-  module Commands
-    class Create < ScopedCommand
-      command_require 'flight_metal/models/node'
+  Renderer = Struct.new(:model, :template_path) do
+    RENDER_KEY = /\w*\.?\w+/
+    RENDER_TAG = Regexp.new("%#{RENDER_KEY}%")
 
-      def cluster
-        cluster = Models::Cluster.create(model_name_or_error)
-        Config.create_or_update { |c| c.cluster = cluster.identifier }
-        Log.info_puts "Created and switched to cluster '#{cluster.identifier}'"
-      end
+    def template
+      @template ||= File.read template_path
+    end
 
-      def node(mac)
-        node = Models::Node.create(Config.cluster, model_name_or_error) do |n|
-          n.rebuild = true
-          n.mac = mac
-        end
-        Log.info_puts "Created: #{node.name}"
+    def params
+      @params ||= model.params
+    end
+
+    def rendered
+      @rendered ||= params.reduce(template) do |memo, (key, value)|
+        memo.gsub("%#{key}%", value.to_s)
       end
+    end
+
+    def missing_tags
+      rendered.scan(RENDER_TAG).uniq.sort.map { |s| RENDER_KEY.match(s).to_s }
     end
   end
 end
-

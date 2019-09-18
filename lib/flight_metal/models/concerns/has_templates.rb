@@ -23,55 +23,49 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
-require 'flight_metal/models/node'
+require 'active_support/concern'
+require 'flight_metal/renderer'
 
 module FlightMetal
-  class BuildableNodes < Array
-    def initialize(nodes)
-      buildable_nodes = nodes.reject do |node|
-        next if node.buildable?
-        if node.rebuild?
-          Log.warn_puts <<~WARN.chomp
-            Skipping #{node.name}: It can not be built at this time
-          WARN
+  module Models
+    module Concerns
+      module HasTemplates
+        extend ActiveSupport::Concern
+
+        def template_path(type, to:)
+          TemplateMap.raise_unless_valid_type(type)
+          raise_unless_valid_template_target(to)
+          join(to.to_s, 'templates', TemplateMap.find_filename(type))
         end
-        true
-      end
-      super(buildable_nodes)
-    end
 
-    def buildable?(name)
-      find_name(name) ? true : false
-    end
+        def template?(*a)
+          File.exists? template_path(*a)
+        end
 
-    def install_build_files
-      each do |node|
-        [:kickstart, :pxelinux, :dhcp].each do |type|
-          next unless node.type_status(type) == :pending
-          sys = node.type_system_path(type)
-          FileUtils.mkdir_p File.dirname(sys)
-          FileUtils.ln_s node.type_path(type), sys
+        def read_template(*a)
+          File.read template_path(*a)
+        end
+
+        def renderer(type, source:)
+          path = source.template_path(type, to: deployable_type)
+          Renderer.new(self, path)
+        end
+
+        private
+
+        def deployable_type
+          raise NotImplementedError
+        end
+
+        def raise_unless_valid_template_target(_to)
+          raise NotImplementedError
         end
       end
-    end
-
-    def process_built(name)
-      node = find_name(name)
-      Models::Node.update(*node.__inputs__) do |n|
-        FileUtils.rm_f n.pxelinux_system_path
-        FileUtils.rm_f n.kickstart_system_path
-        n.rebuild = false
-        n.built = true
-      end
-      delete(node)
-    end
-
-    def find_name(name)
-      find { |n| n.name == name }
     end
   end
 end
+

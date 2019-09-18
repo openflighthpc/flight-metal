@@ -23,7 +23,7 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
@@ -37,18 +37,18 @@ require 'active_support/core_ext/string'
 require 'flight_metal/template_map'
 require 'flight_metal/command'
 require 'flight_metal/commands/build'
-require 'flight_metal/commands/cluster'
 require 'flight_metal/commands/create'
 require 'flight_metal/commands/delete'
 require 'flight_metal/commands/edit'
+require 'flight_metal/commands/file_command'
 require 'flight_metal/commands/group_nodes'
-require 'flight_metal/commands/hunt'
 require 'flight_metal/commands/import'
 require 'flight_metal/commands/ipmi'
+require 'flight_metal/commands/list'
 require 'flight_metal/commands/list_nodes'
 require 'flight_metal/commands/miscellaneous'
+require 'flight_metal/commands/template'
 require 'flight_metal/commands/update'
-require 'flight_metal/commands/render'
 
 require 'pry' if FlightMetal::Config.debug
 
@@ -64,7 +64,6 @@ module FlightMetal
     program :help_paging, false
 
     def self.run!
-      ARGV.push '--help' if ARGV.empty?
       Log.info "Command: #{Config.app_name} #{ARGV.join(' ')}"
       super
     end
@@ -95,14 +94,20 @@ module FlightMetal
       command.hidden = hidden
     end
 
+    def self.multilevel_cli_syntax(command, level, args_str)
+      combined_args = if level == :cluster
+                        args_str
+                      else
+                        "#{level.to_s.upcase} #{args_str}"
+                      end
+      command.syntax = <<~SYNTAX.squish
+        #{program(:name)} #{command.name} #{combined_args}
+      SYNTAX
+      command.hidden = true
+    end
+
     # TODO: Remove me when refactoring is done
     def self.xcommand(*_a); end
-
-    help_action_lambda = lambda do |*_|
-      raise Commander::Patches::CommandUsageError, <<~ERROR.chomp
-        Select from the following commands:
-      ERROR
-    end
 
     ['cluster', 'group', 'node'].each do |level|
       # This is caught by Commander and triggers the help text to be displayed
@@ -111,10 +116,9 @@ module FlightMetal
         snippet = (level == 'node' ? 'a node resource' : "the #{level} resource")
         c.summary = "View, configure, or manage #{snippet}"
         c.sub_command_group = true
-        c.action(&help_action_lambda)
       end
 
-      command "#{level} run" do |c|
+      command "#{level} action" do |c|
         syntax(c)
         if level == 'node'
           c.summary = 'Execute an action on the node'
@@ -122,19 +126,11 @@ module FlightMetal
           c.summary = "Execute an action on all the nodes within the #{level}"
         end
         c.sub_command_group = true
-        c.action(&help_action_lambda)
-      end
-
-      command "#{level} file" do |c|
-        syntax(c)
-        c.summary = "View and update the content files for the #{level}"
-        c.sub_command_group = true
-        c.action(&help_action_lambda)
       end
     end
 
     ['cluster', 'group', 'node'].each do |level|
-      command "#{level} run build" do |c|
+      command "#{level} action build" do |c|
         level == 'cluster' ? syntax(c) : syntax(c, level.upcase)
         c.summary = 'Run the pxelinux build server'
         c.description = <<~DESC
@@ -183,15 +179,9 @@ module FlightMetal
     end
 
     command 'node create' do |c|
-      syntax(c, 'NODE')
+      syntax(c, 'NODE MAC')
       c.summary = 'Add a new node to the cluster'
       c.action(&FlightMetal::Commands::Create.named_commander_proxy(:node))
-    end
-
-    command 'group create' do |c|
-      syntax(c, 'GROUP')
-      c.summary = 'Add a new group to the cluster'
-      c.action(&FlightMetal::Commands::Create.named_commander_proxy(:group))
     end
 
     command 'cluster create' do |c|
@@ -204,67 +194,6 @@ module FlightMetal
       syntax(c, 'NODE')
       c.summary = 'Remove the node and associated configurations'
       c.action(Commands::Delete.named_commander_proxy(:node))
-    end
-
-    ['cluster', 'node', 'group'].each do |level|
-      command "#{level} file edit" do |c|
-        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
-        c.summary = 'Open a managed node file in the editor'
-        c.description = <<~DESC.chomp
-          Open a template/script/build file in the editor. This is used to manage
-          the build process and power commands. Specify which file is to be edited
-          with TYPE field. The supported types are listed below.
-
-          Valid TYPE arguments:
-            - #{TemplateMap.flag_hash.values.join("\n  - ")}
-        DESC
-        c.option '--replace FILE', 'Copy the given FILE content instead of editing'
-        if level == 'cluster'
-          c.action(&Commands::Edit.unnamed_commander_proxy(:cluster, method: :run))
-        else
-          c.action(&Commands::Edit.named_commander_proxy(level.to_sym, method: :run))
-        end
-      end
-    end
-
-    ['node', 'group'].each do |level|
-      command "#{level} parameters" do |c|
-        syntax(c)
-        c.summary = "Manage the parameters for a #{level}"
-        c.sub_command_group = true
-        c.action(&help_action_lambda)
-      end
-
-      command "#{level} parameters update" do |c|
-        syntax(c, "#{level.upcase} [params...]")
-        c.summary = "modify the #{level}'s parameters"
-        c.description = <<~desc
-          set, modify, and delete parameters assigned to the #{level.upcase}. the parameter
-          keys must be an alphanumeric string which may contain underscores.
-
-          params can set or modify keys by using `key=value` notation. the key can
-          be hard set to an empty string by omitting the value: `key=`. keys are
-          permanently deleted when suffixed with a exclamation: `key!`.
-        desc
-        c.action(&Commands::Update.named_commander_proxy(level, method: :params))
-      end
-
-      command "#{level} parameters edit" do |c|
-        syntax(c, "#{level.upcase}")
-        c.summary = "Modify the parameters via the editor"
-        c.action(&Commands::Update.named_commander_proxy(level, method: :params_editor))
-      end
-    end
-
-    command 'hunt' do |c|
-      syntax(c, hidden: false)
-      c.summary = 'Collect node mac addesses from DHCP Discover'
-      c.description = <<~DESC
-        Listens for DHCP DISCOVER packets containing PXEClient as its vendor
-        class ID. The MAC address will be extracted from the discover and can
-        be assigned to a node.
-      DESC
-      action(c, FlightMetal::Commands::Hunt)
     end
 
     xcommand 'import' do |c|
@@ -290,31 +219,25 @@ module FlightMetal
     command 'cluster list' do |c|
       syntax(c)
       c.summary = "Display the list of clusters"
-      c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
+      c.action(&Commands::List.unnamed_commander_proxy(:cluster, index: :clusters))
     end
 
-    # NOTE: Disable the cluster list-groups command as a duplicate
-    # Consider refactoring if it is permanently removed
-    # ['cluster list-groups', 'group list'].each do |name|
-    ['group list'].each do |name|
-      command name do |c|
-        syntax(c)
-        c.summary = "Display the list of groups"
-        c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_groups))
-      end
+    command 'group list' do |c|
+      syntax(c)
+      c.summary = "Display the list of groups"
+      c.action(&Commands::List.unnamed_commander_proxy(:cluster, index: :groups))
     end
 
     command 'group show' do |c|
       syntax(c, 'GROUP')
       c.summary = "Display a group's details"
-      c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :list_groups))
+      c.action(&Commands::Miscellaneous.named_commander_proxy(:group, method: :show_group))
     end
 
     command 'group nodes' do |c|
       syntax(c)
       c.summary = 'Manage the nodes within the group'
       c.sub_command_group = true
-      c.action(&help_action_lambda)
     end
 
     command 'group nodes list' do |c|
@@ -322,71 +245,71 @@ module FlightMetal
       c.summary = 'List all the nodes within the group'
       c.option '--primary', 'Only list the nodes within the primary group'
       c.option '--verbose', 'Show greater details'
-      c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
+      c.action(&Commands::List.named_commander_proxy(:group, index: :nodes))
     end
 
     command 'group nodes add' do |c|
-      syntax(c, 'GROUP NODES')
-      c.summary = 'add nodes to the group'
+      syntax(c, 'GROUP NODES...')
+      c.summary = 'Add the nodes to the group'
       c.option '--primary', 'Set the nodes to belong within the primary group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :add))
     end
 
     command 'group nodes remove' do |c|
-      syntax(c, 'GROUP NODES')
-      c.summary = 'remove the nodes from the group'
+      syntax(c, 'GROUP NODES...')
+      c.summary = 'Remove the nodes from the group'
       c.action(&Commands::GroupNodes.named_commander_proxy(:group, method: :remove))
     end
 
     command 'node update' do |c|
-      syntax(c, 'NODE')
-      c.summary = 'Modify the metadata associated with a node'
+      syntax(c, 'NODE [PARAMS...]')
+      c.summary = 'Set the other parameters associated with the node'
+      c.description = <<~DESC.chomp
+        Set, modify, and delete other parameters for the node. The parameter
+        keys must be an alphanumeric string which may contain underscores. The rebuild
+        tag and mac address can also be udpated using the optional flags.
+
+        Setting the rebuild tag to false will permanently disable the build command
+        for the node. Alternatively, setting it will trigger it to build next time
+        an appropriate build command is called. Any build issues will still need to
+        be resolved before a rebuild will occurr.
+
+        The mac address is used internally and can not be updated as a parameter.
+        Instead specifiy the new mac address using the '--mac' flag. This may result
+        in the system pxelinux file being abandoned as it is mac address specific.
+        Use with caution!
+
+        Parameters can set or modify keys by using `key=value` notation. The key can
+        be hard set to an empty string by omitting the value: `key=`. Keys are
+        permanently deleted when suffixed with an exclamation: `key!`.
+      DESC
       c.option '--rebuild [false]', 'Flag the node to be rebuild. Unset by including false'
-      c.option '--mac ADDRESS', 'Specify the hardware address for the node'
-      c.option '--primary-group GROUP', 'Specify the new primary group for the node'
-      c.option '--other-groups GROUPS', 'A comma separated list of other groups for the node'
+      c.option '--mac ADDRESS', 'Specify an updated hardware address for the node'
       c.action(&Commands::Update.named_commander_proxy(:node))
+    end
+
+    command 'node show' do |c|
+      syntax(c, 'NODE')
+      c.summary = 'View the details about the node'
+      c.action(&Commands::ListNodes.named_commander_proxy(:node, method: :shared_verbose))
+    end
+
+    command 'node list' do |c|
+      syntax(c)
+      c.summary = 'Display all the nodes in the cluster'
+      c.action(&Commands::List.unnamed_commander_proxy(:cluster, index: :nodes))
     end
 
     command 'node edit' do |c|
       syntax(c, 'NODE')
-      c.summary = "Modify the node's metadata via the editor"
+      c.summary = "Modify the node's other parameters via the editor"
       c.action(&Commands::Update.named_commander_proxy(:node, method: :node_editor))
-    end
-
-    # NOTE: Disable cluster and group list-nodes
-    # Consider refactoring
-    # ['cluster', 'group', 'node list', 'node show'].each do |level|
-    ['node list', 'node show'].each do |level|
-      name = case level
-             when 'cluster'; 'cluster list-nodes'
-             when 'group'; 'group list-nodes'
-             else; level
-             end
-      command name do |c|
-        c.option '--verbose', 'Show greater details'
-        case level
-        when 'cluster', 'node list'
-          syntax(c)
-          c.summary = 'List all the nodes within the cluster'
-          c.action(&Commands::ListNodes.unnamed_commander_proxy(:cluster, method: :shared))
-        when 'group'
-          syntax(c, 'GROUP')
-          c.summary = 'List all the nodes within the group'
-          c.option '--primary', 'Only list nodes within the primary group'
-          c.action(&Commands::ListNodes.named_commander_proxy(:group, method: :shared))
-        when 'node show'
-          syntax(c, 'NODE')
-          c.summary = 'View the node state and configuration'
-          c.action(&Commands::ListNodes.named_commander_proxy(:node, method: :shared))
-        end
-      end
     end
 
     def self.plugin_command(name)
       method = name.gsub('-', '_').to_sym
       ['cluster', 'group', 'node'].each do |level|
-        command "#{level} run #{name}" do |c|
+        command "#{level} action #{name}" do |c|
           syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}[SHELL_ARGS...]")
           c.summary = "Run the #{c.name} script"
           case level
@@ -404,57 +327,98 @@ module FlightMetal
 
     ['power-on', 'power-off', 'power-status', 'ipmi'].each { |c| plugin_command(c) }
 
-    # Define the nodes rendering commands
-    # NOTE: Disable cluster/group render-nodes methods
-    # Consider refactoring
-    # ['cluster', 'group', 'node'].each do |level|
-    ['node'].each do |level|
-      command "#{level} file render#{ '-nodes' unless level == 'node'}" do |c|
-        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
-        c.summary = 'Render the template against the node parameters'
-        c.option '--force', 'Allow missing tags when writing the file'
-        case level
-        when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :nodes))
-        when 'group'
-          # NOTE: Using --primary mutates :group to :primary_group within the proxy
-          c.option '--primary', 'Only render nodes within the primary group'
-         c.action(&Commands::Render.named_commander_proxy(:group, index: :nodes))
-        when 'node'
-          c.action(&Commands::Render.named_commander_proxy(:node, index: :nodes))
+    command 'cluster node-template' do |c|
+      syntax(c)
+      c.summary = 'Manage the cluster wide default node templates'
+      c.sub_command_group = true
+    end
+
+    command 'node template' do |c|
+      syntax(c)
+      c.summary = 'View and manage the source template'
+      c.sub_command_group = true
+    end
+
+    command "node file" do |c|
+      syntax(c)
+      c.summary = 'View and update the content files for the node'
+      c.sub_command_group = true
+    end
+
+    [:cluster, :node].each do |level|
+      cli_prefix = (level == :node ? 'node template' : 'cluster node-template')
+
+      [:add, :remove, :touch, :show, :edit, :render].each do |cmd|
+        command "#{cli_prefix} #{cmd}" do |c|
+          if cmd == :add
+            multilevel_cli_syntax(c, level, 'TYPE TEMPLATE_PATH')
+          elsif cmd == :render && level == :cluster
+            multilevel_cli_syntax(c, level, 'NODE TYPE')
+          else
+            multilevel_cli_syntax(c, level, 'TYPE')
+          end
+
+          case cmd
+          when :add
+            c.summary = 'Define a new template from the file system'
+          when :remove
+            if level == :node
+              c.summary = 'Delete the node level template'
+            else
+              c.summary = 'Delete the cluster wide node default template'
+            end
+          when :touch
+            c.summary = 'Create an empty template ready to be edited'
+          when :show
+            if level == :node
+              c.summary = 'View the node level template'
+            else
+              c.summary = 'View the cluster wide node default template'
+            end
+          when :edit
+            c.summary = 'Update the template through the system editor'
+          when :render
+            c.summary = 'Render the template to stdout'
+          end
+
+          method = (cmd == :render && level == :cluster ? :render_node : cmd)
+
+          if level == :cluster
+            c.action(&Commands::Template.unnamed_commander_proxy(:cluster, method: method, index: :nodes))
+          else
+            c.action(&Commands::Template.named_commander_proxy(level, method: method))
+          end
         end
       end
     end
 
-    # Define the groups rendering commands
-    # NOTE: Disable the 'cluster render-groups' command for the time being
-    # Consider refactoring if it is permanently commented out
-    # ['cluster', 'group'].each do |level|
-    ['group'].each do |level|
-      command "#{level} file render#{ '-groups' unless level == 'group' }" do |c|
-        syntax(c, "#{ level.upcase + ' ' unless level == 'cluster' }TYPE")
-        c.summary = 'Render the template against the group parameters'
-        case level
-        when 'cluster'
-          c.action(&Commands::Render.unnamed_commander_proxy(:cluster, index: :groups))
-        when 'group'
-          c.action(&Commands::Render.named_commander_proxy(:group, index: :groups))
-        end
-      end
-    end
-
-    ['cluster', 'group', 'node'].each do |level|
-      command "#{level} file show" do |c|
-        syntax(c, "#{level.upcase + ' ' unless level == 'cluster'}TYPE")
-        reference = (level == 'cluster' ? 'the cluster' : "a #{level}")
-        c.summary = "View the render file for #{reference}"
-        case level
-        when 'cluster'
-          c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :cat))
+    [:add, :remove, :touch, :show, :edit, :source, :render, :update].each do |cmd|
+      command "node file #{cmd}" do |c|
+        if cmd == :add
+          syntax(c, "NODE TYPE TEMPLATE_PATH")
         else
-          c.option '--template', "View the #{level}'s template"
-          c.action(&Commands::Miscellaneous.named_commander_proxy(level.to_sym, method: :cat))
+          syntax(c, "NODE TYPE")
         end
+
+        case cmd
+        when :add
+          c.summary = 'Add a file directly from the file system'
+        when :remove
+          c.summary = 'Permanently delete a file'
+        when :touch
+          c.summary = 'Create an empty file read for editing'
+        when :show
+          c.summary = 'Print the file to stdout'
+        when :edit
+          c.summary = 'Update the file via the system editor'
+        when :source
+          c.summary = 'Display template source information for the file'
+        when :render
+          c.summary = 'Render the source template against the node to stdout'
+        when :update
+          c.summary = 'Render the source template against the node and save the result'
+        end
+        c.action(&Commands::FileCommand.named_commander_proxy(:machine, method: cmd))
       end
     end
   end

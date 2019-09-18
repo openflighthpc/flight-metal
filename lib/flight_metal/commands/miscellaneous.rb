@@ -31,59 +31,15 @@ module FlightMetal
   module Commands
     class Miscellaneous < ScopedCommand
       def switch_cluster
-        cluster = Models::Cluster.read(model_name_or_error)
+        cluster = Models::Cluster.read(model_name_or_error).tap(&:__data__)
         Config.create_or_update { |c| c.cluster = cluster.identifier }
         puts "Switched cluster: #{cluster.identifier}"
       end
 
-      def list_clusters
-        Config.cluster # Ensures that at least the default cluster exists
-        id_strs = Models::Cluster.glob_read('*').map(&:identifier).map do |id|
-          "#{id == Config.cluster ? '*' : ' '} #{id}"
-        end
-        puts id_strs.join("\n")
-      end
-
-      LIST_GROUPS = <<~ERB
-        # Group: <%= name %>
-
-        ## File Status
-        <% FlightMetal::TemplateMap.flag_hash.each do |type, flag| -%>
-        - *<%= flag %>*: <%= type_status(type).capitalize %>
-        <% end -%>
-
-        ## Reserved Parameters
-        <% reserved_params.each do |key, value| -%>
-        - _<%= key %>_: <%= value %>
-        <% end -%>
-
-        <% unless non_reserved_params.empty? -%>
-        ## Other Parameters
-        <%   non_reserved_params.each do |key, value| -%>
-        - *<%= key %>*: <%= value %>
-        <%   end -%>
-        <% end -%>
-
-      ERB
-      def list_groups
-        require 'flight_metal/templator'
-        list = read_groups.sort_by(&:name)
-                          .map { |g| Templator.new(g).markdown(LIST_GROUPS) }
-                          .join
-        puts list
-      end
-
-      def cat(cli_type, template: false)
-        require 'flight_metal/template_map'
-        type = TemplateMap.lookup_key(cli_type)
-        path = read_model.send(template ? :type_template_path : :type_path, type)
-        if File.exists?(path)
-          print File.read(path)
-        else
-          raise InvalidInput, <<~ERROR.chomp
-            Could not locate file: #{path}
-          ERROR
-        end
+      def show_group
+        group = read_group
+        puts "Primary Nodes: #{group.read_primary_nodes.map(&:name).join(',')}"
+        puts "  Other Nodes: #{group.read_other_nodes.map(&:name).join(',')}"
       end
     end
   end

@@ -56,6 +56,7 @@ module FlightMetal
 
   class InvalidModel < FlightMetalError; end
   class InvalidIndex < InvalidModel; end
+  class InvalidFileType < FlightMetalError; end
   class InvalidAction < FlightMetalError; end
   class MissingFile < FlightMetalError; end
   class MissingParams < FlightMetalError; end

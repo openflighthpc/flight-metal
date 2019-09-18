@@ -37,10 +37,10 @@ module FlightMetal
 
       [:power_on, :power_off, :power_status, :ipmi].each do |type|
         define_method(type) do |*shell_args|
-          read_nodes.each do |node|
-            if node.type_path?(type)
+          read_machines.each do |node|
+            if node.file?(type)
               args_str = shell_args.map { |s| Shellwords.shellescape(s) }.join(' ')
-              cmd = "bash #{node.type_path(type)} #{args_str}"
+              cmd = "bash #{node.file_path(type)} #{args_str}"
               out = SystemCommand::CommandOutput.run(cmd)
               if out.exit_0?
                 puts out.stdout
@@ -50,7 +50,7 @@ module FlightMetal
             else
               Log.warn_puts <<~WARN.squish
                 Skipping #{node.name}: The #{TemplateMap.flag(type)} file
-                can not be found: #{node.type_path(type)}
+                can not be found: #{node.file_path(type)}
               WARN
             end
           end

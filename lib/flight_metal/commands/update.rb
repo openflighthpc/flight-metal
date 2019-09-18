@@ -43,71 +43,66 @@ module FlightMetal
                 .map { |p| p[0..-2].to_sym }
         end
 
-        def update_model(model)
-          model.params = model.params.dup.tap do |hash|
-            hash.merge!(merge_hash)
-            delete_keys.each { |k| hash.delete(k) }
-          end
+        def update!(hash)
+          hash.merge!(merge_hash)
+          delete_keys.each { |k| hash.delete(k) }
+          hash
         end
       end
 
-      command_require 'flight_metal/models/node', 'tty-editor'
-
-      def params(*params)
-        model_class.update(*read_model.__inputs__) do |model|
-          Params.new(params).update_model(model)
-        end
-      end
-
-      def params_editor
-        model_class.update(*read_model.__inputs__) do |model|
-          yaml = YAML.dump(model.non_reserved_params)
-          Tempfile.open("#{model.name}-parameters", '/tmp') do |file|
-            file.write(yaml)
-            file.rewind
-            TTY::Editor.open(file.path)
-            model.params = YAML.safe_load(file.read, permitted_classes: [Symbol])
-          end
-        end
-      end
-
-      # def group(*params)
-      #   Models::Group.update(Config.cluster, model_name_or_error) do |group|
-      #     Params.new(params).update_model(group)
-      #   end
-      # end
+      command_require 'flight_metal/models/node', 'tty-editor', 'tempfile'
 
       def node_editor
-        node = read_node
-        keys = [:rebuild, :primary_group, :other_groups, :mac]
-        orginals = keys.map { |k| [k, node.public_send(k)] }.to_h
-        yaml = YAML.dump(orginals)
-        new = nil
-        Tempfile.open("#{node.name}-metadata", '/tmp') do |file|
-          file.write(yaml)
-          file.rewind
-          TTY::Editor.open(file.path)
-          new = YAML.safe_load(file.read, permitted_classes: [Symbol])
-        end
-        new.select! { |k, _| keys.include?(k) }
-        Models::Node.update(*node.__inputs__) do |update|
-          keys.each { |k| update.public_send("#{k}=", new[k]) }
+        Models::Node.update(*read_node.__inputs__) do |node|
+          # NOTE: In both cases the yaml keys are "converted" to string format
+          # The leading : is a rubyish thing that makes them a symbol. However
+          # this is not formally part of the YAML spec. YAY RUBY
+          static_yaml = YAML.dump(node.static_params)
+                            .split("\n")[1..-1] # Remove the header line
+                            .map { |y| y.sub(/\A:?/, '# ') } # Make it a comment
+                            .join("\n")
+          other_yaml = YAML.dump(node.other_params)
+                           .split("\n")[1..-1]
+                           .map { |y| y.sub(/\A:?/, '') }
+                           .join("\n")
+          Tempfile.open("edit-#{node.name}-other-parameters", '/tmp') do |file|
+            file.write <<~YAML.chomp
+              # Edit the file to update the other parameters for node #{node.name}
+
+              # The following parameters are static to the node and can not be
+              # modified by 'node edit':
+
+              # STATIC PARAMETERS:
+              #{static_yaml}
+
+              # The following are the existing parameters
+              # Adding additional keys will add them as parameters
+              # Similarly, removing keys will permanently delete the parameter
+
+              # OTHER PARAMETERS
+              #{other_yaml.empty? ? "# No other parameters found" : other_yaml}
+            YAML
+            file.rewind
+            TTY::Editor.open(file.path)
+            node.other_params = YAML.safe_load(file.read, permitted_classes: [Symbol])
+          end
         end
       end
 
-      def node(rebuild: nil, primary_group: nil, other_groups: nil, mac: nil)
-        rebuild = if rebuild.nil?
-                    nil
-                  elsif [false, 'false'].include?(rebuild)
-                    false # Treat 'false' as false
-                  else
-                    true
-                  end
-        Models::Node.update(Config.cluster, model_name_or_error) do |node|
-          node.rebuild = rebuild unless rebuild.nil?
-          node.primary_group = primary_group if primary_group
-          node.other_groups = other_groups.split(',') if other_groups
+      def node(*param_strs, mac: nil, rebuild: nil)
+        # Allow the rebuild flag to be string 'false'
+        rebuild  = if rebuild.nil?
+                     nil
+                   elsif [false, 'false'].include?(rebuild)
+                     false
+                   else
+                     true
+                   end
+        Models::Node.update(*read_node.__inputs__) do |node|
+          builder = Params.new(param_strs)
+          node.other_params = builder.update!(node.other_params.dup)
           node.mac = mac if mac
+          node.rebuild = rebuild unless rebuild.nil?
         end
       end
     end

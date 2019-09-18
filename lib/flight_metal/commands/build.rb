@@ -31,7 +31,7 @@ module FlightMetal
   module Commands
     class Build < ScopedCommand
       command_require 'flight_metal/server',
-                      'flight_metal/buildable_nodes',
+                      'flight_metal/buildable_machines',
                       'flight_metal/log',
                       'flight_metal/errors'
 
@@ -62,7 +62,7 @@ module FlightMetal
       end
 
       def buildable_nodes
-        @buildable_nodes ||= BuildableNodes.new(read_nodes)
+        @buildable_nodes ||= BuildableMachines.new(read_machines)
       end
     end
   end

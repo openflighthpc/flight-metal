@@ -27,19 +27,22 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/models/machine'
 require 'flight_metal/models/cluster'
 require 'flight_metal/models/group'
 require 'flight_metal/macs'
 require 'flight_metal/system_command'
-require 'flight_metal/models/concerns/has_params'
+require 'flight_metal/models/concerns/has_templates'
 
 module FlightMetal
   module Models
     class Node < Model
+      GROUP_STATIC_KEYS = [:groups, :other_groups, :primary_group]
+
       # Must be required after the class declaration
       require 'flight_metal/models/node/has_groups'
 
-      include Concerns::HasParams
+      include Concerns::HasTemplates
       include HasGroups
 
       def self.join(cluster, name, *a)
@@ -53,22 +56,9 @@ module FlightMetal
 
       def self.delete!(*a)
         delete(*a) do |node|
-          FileUtils.rm_rf node.join('lib')
+          FileUtils.rm_rf node.join('machine')
           true
         end
-      end
-
-      reserved_param_reader(:mac)
-
-      reserved_param_reader(:other_groups) do |groups|
-        groups.empty? ? nil : groups.join(',')
-      end
-      reserved_param_reader(:primary_group)
-
-      reserved_param_reader(:name)
-      reserved_param_reader(:cluster)
-      reserved_param_reader(:groups) do |groups|
-        groups.join(',')
       end
 
       flag :built
@@ -91,133 +81,66 @@ module FlightMetal
         end
       end
 
-      TemplateMap.path_methods.each do |method, type|
-        define_method(method) do
-          join('libexec', TemplateMap.find_filename(type))
-        end
-        define_path?(method)
-      end
-      define_type_path_shortcuts
-
-      TemplateMap.path_methods(sub: 'template').each do |method, type|
-        define_method("#{type}_template_model") do
-          return read_primary_group if read_primary_group.type_path?(type)
-          return read_cluster if read_cluster.type_path?(type)
-        end
-
-        define_method(method) do
-          type_template_model(type)&.type_path(type)
-        end
-        define_path?(method)
-      end
-      define_type_path_shortcuts(sub: 'template')
-
-      def type_template_model(type)
-        public_send("#{type}_template_model")
-      end
-
-      def pxelinux_system_path
-        if mac
-          File.join(Config.tftpboot_dir,
-                    'pxelinux.cfg',
-                    '01-' + mac.downcase.gsub(':', '-'))
-        else
-          nil
-        end
-      end
-
-      def kickstart_system_path
-        File.join(Config.kickstart_dir, name + '.ks')
-      end
-
-      def dhcp_system_path
-        File.join(Config.dhcpd_dir, name + '.conf')
-      end
-
-      define_type_path_shortcuts(sub: 'system')
-
-      [:kickstart, :pxelinux, :dhcp].each do |type|
-        define_path?(TemplateMap.path_method(type, sub: 'system'))
-
-        define_method("#{type}_status") do |error: true|
-          if type_path?(type) && type_system_path?(type, symlink: true)
-            rendered = Pathname.new(type_path(type))
-            system = Pathname.new(type_system_path(type))
-            if system.symlink? && File.identical?(system.readlink, rendered)
-              :installed
-            elsif error && system.symlink?
-              raise InvalidModel, <<~ERROR.chomp
-                '#{name}' system file is linked incorrectly. Fix the link and try again
-                Link Source: #{system}
-                Correct:     #{system.readlink}
-                Incorrect:   #{rendered}
-              ERROR
-            elsif error
-              raise InvalidModel, <<~ERROR.chomp
-                '#{name}' system file already exists, please remove it and try again
-                File: #{system}
-              ERROR
-            else
-              :invalid
-            end
-          elsif type_path?(type)
-            :pending
-          elsif type_template_path?(type)
-            :renderable
+      data_reader(:other_params) { |p| (p || {}).symbolize_keys }
+      data_writer(:other_params) do |raw|
+        raw.to_h.symbolize_keys.select do |key, value|
+          next true unless static_params.keys.include?(key)
+          if GROUP_STATIC_KEYS.include?(key)
+            msg = <<~WARN.squish
+              Cowardly refusing to update the #{key} parameter for the node.
+              See the following command for updating group membership:
+            WARN
+            Log.warn_puts <<~WARN.chomp
+              #{msg}
+              #{Config.app_name} group nodes --help
+            WARN
+          elsif key == :mac
+            msg = <<~WARN.squish
+              Cowardly refusing to update the node's mac address as a parameter.
+              This must be done using the command below. Caution should be used
+              when updating the mac as system paths are dependent on it. This may
+              result in the node's old pxelinux file being abandoned in the file
+              system.
+            WARN
+            Log.warn_puts <<~WARN
+              #{msg}
+              #{Config.app_name} node update #{name} --mac #{value}
+            WARN
           else
-            :missing
+            Log.warn_puts <<~WARN.squish
+              Cowardly refusing to set the #{key} parameter as it is immutable for
+              nodes.
+            WARN
           end
+          false
         end
       end
 
-      [:ipmi, :power_on, :power_off, :power_status].each do |type|
-        define_method("#{type}_status") do |error: true|
-          if type_path?(type)
-            :installed
-          elsif type_template_path?(type)
-            :renderable
-          else
-            :missing
-          end
-        end
+      def static_params
+        {
+          name: name,
+          cluster: cluster,
+          groups: groups.join(','),
+          other_groups: other_groups.join(','),
+          primary_group: primary_group,
+          mac: mac
+        }
       end
 
-      def type_status(type, error: true)
-        public_send("#{type}_status", error: error)
+      def params
+        other_params.merge(static_params)
       end
 
       def mac?
         !mac.nil?
       end
 
-      def buildable?
-        mac? && rebuild? && all_types_buildable?
-      end
-
-      def all_types_buildable?
-        [:kickstart, :pxelinux, :dhcp].map do |type|
-          type_buildable?(type)
-        end.reduce { |memo, bool| memo && bool }
-      end
-
-      def type_buildable?(type)
-        case type_status(type, error: false)
-        when :installed
-          true
-        when :pending
-          true
-        else
-          false
-        end
-      end
-
-      # TODO: Remove render_params as it is now equivalent to params
-      def render_params
-        params
-      end
-
       def read_cluster
         Models::Cluster.read(cluster, registry: __registry__)
+      end
+
+      def read_machine
+        Models::Machine.read(*__inputs__, registry: __registry__)
       end
 
       # TODO: Look how this integrates into FlightConfig
@@ -226,6 +149,19 @@ module FlightMetal
       def update(&b)
         new_node = self.class.update(*__inputs__, &b)
         self.instance_variable_set(:@__data__, new_node.__data__)
+      end
+
+      private
+
+      def deployable_type
+        :machine
+      end
+
+      def raise_unless_valid_template_target(value)
+        return if value == :machine
+        raise InvalidInput, <<~ERROR.squish
+          Nodes do not store templates for a #{value}
+        ERROR
       end
     end
   end

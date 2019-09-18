@@ -28,10 +28,13 @@
 #===============================================================================
 
 require 'flight_metal/model'
+require 'flight_metal/models/concerns/has_templates'
 
 module FlightMetal
   module Models
     class Cluster < Model
+      include Concerns::HasTemplates
+
       def self.join(identifier, *rest)
         Pathname.new(Config.content_dir).join('clusters', identifier, *rest)
       end
@@ -56,21 +59,25 @@ module FlightMetal
       data_reader :gateway_ip
       data_writer :gateway_ip
 
-      TemplateMap.path_methods.each do |method, type|
-        define_method(method) do
-          join('libexec', TemplateMap.find_filename(type))
-        end
-
-        define_path?(method)
-      end
-      define_type_path_shortcuts
-
       def read_nodes
         Models::Node.glob_read(identifier, '*', registry: __registry__)
       end
 
       def read_groups
         Models::Group.glob_read(identifier, '*', registry: __registry__)
+      end
+
+      private
+
+      def deployable_type
+        :domain
+      end
+
+      def raise_unless_valid_template_target(to)
+        return if to == :machine
+        raise InvalidInput, <<~ERROR.chomp
+          The Cluster currently only supports machine templates
+        ERROR
       end
     end
   end

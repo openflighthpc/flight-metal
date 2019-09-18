@@ -130,6 +130,9 @@ module FlightMetal
       when :node, 'node'
         require 'flight_metal/models/node'
         Models::Node
+      when :machine
+        require 'flight_metal/models/machine'
+        Models::Machine
       else
         raise InternalError, <<~ERROR.chomp
           Unrecognised command level #{level}
@@ -142,7 +145,10 @@ module FlightMetal
     end
 
     def model_name_or_error
-      if model_name.nil? || model_name.empty?
+      is_missing = (model_name.nil? || model_name.empty?)
+      if is_missing && [:cluster, 'cluster'].include?(level)
+        Config.cluster
+      elsif is_missing
         raise InternalError, <<~ERROR.chomp
           The #{level.to_s} name has not been set
         ERROR
@@ -158,21 +164,30 @@ module FlightMetal
         read_group
       elsif model_class == Models::Node
         read_node
+      elsif model_class == Models::Machine
+        read_machine
       else
         raise InternalError
       end
     end
 
     def read_cluster
+      require 'flight_metal/models/cluster'
       Models::Cluster.read(model_name || Config.cluster)
     end
 
     def read_group
+      require 'flight_metal/models/group'
       Models::Group.read(Config.cluster, model_name_or_error)
     end
 
     def read_node
+      require 'flight_metal/models/node'
       Models::Node.read(Config.cluster, model_name_or_error)
+    end
+
+    def read_machine
+      Models::Machine.read(Config.cluster, model_name_or_error)
     end
 
     def read_nodes
@@ -187,11 +202,17 @@ module FlightMetal
       end
     end
 
+    def read_machines
+      read_nodes.map(&:read_machine)
+    end
+
     def read_groups
-      require 'flight_metal/models/group'
+      require 'flight_metal/indices/group_and_node'
       case model = read_model
       when Models::Cluster
-        model.read_groups
+        Indices::GroupAndNode.glob_read(Config.cluster, '*', '*', '*')
+                             .map(&:read_group)
+                             .uniq
       when Models::Group
         [model]
       when Models::Node

@@ -23,29 +23,34 @@
 #
 #  https://opensource.org/licenses/EPL-2.0
 #
-# For more information on flight-account, please visit:
+# For more information on flight-metal, please visit:
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
 module FlightMetal
   module Commands
-    class Create < ScopedCommand
-      command_require 'flight_metal/models/node'
-
-      def cluster
-        cluster = Models::Cluster.create(model_name_or_error)
-        Config.create_or_update { |c| c.cluster = cluster.identifier }
-        Log.info_puts "Created and switched to cluster '#{cluster.identifier}'"
+    class List < ScopedCommand
+      def nodes
+        nodes = read_nodes
+        puts nodes.map(&:name)
+        nodes.each(&:generate_indices)
       end
 
-      def node(mac)
-        node = Models::Node.create(Config.cluster, model_name_or_error) do |n|
-          n.rebuild = true
-          n.mac = mac
+      def groups
+        groups = read_groups
+        puts groups.map(&:name)
+        groups.each(&:generate_indices)
+      end
+
+      def clusters
+        Config.cluster # Ensures that at least the default cluster exists
+        clusters = Models::Cluster.glob_read('*')
+        id_strs = clusters.map(&:identifier).map do |id|
+          "#{id == Config.cluster ? '*' : ' '} #{id}"
         end
-        Log.info_puts "Created: #{node.name}"
+        puts id_strs.join("\n")
+        clusters.each(&:generate_indices)
       end
     end
   end
 end
-

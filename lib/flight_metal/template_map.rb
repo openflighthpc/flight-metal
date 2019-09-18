@@ -39,6 +39,13 @@ module FlightMetal
       power_status: { flag: 'power-status', filename: 'power/status.sh' }
     }
 
+    def self.raise_unless_valid_type(type)
+      return if keys.include?(type)
+      raise InvalidFileType, <<~ERROR
+        '#{type}' is an unrecognised file type
+      ERROR
+    end
+
     def self.keys
       HASH.keys
     end

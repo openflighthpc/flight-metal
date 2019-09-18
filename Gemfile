@@ -38,8 +38,6 @@ gem 'flight_config', '0.2.0'
 
 gem 'flight_manifest', '0.1.2'
 gem 'rubyzip'
-gem 'pcap', github: 'alces-software/ruby-pcap'
-gem 'net-dhcp'
 gem 'highline'
 gem 'hashie'
 gem 'parallel'

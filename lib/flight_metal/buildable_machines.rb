@@ -27,25 +27,52 @@
 # https://github.com/alces-software/flight-metal
 #===============================================================================
 
+require 'flight_metal/models/machine'
+
 module FlightMetal
-  module Commands
-    class Create < ScopedCommand
-      command_require 'flight_metal/models/node'
-
-      def cluster
-        cluster = Models::Cluster.create(model_name_or_error)
-        Config.create_or_update { |c| c.cluster = cluster.identifier }
-        Log.info_puts "Created and switched to cluster '#{cluster.identifier}'"
-      end
-
-      def node(mac)
-        node = Models::Node.create(Config.cluster, model_name_or_error) do |n|
-          n.rebuild = true
-          n.mac = mac
+  class BuildableMachines < Array
+    def initialize(machines)
+      buildable_machines = machines.reject do |machine|
+        next if machine.buildable?
+        if machine.read_node.rebuild?
+          Log.warn_puts <<~WARN.chomp
+            Skipping #{machine.name}: It can not be built at this time
+          WARN
         end
-        Log.info_puts "Created: #{node.name}"
+        true
       end
+      super(buildable_machines)
+    end
+
+    def buildable?(name)
+      find_name(name) ? true : false
+    end
+
+    def install_build_files
+      each do |machine|
+        [:kickstart, :pxelinux, :dhcp].each do |type|
+          if machine.system_file_installed?(type)
+            # noop
+          else machine.file?(type)
+            machine.link_system_file(type)
+          end
+        end
+      end
+    end
+
+    def process_built(name)
+      machine = find_name(name)
+      Models::Node.update(*machine.__inputs__) do |n|
+        FileUtils.rm_f machine.pxelinux_system_path
+        FileUtils.rm_f machine.kickstart_system_path
+        n.rebuild = false
+        n.built = true
+      end
+      delete(machine)
+    end
+
+    def find_name(name)
+      find { |n| n.name == name }
     end
   end
 end
-
