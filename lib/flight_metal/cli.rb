@@ -225,7 +225,7 @@ module FlightMetal
     command 'cluster list' do |c|
       syntax(c)
       c.summary = "Display the list of clusters"
-      c.action(&Commands::Miscellaneous.unnamed_commander_proxy(:cluster, method: :list_clusters))
+      c.action(&Commands::List.unnamed_commander_proxy(:cluster, index: :clusters))
     end
 
     command 'group list' do |c|

@@ -35,14 +35,6 @@ module FlightMetal
         Config.create_or_update { |c| c.cluster = cluster.identifier }
         puts "Switched cluster: #{cluster.identifier}"
       end
-
-      def list_clusters
-        Config.cluster # Ensures that at least the default cluster exists
-        id_strs = Models::Cluster.glob_read('*').map(&:identifier).map do |id|
-          "#{id == Config.cluster ? '*' : ' '} #{id}"
-        end
-        puts id_strs.join("\n")
-      end
     end
   end
 end

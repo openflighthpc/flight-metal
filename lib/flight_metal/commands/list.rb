@@ -41,6 +41,16 @@ module FlightMetal
         puts groups.map(&:name)
         groups.each(&:generate_indices)
       end
+
+      def clusters
+        Config.cluster # Ensures that at least the default cluster exists
+        clusters = Models::Cluster.glob_read('*')
+        id_strs = clusters.map(&:identifier).map do |id|
+          "#{id == Config.cluster ? '*' : ' '} #{id}"
+        end
+        puts id_strs.join("\n")
+        clusters.each(&:generate_indices)
+      end
     end
   end
 end
