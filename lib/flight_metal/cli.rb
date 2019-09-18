@@ -131,15 +131,6 @@ module FlightMetal
       end
     end
 
-    # NOTE: There are currently no group level file commands. Needs refactoring
-    ['cluster', 'node'].each do |level|
-      command "#{level} file" do |c|
-        syntax(c)
-        c.summary = "View and update the content files for the #{level}"
-        c.sub_command_group = true
-      end
-    end
-
     ['cluster', 'group', 'node'].each do |level|
       command "#{level} action build" do |c|
         level == 'cluster' ? syntax(c) : syntax(c, level.upcase)
@@ -371,6 +362,12 @@ module FlightMetal
     command 'node template' do |c|
       syntax(c)
       c.summary = 'View and manage the source template'
+      c.sub_command_group = true
+    end
+
+    command "node file" do |c|
+      syntax(c)
+      c.summary = 'View and update the content files for the node'
       c.sub_command_group = true
     end
 
